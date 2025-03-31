@@ -1,0 +1,646 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NewsCard from '../../components/NewsCard.astro';
+import { CATEGORIES } from '../../consts';
+import FormattedDate from '../../components/FormattedDate.astro';
+
+export function getStaticPaths() {
+  return CATEGORIES.map(category => ({
+    params: { category: category.id },
+    props: { category },
+  }));
+}
+
+const { category } = Astro.props;
+
+// En un proyecto real, estas noticias vendrían filtradas de una colección de contenido
+// Aquí simulamos noticias para cada categoría
+const newsByCategory = {
+  'agricultura': [
+    {
+      title: "Cooperativa Abya Yala logra récord en producción de café orgánico",
+      description: "La cooperativa agraria Abya Yala ha alcanzado un nuevo récord en la producción de café orgánico, superando las expectativas del mercado nacional e internacional.",
+      pubDate: new Date('2025-03-15'),
+      category: "agricultura",
+      image: "/blog-placeholder-3.jpg",
+      slug: "record-cafe-organico"
+    },
+    {
+      title: "Nuevas variedades de maíz resistentes a la sequía",
+      description: "Investigadores del colectivo Abya Yala desarrollan variedades de maíz adaptadas a condiciones climáticas extremas, garantizando la seguridad alimentaria.",
+      pubDate: new Date('2025-03-05'),
+      category: "agricultura",
+      image: "/blog-placeholder-1.jpg",
+      slug: "variedades-maiz-resistentes"
+    },
+    {
+      title: "Calendario agrícola tradicional: Sabiduría ancestral para los cultivos",
+      description: "El colectivo Abya Yala recupera y difunde el conocimiento del calendario agrícola tradicional para optimizar los ciclos de siembra y cosecha.",
+      pubDate: new Date('2025-02-20'),
+      category: "agricultura",
+      image: "/blog-placeholder-5.jpg",
+      slug: "calendario-agricola-tradicional"
+    }
+  ],
+  'comunidad': [
+    {
+      title: "Mujeres rurales lideran proyecto de soberanía alimentaria",
+      description: "Un grupo de mujeres del colectivo Abya Yala ha puesto en marcha un ambicioso proyecto para garantizar la soberanía alimentaria en su comunidad.",
+      pubDate: new Date('2025-03-28'),
+      category: "comunidad",
+      image: "/blog-placeholder-1.jpg",
+      slug: "mujeres-soberania-alimentaria"
+    },
+    {
+      title: "Jóvenes retornan al campo: La nueva generación de agricultores",
+      description: "Cada vez más jóvenes deciden volver a sus comunidades rurales para dedicarse a la agricultura sostenible, revitalizando el campo.",
+      pubDate: new Date('2025-03-01'),
+      category: "comunidad",
+      image: "/blog-placeholder-4.jpg",
+      slug: "jovenes-retornan-campo"
+    }
+  ],
+  'sostenibilidad': [
+    {
+      title: "Nueva técnica de riego sostenible reduce el consumo de agua en un 40%",
+      description: "Agricultores del colectivo Abya Yala implementan innovadora técnica de riego que permite ahorrar agua y mejorar la calidad de los cultivos.",
+      pubDate: new Date('2025-03-20'),
+      category: "sostenibilidad",
+      image: "/blog-placeholder-4.jpg",
+      slug: "tecnica-riego-sostenible"
+    },
+    {
+      title: "Estudio revela beneficios de la agricultura regenerativa",
+      description: "Una investigación realizada por miembros del colectivo Abya Yala demuestra los múltiples beneficios de la agricultura regenerativa para el suelo y el medio ambiente.",
+      pubDate: new Date('2025-03-10'),
+      category: "sostenibilidad",
+      image: "/blog-placeholder-1.jpg",
+      slug: "beneficios-agricultura-regenerativa"
+    }
+  ],
+  'politica-agraria': [
+    {
+      title: "Nuevo decreto agrario: Análisis de su impacto en pequeños productores",
+      description: "Especialistas del colectivo Abya Yala analizan las implicaciones del reciente decreto agrario para los pequeños productores y comunidades rurales.",
+      pubDate: new Date('2025-03-26'),
+      category: "politica-agraria",
+      image: "/blog-placeholder-5.jpg",
+      slug: "analisis-decreto-agrario"
+    },
+    {
+      title: "Propuesta de ley para proteger semillas nativas",
+      description: "El colectivo Abya Yala presenta una propuesta de ley para proteger las semillas nativas y garantizar los derechos de los agricultores tradicionales.",
+      pubDate: new Date('2025-02-15'),
+      category: "politica-agraria",
+      image: "/blog-placeholder-2.jpg",
+      slug: "propuesta-ley-semillas"
+    }
+  ],
+  'tecnologia-rural': [
+    {
+      title: "Drones y agricultura de precisión: La revolución llega al campo",
+      description: "El colectivo Abya Yala incorpora tecnología de drones para optimizar la producción agrícola y reducir el impacto ambiental de sus actividades.",
+      pubDate: new Date('2025-03-18'),
+      category: "tecnologia-rural",
+      image: "/blog-placeholder-4.jpg",
+      slug: "drones-agricultura-precision"
+    },
+    {
+      title: "Aplicación móvil para monitoreo de cultivos",
+      description: "Desarrolladores del colectivo Abya Yala crean una aplicación móvil que permite a los agricultores monitorear sus cultivos y detectar problemas a tiempo.",
+      pubDate: new Date('2025-02-10'),
+      category: "tecnologia-rural",
+      image: "/blog-placeholder-3.jpg",
+      slug: "app-monitoreo-cultivos"
+    }
+  ],
+  'cultura': [
+    {
+      title: "Rescate de recetas tradicionales promueve la gastronomía local",
+      description: "Una iniciativa del colectivo Abya Yala busca preservar el patrimonio culinario de la región a través del rescate de recetas tradicionales.",
+      pubDate: new Date('2025-03-12'),
+      category: "cultura",
+      image: "/blog-placeholder-2.jpg",
+      slug: "rescate-recetas-tradicionales"
+    },
+    {
+      title: "Música y danzas del campo: Preservando la identidad cultural",
+      description: "El colectivo Abya Yala organiza talleres y presentaciones para mantener vivas las expresiones musicales y dancísticas tradicionales del campo.",
+      pubDate: new Date('2025-02-05'),
+      category: "cultura",
+      image: "/blog-placeholder-5.jpg",
+      slug: "musica-danzas-campo"
+    }
+  ],
+  'eventos': [
+    {
+      title: "Feria de semillas ancestrales reúne a más de 500 agricultores",
+      description: "La tradicional feria de intercambio de semillas ancestrales organizada por Abya Yala contó con la participación de agricultores de toda la región.",
+      pubDate: new Date('2025-03-25'),
+      category: "eventos",
+      image: "/blog-placeholder-2.jpg",
+      slug: "feria-semillas-ancestrales"
+    },
+    {
+      title: "Taller de agroecología atrae a jóvenes interesados en el campo",
+      description: "El reciente taller de agroecología organizado por Abya Yala ha despertado el interés de jóvenes que buscan alternativas sostenibles en el sector agrícola.",
+      pubDate: new Date('2025-03-22'),
+      category: "eventos",
+      image: "/blog-placeholder-3.jpg",
+      slug: "taller-agroecologia-jovenes"
+    },
+    {
+      title: "Conferencia internacional sobre soberanía alimentaria",
+      description: "Expertos de diversos países se reúnen en la conferencia organizada por Abya Yala para debatir sobre los desafíos y oportunidades de la soberanía alimentaria.",
+      pubDate: new Date('2025-02-28'),
+      category: "eventos",
+      image: "/blog-placeholder-1.jpg",
+      slug: "conferencia-soberania-alimentaria"
+    }
+  ]
+};
+
+const newsItems = newsByCategory[category.id] || [];
+---
+
+<BaseLayout title={`${category.name} - Abya Yala`} description={category.description}>
+  <div class="category-header">
+    <div class="container">
+      <h1>{category.name}</h1>
+      <p>{category.description}</p>
+    </div>
+  </div>
+  
+  <section class="category-content">
+    <div class="container">
+      <div class="category-filters">
+        <div class="filter-group">
+          <label for="sort-by">Ordenar por:</label>
+          <select id="sort-by" class="filter-select">
+            <option value="date-desc">Más recientes primero</option>
+            <option value="date-asc">Más antiguos primero</option>
+            <option value="title-asc">Título (A-Z)</option>
+            <option value="title-desc">Título (Z-A)</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="time-period">Período:</label>
+          <select id="time-period" class="filter-select">
+            <option value="all">Todos</option>
+            <option value="month">Último mes</option>
+            <option value="quarter">Últimos 3 meses</option>
+            <option value="year">Último año</option>
+          </select>
+        </div>
+        
+        <div class="search-filter">
+          <input type="text" id="category-search" placeholder="Buscar en esta categoría..." />
+          <button type="button" id="search-btn" aria-label="Buscar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <div class="category-stats">
+        <p><span class="news-count">{newsItems.length}</span> artículos en esta categoría</p>
+      </div>
+      
+      {newsItems.length > 0 ? (
+        <div class="news-grid">
+          {newsItems.map(news => (
+            <NewsCard 
+              title={news.title}
+              description={news.description}
+              pubDate={news.pubDate}
+              category={news.category}
+              image={news.image}
+              slug={news.slug}
+            />
+          ))}
+        </div>
+      ) : (
+        <div class="no-news">
+          <p>No hay noticias disponibles en esta categoría.</p>
+        </div>
+      )}
+    </div>
+  </section>
+  
+  <section class="other-categories">
+    <div class="container">
+      <h2>Explora otras categorías</h2>
+      <div class="categories-list">
+        {CATEGORIES.filter(cat => cat.id !== category.id).map(cat => (
+          <a href={`/category/${cat.id}`} class="category-link">
+            <span class="category-name">{cat.name}</span>
+            <span class="category-arrow">→</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+  
+  <section class="newsletter-section">
+    <div class="container">
+      <div class="newsletter-box">
+        <div class="newsletter-content">
+          <h2>Mantente informado</h2>
+          <p>Suscríbete a nuestro boletín para recibir las últimas noticias de {category.name} y otras categorías directamente en tu correo.</p>
+        </div>
+        <div class="newsletter-form">
+          <form>
+            <input type="email" placeholder="Tu correo electrónico" required />
+            <button type="submit">Suscribirse</button>
+          </form>
+          <p class="privacy-note">Al suscribirte, aceptas nuestra <a href="/privacy">política de privacidad</a>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  
+  .category-header {
+    background-color: var(--color-primary);
+    color: white;
+    padding: 3rem 0;
+    margin-bottom: 3rem;
+    text-align: center;
+  }
+  
+  .category-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .category-header p {
+    font-size: 1.2rem;
+    max-width: 800px;
+    margin: 0 auto;
+    opacity: 0.9;
+  }
+  
+  .category-content {
+    margin-bottom: 4rem;
+  }
+  
+  .category-filters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: var(--color-bg-alt, #f5f5f5);
+    border-radius: 8px;
+    gap: 1rem;
+  }
+  
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .filter-select {
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(var(--gray-light), 1);
+    border-radius: 4px;
+    font-size: 1rem;
+    background-color: white;
+  }
+  
+  .search-filter {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 250px;
+  }
+  
+  #category-search {
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(var(--gray-light), 1);
+    border-right: none;
+    border-radius: 4px 0 0 4px;
+    font-size: 1rem;
+    width: 100%;
+  }
+  
+  #search-btn {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .category-stats {
+    margin-bottom: 2rem;
+    color: var(--color-text-secondary, #666);
+    font-size: 1.1rem;
+  }
+  
+  .news-count {
+    font-weight: bold;
+    color: var(--color-primary);
+  }
+  
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .no-news {
+    text-align: center;
+    padding: 3rem 0;
+    font-size: 1.2rem;
+    color: var(--color-text);
+    background-color: var(--color-bg-alt, #f5f5f5);
+    border-radius: 8px;
+  }
+  
+  .other-categories {
+    margin-bottom: 4rem;
+  }
+  
+  .other-categories h2 {
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+  
+  .categories-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+  
+  .category-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--color-background);
+    color: var(--color-text);
+    border: 1px solid rgba(var(--gray-light), 1);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    min-width: 200px;
+  }
+  
+  .category-arrow {
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.3s ease;
+  }
+  
+  .category-link:hover {
+    background-color: var(--color-primary);
+    color: white;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .category-link:hover .category-arrow {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  
+  .newsletter-section {
+    margin-bottom: 4rem;
+  }
+  
+  .newsletter-box {
+    display: flex;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .newsletter-content {
+    flex: 1;
+    padding: 2.5rem;
+  }
+  
+  .newsletter-content h2 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+  }
+  
+  .newsletter-content p {
+    opacity: 0.9;
+    line-height: 1.6;
+  }
+  
+  .newsletter-form {
+    flex: 1;
+    padding: 2.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  
+  .newsletter-form form {
+    display: flex;
+    margin-bottom: 1rem;
+  }
+  
+  .newsletter-form input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 4px 0 0 4px;
+    font-size: 1rem;
+  }
+  
+  .newsletter-form button {
+    padding: 0.75rem 1.5rem;
+    background-color: white;
+    color: var(--color-primary);
+    border: none;
+    border-radius: 0 4px 4px 0;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .newsletter-form button:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .privacy-note {
+    font-size: 0.9rem;
+    opacity: 0.8;
+  }
+  
+  .privacy-note a {
+    color: white;
+    text-decoration: underline;
+  }
+  
+  @media (max-width: 992px) {
+    .newsletter-box {
+      flex-direction: column;
+    }
+    
+    .category-filters {
+      flex-direction: column;
+    }
+    
+    .filter-group, .search-filter {
+      width: 100%;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .category-header {
+      padding: 2rem 0;
+    }
+    
+    .category-header h1 {
+      font-size: 2rem;
+    }
+    
+    .category-header p {
+      font-size: 1rem;
+    }
+    
+    .news-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<script>
+  // Funcionalidad de filtrado y ordenación
+  document.addEventListener('DOMContentLoaded', () => {
+    const sortSelect = document.getElementById('sort-by');
+    const timeSelect = document.getElementById('time-period');
+    const searchInput = document.getElementById('category-search');
+    const searchButton = document.getElementById('search-btn');
+    const newsGrid = document.querySelector('.news-grid');
+    const newsCards = document.querySelectorAll('.news-card');
+    const newsCount = document.querySelector('.news-count');
+    
+    if (sortSelect && newsGrid && newsCards.length) {
+      // Ordenar noticias
+      sortSelect.addEventListener('change', () => {
+        const sortValue = sortSelect.value;
+        const newsArray = Array.from(newsCards);
+        
+        newsArray.sort((a, b) => {
+          if (sortValue === 'date-desc') {
+            return new Date(b.dataset.date) - new Date(a.dataset.date);
+          } else if (sortValue === 'date-asc') {
+            return new Date(a.dataset.date) - new Date(b.dataset.date);
+          } else if (sortValue === 'title-asc') {
+            return a.dataset.title.localeCompare(b.dataset.title);
+          } else if (sortValue === 'title-desc') {
+            return b.dataset.title.localeCompare(a.dataset.title);
+          }
+          return 0;
+        });
+        
+        // Limpiar el grid y agregar los elementos ordenados
+        newsGrid.innerHTML = '';
+        newsArray.forEach(card => {
+          newsGrid.appendChild(card);
+        });
+      });
+      
+      // Filtrar por período
+      if (timeSelect) {
+        timeSelect.addEventListener('change', () => {
+          const timeValue = timeSelect.value;
+          const now = new Date();
+          let visibleCount = 0;
+          
+          newsCards.forEach(card => {
+            const cardDate = new Date(card.dataset.date);
+            let show = true;
+            
+            if (timeValue === 'month') {
+              const oneMonthAgo = new Date(now);
+              oneMonthAgo.setMonth(now.getMonth() - 1);
+              show = cardDate >= oneMonthAgo;
+            } else if (timeValue === 'quarter') {
+              const threeMonthsAgo = new Date(now);
+              threeMonthsAgo.setMonth(now.getMonth() - 3);
+              show = cardDate >= threeMonthsAgo;
+            } else if (timeValue === 'year') {
+              const oneYearAgo = new Date(now);
+              oneYearAgo.setFullYear(now.getFullYear() - 1);
+              show = cardDate >= oneYearAgo;
+            }
+            
+            card.style.display = show ? 'block' : 'none';
+            if (show) visibleCount++;
+          });
+          
+          // Actualizar contador
+          if (newsCount) {
+            newsCount.textContent = visibleCount;
+          }
+        });
+      }
+      
+      // Buscar en la categoría
+      if (searchInput && searchButton) {
+        const searchHandler = () => {
+          const searchTerm = searchInput.value.toLowerCase().trim();
+          let visibleCount = 0;
+          
+          if (searchTerm === '') {
+            // Mostrar todas las noticias si no hay término de búsqueda
+            newsCards.forEach(card => {
+              card.style.display = 'block';
+              visibleCount++;
+            });
+          } else {
+            // Filtrar por término de búsqueda
+            newsCards.forEach(card => {
+              const title = card.dataset.title.toLowerCase();
+              const description = card.dataset.description.toLowerCase();
+              const show = title.includes(searchTerm) || description.includes(searchTerm);
+              
+              card.style.display = show ? 'block' : 'none';
+              if (show) visibleCount++;
+            });
+          }
+          
+          // Actualizar contador
+          if (newsCount) {
+            newsCount.textContent = visibleCount;
+          }
+        };
+        
+        searchButton.addEventListener('click', searchHandler);
+        searchInput.addEventListener('keyup', (e) => {
+          if (e.key === 'Enter') {
+            searchHandler();
+          }
+        });
+      }
+    }
+  });
+</script>

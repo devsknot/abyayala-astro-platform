@@ -1,0 +1,470 @@
+---
+import HeaderLink from './HeaderLink.astro';
+import { SITE_TITLE } from '../consts';
+---
+
+<header>
+	<div class="header-container">
+		<div class="logo-container">
+			<a href="/" class="logo-link">
+				<img src="/images/CAAY Logo sin fondo.png" alt={SITE_TITLE} class="logo-image" />
+			</a>
+		</div>
+		
+		<nav>
+			<div class="internal-links">
+				<HeaderLink href="/">Inicio</HeaderLink>
+				<HeaderLink href="/news">Noticias</HeaderLink>
+				<div class="dropdown">
+					<HeaderLink href="/categories" class="dropdown-trigger">Categorías</HeaderLink>
+					<div class="dropdown-content">
+						<HeaderLink href="/category/agricultura">Agricultura</HeaderLink>
+						<HeaderLink href="/category/comunidad">Comunidad</HeaderLink>
+						<HeaderLink href="/category/sostenibilidad">Sostenibilidad</HeaderLink>
+						<HeaderLink href="/category/politica-agraria">Política Agraria</HeaderLink>
+						<HeaderLink href="/category/tecnologia-rural">Tecnología Rural</HeaderLink>
+						<HeaderLink href="/category/cultura">Cultura</HeaderLink>
+						<HeaderLink href="/category/eventos">Eventos</HeaderLink>
+					</div>
+				</div>
+				<HeaderLink href="/about">Nosotros</HeaderLink>
+				<HeaderLink href="/contact">Contacto</HeaderLink>
+			</div>
+			
+			<div class="actions">
+				<a href="/search" class="search-icon" aria-label="Buscar">
+					<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="11" cy="11" r="8"></circle>
+						<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+					</svg>
+				</a>
+				
+				<div class="social-links">
+					<a href="https://facebook.com/abyayala" target="_blank" aria-label="Facebook">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M12.001 2.002c-5.522 0-9.999 4.477-9.999 9.999 0 4.99 3.656 9.126 8.437 9.879v-6.988h-2.54v-2.891h2.54V9.798c0-2.508 1.493-3.891 3.776-3.891 1.094 0 2.24.195 2.24.195v2.459h-1.264c-1.24 0-1.628.772-1.628 1.563v1.875h2.771l-.443 2.891h-2.328v6.988C18.344 21.129 22 16.992 22 12.001c0-5.522-4.477-9.999-9.999-9.999z"/>
+						</svg>
+					</a>
+					<a href="https://twitter.com/abyayala" target="_blank" aria-label="Twitter">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M19.633 7.997c.013.175.013.349.013.523 0 5.325-4.053 11.461-11.46 11.461-2.282 0-4.402-.661-6.186-1.809.324.037.636.05.973.05a8.07 8.07 0 0 0 5.001-1.721 4.036 4.036 0 0 1-3.767-2.793c.249.037.499.062.761.062.361 0 .724-.05 1.061-.137a4.027 4.027 0 0 1-3.23-3.953v-.05c.537.299 1.16.486 1.82.511a4.022 4.022 0 0 1-1.796-3.354c0-.748.199-1.434.548-2.032a11.457 11.457 0 0 0 8.306 4.215c-.062-.3-.1-.599-.1-.899a4.026 4.026 0 0 1 4.028-4.028c1.16 0 2.207.486 2.943 1.272a7.957 7.957 0 0 0 2.556-.973 4.02 4.02 0 0 1-1.771 2.22 8.073 8.073 0 0 0 2.319-.624 8.645 8.645 0 0 1-2.019 2.083z"/>
+						</svg>
+					</a>
+					<a href="https://instagram.com/abyayala" target="_blank" aria-label="Instagram">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M11.999 7.377a4.623 4.623 0 1 0 0 9.248 4.623 4.623 0 0 0 0-9.248zm0 7.627a3.004 3.004 0 1 1 0-6.008 3.004 3.004 0 0 1 0 6.008z"/>
+							<circle cx="16.806" cy="7.207" r="1.078"/>
+							<path d="M20.533 6.111A4.605 4.605 0 0 0 17.9 3.479a6.606 6.606 0 0 0-2.186-.42c-.963-.042-1.268-.054-3.71-.054s-2.755 0-3.71.054a6.554 6.554 0 0 0-2.184.42 4.6 4.6 0 0 0-2.633 2.632 6.585 6.585 0 0 0-.419 2.186c-.043.962-.056 1.267-.056 3.71 0 2.442 0 2.753.056 3.71.015.748.156 1.486.419 2.187a4.61 4.61 0 0 0 2.634 2.632 6.584 6.584 0 0 0 2.185.45c.963.042 1.268.055 3.71.055s2.755 0 3.71-.055a6.615 6.615 0 0 0 2.186-.419 4.613 4.613 0 0 0 2.633-2.633c.263-.7.404-1.438.419-2.186.043-.962.056-1.267.056-3.71s0-2.753-.056-3.71a6.581 6.581 0 0 0-.421-2.217zm-1.218 9.532a5.043 5.043 0 0 1-.311 1.688 2.987 2.987 0 0 1-1.712 1.711 4.985 4.985 0 0 1-1.67.311c-.95.044-1.218.055-3.654.055-2.438 0-2.687 0-3.655-.055a4.96 4.96 0 0 1-1.669-.311 2.985 2.985 0 0 1-1.719-1.711 5.08 5.08 0 0 1-.311-1.669c-.043-.95-.053-1.218-.053-3.654 0-2.437 0-2.686.053-3.655a5.038 5.038 0 0 1 .311-1.687c.305-.789.93-1.41 1.719-1.712a5.01 5.01 0 0 1 1.669-.311c.951-.043 1.218-.055 3.655-.055s2.687 0 3.654.055a4.96 4.96 0 0 1 1.67.311 2.991 2.991 0 0 1 1.712 1.712 5.08 5.08 0 0 1 .311 1.669c.043.951.054 1.218.054 3.655 0 2.436 0 2.698-.043 3.654h-.011z"/>
+					</svg>
+					Instagram
+				</a>
+			</div>
+		</div>
+		
+		<button class="mobile-menu-button" aria-label="Menú">
+			<span></span>
+			<span></span>
+			<span></span>
+		</button>
+	</nav>
+</div>
+	
+<!-- Menú móvil (se muestra/oculta con JavaScript) -->
+<div class="mobile-menu">
+	<div class="mobile-links">
+		<a href="/" class="mobile-link">Inicio</a>
+		<a href="/news" class="mobile-link">Noticias</a>
+		
+		<div class="mobile-dropdown">
+			<button class="mobile-dropdown-trigger">
+				Categorías
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dropdown-icon">
+					<polyline points="6 9 12 15 18 9"></polyline>
+				</svg>
+			</button>
+			<div class="mobile-dropdown-content">
+				<a href="/category/agricultura" class="mobile-link">Agricultura</a>
+				<a href="/category/comunidad" class="mobile-link">Comunidad</a>
+				<a href="/category/sostenibilidad" class="mobile-link">Sostenibilidad</a>
+				<a href="/category/politica-agraria" class="mobile-link">Política Agraria</a>
+				<a href="/category/tecnologia-rural" class="mobile-link">Tecnología Rural</a>
+				<a href="/category/cultura" class="mobile-link">Cultura</a>
+				<a href="/category/eventos" class="mobile-link">Eventos</a>
+			</div>
+		</div>
+		
+		<a href="/about" class="mobile-link">Nosotros</a>
+		<a href="/contact" class="mobile-link">Contacto</a>
+		<a href="/search" class="mobile-link">Buscar</a>
+		
+		<div class="mobile-social">
+			<a href="https://facebook.com/abyayala" target="_blank" aria-label="Facebook" class="mobile-social-link">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+					<path d="M12.001 2.002c-5.522 0-9.999 4.477-9.999 9.999 0 4.99 3.656 9.126 8.437 9.879v-6.988h-2.54v-2.891h2.54V9.798c0-2.508 1.493-3.891 3.776-3.891 1.094 0 2.24.195 2.24.195v2.459h-1.264c-1.24 0-1.628.772-1.628 1.563v1.875h2.771l-.443 2.891h-2.328v6.988C18.344 21.129 22 16.992 22 12.001c0-5.522-4.477-9.999-9.999-9.999z"/>
+				</svg>
+				Facebook
+			</a>
+			<a href="https://twitter.com/abyayala" target="_blank" aria-label="Twitter" class="mobile-social-link">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+					<path d="M19.633 7.997c.013.175.013.349.013.523 0 5.325-4.053 11.461-11.46 11.461-2.282 0-4.402-.661-6.186-1.809.324.037.636.05.973.05a8.07 8.07 0 0 0 5.001-1.721 4.036 4.036 0 0 1-3.767-2.793c.249.037.499.062.761.062.361 0 .724-.05 1.061-.137a4.027 4.027 0 0 1-3.23-3.953v-.05c.537.299 1.16.486 1.82.511a4.022 4.022 0 0 1-1.796-3.354c0-.748.199-1.434.548-2.032a11.457 11.457 0 0 0 8.306 4.215c-.062-.3-.1-.599-.1-.899a4.026 4.026 0 0 1 4.028-4.028c1.16 0 2.207.486 2.943 1.272a7.957 7.957 0 0 0 2.556-.973 4.02 4.02 0 0 1-1.771 2.22 8.073 8.073 0 0 0 2.319-.624 8.645 8.645 0 0 1-2.019 2.083z"/>
+				</svg>
+				Twitter
+			</a>
+			<a href="https://instagram.com/abyayala" target="_blank" aria-label="Instagram" class="mobile-social-link">
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+					<path d="M11.999 7.377a4.623 4.623 0 1 0 0 9.248 4.623 4.623 0 0 0 0-9.248zm0 7.627a3.004 3.004 0 1 1 0-6.008 3.004 3.004 0 0 1 0 6.008z"/>
+					<circle cx="16.806" cy="7.207" r="1.078"/>
+					<path d="M20.533 6.111A4.605 4.605 0 0 0 17.9 3.479a6.606 6.606 0 0 0-2.186-.42c-.963-.042-1.268-.054-3.71-.054s-2.755 0-3.71.054a6.554 6.554 0 0 0-2.184.42 4.6 4.6 0 0 0-2.633 2.632 6.585 6.585 0 0 0-.419 2.186c-.043.962-.056 1.267-.056 3.71 0 2.442 0 2.753.056 3.71.015.748.156 1.486.419 2.187a4.61 4.61 0 0 0 2.634 2.632 6.584 6.584 0 0 0 2.185.45c.963.042 1.268.055 3.71.055s2.755 0 3.71-.055a6.615 6.615 0 0 0 2.186-.419 4.613 4.613 0 0 0 2.633-2.633c.263-.7.404-1.438.419-2.186.043-.962.056-1.267.056-3.71s0-2.753-.056-3.71a6.581 6.581 0 0 0-.421-2.217zm-1.218 9.532a5.043 5.043 0 0 1-.311 1.688 2.987 2.987 0 0 1-1.712 1.711 4.985 4.985 0 0 1-1.67.311c-.95.044-1.218.055-3.654.055-2.438 0-2.687 0-3.655-.055a4.96 4.96 0 0 1-1.669-.311 2.985 2.985 0 0 1-1.719-1.711 5.08 5.08 0 0 1-.311-1.669c-.043-.95-.053-1.218-.053-3.654 0-2.437 0-2.686.053-3.655a5.038 5.038 0 0 1 .311-1.687c.305-.789.93-1.41 1.719-1.712a5.01 5.01 0 0 1 1.669-.311c.951-.043 1.218-.055 3.655-.055s2.687 0 3.654.055a4.96 4.96 0 0 1 1.67.311 2.991 2.991 0 0 1 1.712 1.712 5.08 5.08 0 0 1 .311 1.669c.043.951.054 1.218.054 3.655 0 2.436 0 2.698-.043 3.654h-.011z"/>
+				</svg>
+				Instagram
+			</a>
+		</div>
+	</div>
+</div>
+</header>
+
+<style>
+	header {
+		margin: 0;
+		padding: 0;
+		background: var(--color-background);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		position: sticky;
+		top: 0;
+		z-index: 1000;
+	}
+	
+	.header-container {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 0 1rem;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+	
+	.logo-container {
+		padding: 0.75rem 0;
+	}
+	
+	.logo-link {
+		display: block;
+	}
+	
+	.logo-image {
+		height: 50px;
+		width: auto;
+	}
+	
+	nav {
+		display: flex;
+		align-items: center;
+		gap: 1.5rem;
+	}
+	
+	.internal-links {
+		display: flex;
+		gap: 1.5rem;
+	}
+	
+	nav a {
+		padding: 0.5rem;
+		color: var(--color-text);
+		border-bottom: 3px solid transparent;
+		text-decoration: none;
+		font-weight: 500;
+		transition: all 0.3s ease;
+	}
+	
+	nav a:hover, nav a.active {
+		color: var(--color-primary);
+		border-bottom-color: var(--color-primary);
+	}
+	
+	.actions {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+	
+	.search-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--color-text);
+		border: none;
+		padding: 0.5rem;
+		border-radius: 50%;
+		transition: background-color 0.3s ease;
+	}
+	
+	.search-icon:hover {
+		background-color: rgba(0, 0, 0, 0.05);
+		color: var(--color-primary);
+		border: none;
+	}
+	
+	.social-links {
+		display: flex;
+		gap: 1rem;
+	}
+	
+	.social-links a {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--color-text);
+		border: none;
+	}
+	
+	.social-links a:hover {
+		color: var(--color-primary);
+		border: none;
+	}
+	
+	.dropdown {
+		position: relative;
+		display: inline-block;
+	}
+	
+	.dropdown-content {
+		display: none;
+		position: absolute;
+		background-color: var(--color-background);
+		min-width: 200px;
+		box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+		z-index: 1;
+		border-radius: 4px;
+		padding: 0.5rem 0;
+		top: 100%;
+		left: 0;
+	}
+	
+	.dropdown-content a {
+		display: block;
+		padding: 0.5rem 1rem;
+		border: none;
+	}
+	
+	.dropdown:hover .dropdown-content {
+		display: block;
+	}
+	
+	/* Menú móvil */
+	.mobile-menu-button {
+		display: none;
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0.5rem;
+	}
+	
+	.mobile-menu-button span {
+		display: block;
+		width: 25px;
+		height: 3px;
+		background-color: var(--color-text);
+		margin: 5px 0;
+		border-radius: 3px;
+		transition: all 0.3s ease;
+	}
+	
+	.mobile-menu {
+		display: none;
+		position: fixed;
+		top: 70px;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: var(--color-background);
+		z-index: 999;
+		overflow-y: auto;
+		padding: 1rem;
+	}
+	
+	.mobile-links {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	
+	.mobile-link {
+		padding: 1rem;
+		color: var(--color-text);
+		text-decoration: none;
+		font-weight: 500;
+		border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+		display: flex;
+		align-items: center;
+	}
+	
+	.mobile-link:hover, .mobile-link.active {
+		color: var(--color-primary);
+	}
+	
+	.mobile-dropdown {
+		position: relative;
+	}
+	
+	.mobile-dropdown-trigger {
+		width: 100%;
+		padding: 1rem;
+		text-align: left;
+		background: none;
+		border: none;
+		border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+		font-size: 1rem;
+		font-weight: 500;
+		color: var(--color-text);
+		cursor: pointer;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+	
+	.dropdown-icon {
+		transition: transform 0.3s ease;
+	}
+	
+	.mobile-dropdown.active .dropdown-icon {
+		transform: rotate(180deg);
+	}
+	
+	.mobile-dropdown-content {
+		display: none;
+		padding-left: 1rem;
+	}
+	
+	.mobile-dropdown.active .mobile-dropdown-content {
+		display: block;
+	}
+	
+	.mobile-social {
+		margin-top: 1.5rem;
+		padding-top: 1.5rem;
+		border-top: 1px solid rgba(0, 0, 0, 0.1);
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+	
+	.mobile-social-link {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem;
+		color: var(--color-text);
+		text-decoration: none;
+		font-weight: 500;
+	}
+	
+	.mobile-social-link:hover {
+		color: var(--color-primary);
+	}
+	
+	/* Estilos para cuando el menú móvil está activo */
+	.mobile-menu-button.active span:nth-child(1) {
+		transform: rotate(45deg) translate(5px, 5px);
+	}
+	
+	.mobile-menu-button.active span:nth-child(2) {
+		opacity: 0;
+	}
+	
+	.mobile-menu-button.active span:nth-child(3) {
+		transform: rotate(-45deg) translate(7px, -7px);
+	}
+	
+	/* Media queries */
+	@media (max-width: 992px) {
+		.internal-links {
+			gap: 1rem;
+		}
+		
+		.social-links {
+			gap: 0.5rem;
+		}
+	}
+	
+	@media (max-width: 768px) {
+		.logo-image {
+			height: 40px;
+		}
+		
+		.internal-links, .social-links {
+			display: none;
+		}
+		
+		.mobile-menu-button {
+			display: block;
+		}
+		
+		.mobile-menu.active {
+			display: block;
+		}
+		
+		.actions {
+			gap: 0.5rem;
+		}
+		
+		.search-icon {
+			display: none;
+		}
+	}
+	
+	@media (max-width: 480px) {
+		.header-container {
+			padding: 0 0.75rem;
+		}
+		
+		.logo-image {
+			height: 35px;
+		}
+	}
+</style>
+
+<script>
+	// Script para el menú móvil
+	document.addEventListener('DOMContentLoaded', () => {
+		const mobileMenuButton = document.querySelector('.mobile-menu-button');
+		const mobileMenu = document.querySelector('.mobile-menu');
+		const mobileDropdownTriggers = document.querySelectorAll('.mobile-dropdown-trigger');
+		
+		if (mobileMenuButton && mobileMenu) {
+			mobileMenuButton.addEventListener('click', () => {
+				mobileMenuButton.classList.toggle('active');
+				mobileMenu.classList.toggle('active');
+				
+				// Prevenir scroll cuando el menú está abierto
+				if (mobileMenu.classList.contains('active')) {
+					document.body.style.overflow = 'hidden';
+				} else {
+					document.body.style.overflow = '';
+				}
+			});
+		}
+		
+		// Manejo de dropdowns en móvil
+		if (mobileDropdownTriggers.length > 0) {
+			mobileDropdownTriggers.forEach(trigger => {
+				trigger.addEventListener('click', () => {
+					const dropdown = trigger.closest('.mobile-dropdown');
+					if (dropdown) {
+						dropdown.classList.toggle('active');
+					}
+				});
+			});
+		}
+		
+		// Cerrar menú móvil al cambiar de tamaño de ventana
+		window.addEventListener('resize', () => {
+			if (window.innerWidth > 768 && mobileMenu && mobileMenuButton) {
+				if (mobileMenu.classList.contains('active')) {
+					mobileMenu.classList.remove('active');
+					mobileMenuButton.classList.remove('active');
+					document.body.style.overflow = '';
+				}
+			}
+		});
+	});
+</script>

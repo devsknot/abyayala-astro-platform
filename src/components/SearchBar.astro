@@ -1,0 +1,194 @@
+---
+// Componente de barra de búsqueda para la plataforma Abya Yala
+// Este componente permite buscar noticias en toda la plataforma
+
+interface Props {
+  placeholder?: string;
+  buttonText?: string;
+  fullWidth?: boolean;
+}
+
+const { 
+  placeholder = "Buscar noticias...", 
+  buttonText = "Buscar",
+  fullWidth = false
+} = Astro.props;
+---
+
+<div class={`search-container ${fullWidth ? 'full-width' : ''}`}>
+  <form id="search-form" class="search-form" action="/search" method="get">
+    <div class="search-input-wrapper">
+      <input 
+        type="text" 
+        name="q" 
+        id="search-input" 
+        placeholder={placeholder} 
+        autocomplete="off"
+        aria-label="Buscar en el sitio"
+        required
+      />
+      <button type="submit" class="search-button">
+        <span class="search-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </span>
+        <span class="button-text">{buttonText}</span>
+      </button>
+    </div>
+  </form>
+  <div id="search-results" class="search-results"></div>
+</div>
+
+<style>
+  .search-container {
+    position: relative;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .search-container.full-width {
+    max-width: 100%;
+  }
+
+  .search-form {
+    width: 100%;
+  }
+
+  .search-input-wrapper {
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.3s ease;
+  }
+
+  .search-input-wrapper:focus-within {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  #search-input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border, #eaeaea);
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.3s ease;
+  }
+
+  #search-input:focus {
+    border-color: var(--color-primary, #008055);
+  }
+
+  .search-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--color-primary, #008055);
+    color: white;
+    border: none;
+    border-radius: 0 8px 8px 0;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  .search-button:hover {
+    background-color: var(--color-primary-dark, #006644);
+  }
+
+  .search-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    margin-top: 0.5rem;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    z-index: 100;
+  }
+
+  .search-results.active {
+    max-height: 400px;
+    opacity: 1;
+    overflow-y: auto;
+    padding: 1rem;
+  }
+
+  @media (max-width: 768px) {
+    .button-text {
+      display: none;
+    }
+
+    .search-button {
+      padding: 0.75rem 1rem;
+    }
+  }
+</style>
+
+<script>
+  // Funcionalidad de búsqueda en tiempo real
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    const searchResults = document.getElementById('search-results');
+    
+    if (searchForm && searchInput && searchResults) {
+      // Manejar envío del formulario
+      searchForm.addEventListener('submit', (e) => {
+        if (searchInput.value.trim() === '') {
+          e.preventDefault();
+        }
+      });
+      
+      // Búsqueda en tiempo real (para implementación futura)
+      let debounceTimer;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        const query = searchInput.value.trim();
+        
+        if (query.length < 3) {
+          searchResults.classList.remove('active');
+          searchResults.innerHTML = '';
+          return;
+        }
+        
+        debounceTimer = setTimeout(() => {
+          // Aquí se implementaría la búsqueda en tiempo real
+          // Por ahora, solo mostramos un mensaje de ejemplo
+          searchResults.classList.add('active');
+          searchResults.innerHTML = `
+            <p>Buscando: "${query}"...</p>
+            <p>Los resultados aparecerán aquí.</p>
+          `;
+          
+          // En una implementación real, aquí se haría una llamada a la API
+          // o se buscaría en un índice local
+        }, 300);
+      });
+      
+      // Cerrar resultados al hacer clic fuera
+      document.addEventListener('click', (e) => {
+        if (!searchContainer.contains(e.target)) {
+          searchResults.classList.remove('active');
+        }
+      });
+    }
+  });
+</script>

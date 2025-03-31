@@ -1,0 +1,482 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE_TITLE, CATEGORIES } from '../consts';
+
+const pageTitle = `Suscríbete a nuestro boletín | ${SITE_TITLE}`;
+const pageDescription = 'Suscríbete al boletín informativo del colectivo agrario Abya Yala y mantente al día con las últimas noticias, eventos y actualizaciones.';
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+  <main class="newsletter-page">
+    <div class="container">
+      <div class="page-header">
+        <h1>Suscríbete a nuestro boletín</h1>
+        <p class="lead">Recibe las últimas noticias y actualizaciones directamente en tu correo electrónico.</p>
+      </div>
+
+      <div class="newsletter-content">
+        <div class="newsletter-form-container">
+          <form class="newsletter-form" id="newsletter-form">
+            <div class="form-group">
+              <label for="name">Nombre completo</label>
+              <input type="text" id="name" name="name" placeholder="Tu nombre completo" required />
+            </div>
+
+            <div class="form-group">
+              <label for="email">Correo electrónico</label>
+              <input type="email" id="email" name="email" placeholder="Tu correo electrónico" required />
+            </div>
+
+            <div class="form-group">
+              <label>Intereses (opcional)</label>
+              <div class="interests-grid">
+                {CATEGORIES.map(category => (
+                  <div class="interest-checkbox">
+                    <input type="checkbox" id={`interest-${category.id}`} name="interests" value={category.id} />
+                    <label for={`interest-${category.id}`}>{category.name}</label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Frecuencia de envío</label>
+              <div class="radio-group">
+                <div class="radio-option">
+                  <input type="radio" id="frequency-weekly" name="frequency" value="weekly" checked />
+                  <label for="frequency-weekly">Semanal</label>
+                </div>
+                <div class="radio-option">
+                  <input type="radio" id="frequency-biweekly" name="frequency" value="biweekly" />
+                  <label for="frequency-biweekly">Quincenal</label>
+                </div>
+                <div class="radio-option">
+                  <input type="radio" id="frequency-monthly" name="frequency" value="monthly" />
+                  <label for="frequency-monthly">Mensual</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group consent-group">
+              <div class="checkbox-wrapper">
+                <input type="checkbox" id="privacy-consent" name="privacy-consent" required />
+                <label for="privacy-consent">He leído y acepto la <a href="/privacy">política de privacidad</a>.</label>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="subscribe-button">Suscribirse</button>
+            </div>
+          </form>
+
+          <div class="form-success" id="form-success">
+            <div class="success-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+            <h2>¡Gracias por suscribirte!</h2>
+            <p>Te hemos enviado un correo de confirmación. Por favor, verifica tu bandeja de entrada para completar el proceso de suscripción.</p>
+            <a href="/" class="back-home">Volver a la página principal</a>
+          </div>
+        </div>
+
+        <div class="newsletter-info">
+          <div class="info-card">
+            <div class="info-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 4H4c-1.103 0-2 .897-2 2v12c0 1.103.897 2 2 2h16c1.103 0 2-.897 2-2V6c0-1.103-.897-2-2-2zm0 2v.511l-8 6.223-8-6.222V6h16zM4 18V9.044l7.386 5.745a.994.994 0 0 0 1.228 0L20 9.044 20.002 18H4z"></path>
+              </svg>
+            </div>
+            <h3>¿Qué incluye nuestro boletín?</h3>
+            <ul>
+              <li>Últimas noticias del sector agrario</li>
+              <li>Eventos y actividades del colectivo</li>
+              <li>Información sobre prácticas sostenibles</li>
+              <li>Historias de miembros de la comunidad</li>
+              <li>Actualizaciones sobre políticas agrarias</li>
+            </ul>
+          </div>
+
+          <div class="info-card">
+            <div class="info-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path>
+                <path d="M11 11h2v6h-2zm0-4h2v2h-2z"></path>
+              </svg>
+            </div>
+            <h3>Política de privacidad</h3>
+            <p>Respetamos tu privacidad y no compartiremos tu información con terceros. Puedes darte de baja en cualquier momento haciendo clic en el enlace que aparece en cada correo.</p>
+            <a href="/privacy" class="info-link">Leer política completa</a>
+          </div>
+
+          <div class="testimonial">
+            <div class="quote-mark">"</div>
+            <p class="quote-text">El boletín de Abya Yala me mantiene informado sobre las últimas tendencias en agricultura sostenible. Es una herramienta invaluable para mi trabajo diario en el campo.</p>
+            <div class="testimonial-author">
+              <img src="/placeholder-profile.jpg" alt="Foto de perfil" />
+              <div>
+                <p class="author-name">Carlos Mendoza</p>
+                <p class="author-role">Agricultor, miembro desde 2022</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .page-header {
+    text-align: center;
+    margin: 3rem 0;
+  }
+
+  .page-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .lead {
+    font-size: 1.2rem;
+    color: var(--color-text-secondary);
+    max-width: 800px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .newsletter-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 4rem;
+  }
+
+  .newsletter-form-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    padding: 2rem;
+    position: relative;
+  }
+
+  .newsletter-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .form-group label {
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .form-group input[type="text"],
+  .form-group input[type="email"] {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border, #eaeaea);
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+
+  .interests-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .interest-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .radio-group {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .radio-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .consent-group {
+    margin-top: 1rem;
+  }
+
+  .checkbox-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .checkbox-wrapper input {
+    margin-top: 0.25rem;
+  }
+
+  .checkbox-wrapper a {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  .checkbox-wrapper a:hover {
+    text-decoration: underline;
+  }
+
+  .form-actions {
+    margin-top: 1rem;
+  }
+
+  .subscribe-button {
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  .subscribe-button:hover {
+    background-color: var(--color-primary-dark, #006644);
+  }
+
+  .form-success {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: white;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    display: none;
+  }
+
+  .form-success.active {
+    display: flex;
+  }
+
+  .success-icon {
+    color: var(--color-primary);
+    margin-bottom: 1.5rem;
+  }
+
+  .form-success h2 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .form-success p {
+    color: var(--color-text-secondary);
+    margin-bottom: 1.5rem;
+    max-width: 400px;
+  }
+
+  .back-home {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--color-primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+  }
+
+  .back-home:hover {
+    background-color: var(--color-primary-dark, #006644);
+  }
+
+  .newsletter-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .info-card {
+    background-color: var(--color-bg-alt, #f5f5f5);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+
+  .info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 50%;
+    margin-bottom: 1rem;
+  }
+
+  .info-card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .info-card ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .info-card li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+  }
+
+  .info-card li::before {
+    content: "✓";
+    color: var(--color-primary);
+    margin-right: 0.5rem;
+    font-weight: bold;
+  }
+
+  .info-card p {
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+
+  .info-link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .info-link:hover {
+    text-decoration: underline;
+  }
+
+  .testimonial {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    position: relative;
+  }
+
+  .quote-mark {
+    font-size: 4rem;
+    color: var(--color-primary);
+    opacity: 0.2;
+    position: absolute;
+    top: 0.5rem;
+    left: 1rem;
+    line-height: 1;
+  }
+
+  .quote-text {
+    font-style: italic;
+    margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 1;
+    color: var(--color-text);
+    line-height: 1.6;
+  }
+
+  .testimonial-author {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .testimonial-author img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .author-name {
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-text-primary);
+  }
+
+  .author-role {
+    font-size: 0.9rem;
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 992px) {
+    .newsletter-content {
+      grid-template-columns: 1fr;
+    }
+
+    .newsletter-info {
+      order: -1;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .page-header h1 {
+      font-size: 2rem;
+    }
+
+    .interests-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .radio-group {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const newsletterForm = document.getElementById('newsletter-form');
+    const formSuccess = document.getElementById('form-success');
+    
+    if (newsletterForm && formSuccess) {
+      newsletterForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        // Aquí se implementaría la lógica para enviar los datos del formulario
+        // Por ahora, solo simulamos una respuesta exitosa
+        
+        // Mostrar mensaje de éxito
+        setTimeout(() => {
+          formSuccess.classList.add('active');
+        }, 500);
+      });
+    }
+  });
+</script>

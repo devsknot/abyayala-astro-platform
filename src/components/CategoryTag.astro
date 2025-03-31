@@ -1,0 +1,175 @@
+---
+interface Props {
+  category: string;
+  size?: 'small' | 'medium' | 'large';
+  absolute?: boolean; // Nueva propiedad para controlar el posicionamiento
+}
+
+const { category, size = 'small', absolute = true } = Astro.props;
+
+// Mapeo de categorías a nombres en español para mostrar
+const categoryNames: Record<string, string> = {
+  'agricultura': 'Agricultura',
+  'comunidad': 'Comunidad',
+  'sostenibilidad': 'Sostenibilidad',
+  'politica-agraria': 'Política Agraria',
+  'tecnologia-rural': 'Tecnología Rural',
+  'cultura': 'Cultura',
+  'eventos': 'Eventos'
+};
+
+// Mapeo de categorías a colores específicos
+const categoryColors: Record<string, string> = {
+  'agricultura': '#2E7D32', // Verde oscuro
+  'comunidad': '#1976D2',   // Azul
+  'sostenibilidad': '#388E3C', // Verde claro
+  'politica-agraria': '#D32F2F', // Rojo
+  'tecnologia-rural': '#0288D1', // Azul claro
+  'cultura': '#7B1FA2',     // Púrpura
+  'eventos': '#F57C00'      // Naranja
+};
+
+const displayName = categoryNames[category] || category;
+const color = categoryColors[category] || 'var(--color-primary)';
+
+// Determinar las clases CSS basadas en las propiedades
+const classes = [
+  'category-tag',
+  size,
+  absolute ? 'absolute' : ''
+].filter(Boolean).join(' ');
+---
+
+<span class={classes} style={`background-color: ${color};`}>
+  {displayName}
+</span>
+
+<style>
+  .category-tag {
+    display: inline-block;
+    color: white;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    z-index: 2;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  /* Posicionamiento absoluto (solo cuando absolute=true) */
+  .absolute {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    max-width: calc(100% - 20px);
+  }
+  
+  .small {
+    font-size: 0.7rem;
+    padding: 0.3em 0.6em;
+  }
+  
+  .medium {
+    font-size: 0.8rem;
+    padding: 0.4em 0.8em;
+  }
+  
+  .large {
+    font-size: 0.9rem;
+    padding: 0.5em 1em;
+  }
+  
+  /* Media queries para responsividad */
+  @media (max-width: 1200px) {
+    .large {
+      font-size: 0.85rem;
+      padding: 0.45em 0.9em;
+    }
+  }
+  
+  @media (max-width: 992px) {
+    .medium {
+      font-size: 0.75rem;
+      padding: 0.35em 0.7em;
+    }
+    
+    .large {
+      font-size: 0.8rem;
+      padding: 0.4em 0.8em;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .absolute {
+      bottom: 8px;
+      left: 8px;
+    }
+    
+    .small {
+      font-size: 0.65rem;
+      padding: 0.25em 0.5em;
+    }
+    
+    .medium {
+      font-size: 0.7rem;
+      padding: 0.3em 0.6em;
+    }
+    
+    .large {
+      font-size: 0.75rem;
+      padding: 0.35em 0.7em;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .absolute {
+      bottom: 6px;
+      left: 6px;
+    }
+    
+    .category-tag {
+      border-radius: 3px;
+      letter-spacing: 0.03em;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+    
+    .small {
+      font-size: 0.6rem;
+      padding: 0.2em 0.4em;
+    }
+    
+    .medium {
+      font-size: 0.65rem;
+      padding: 0.25em 0.5em;
+    }
+    
+    .large {
+      font-size: 0.7rem;
+      padding: 0.3em 0.6em;
+    }
+  }
+  
+  @media (max-width: 400px) {
+    .absolute {
+      bottom: 5px;
+      left: 5px;
+    }
+    
+    .small {
+      font-size: 0.55rem;
+      padding: 0.2em 0.4em;
+    }
+  }
+  
+  @media (hover: hover) {
+    .category-tag:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+    }
+  }
+</style>

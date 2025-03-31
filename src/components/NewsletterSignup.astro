@@ -1,0 +1,171 @@
+---
+interface Props {
+    title?: string;
+    description?: string;
+    buttonText?: string;
+    class?: string;
+    variant?: 'default' | 'compact' | 'inline';
+}
+
+const { 
+    title = "Suscríbete a nuestro boletín", 
+    description = "Recibe las últimas noticias y actualizaciones del colectivo agrario Abya Yala directamente en tu correo.", 
+    buttonText = "Suscribirse",
+    class: className = "",
+    variant = "default"
+} = Astro.props;
+---
+
+<div class={`newsletter-signup ${variant} ${className}`}>
+    <div class="newsletter-content">
+        {variant !== 'inline' && (
+            <h3 class="newsletter-title">{title}</h3>
+        )}
+        {variant !== 'compact' && (
+            <p class="newsletter-description">{description}</p>
+        )}
+    </div>
+    <form class="newsletter-form">
+        {variant === 'inline' && (
+            <label for="email" class="inline-label">{title}</label>
+        )}
+        <div class="input-group">
+            <input 
+                type="email" 
+                name="email" 
+                id="email" 
+                placeholder="Tu correo electrónico" 
+                required
+                aria-label="Tu correo electrónico"
+            />
+            <button type="submit" class="submit-button">
+                {buttonText}
+            </button>
+        </div>
+        <div class="privacy-notice">
+            <small>Al suscribirte, aceptas nuestra <a href="/politica-privacidad">política de privacidad</a>.</small>
+        </div>
+    </form>
+</div>
+
+<style>
+    .newsletter-signup {
+        background-color: var(--color-bg-alt, #f5f5f5);
+        border-radius: 8px;
+        padding: 2rem;
+        margin: 2rem 0;
+    }
+
+    .newsletter-signup.compact {
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+
+    .newsletter-signup.inline {
+        background: none;
+        padding: 0;
+        margin: 1rem 0;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .newsletter-title {
+        font-size: 1.5rem;
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--color-text-primary);
+    }
+
+    .newsletter-description {
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+        color: var(--color-text-secondary, #555);
+    }
+
+    .newsletter-form {
+        width: 100%;
+    }
+
+    .inline-label {
+        font-weight: 600;
+        margin-right: 1rem;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .input-group {
+        display: flex;
+        max-width: 100%;
+    }
+
+    input[type="email"] {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--color-border, #ddd);
+        border-radius: 4px 0 0 4px;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.2s ease;
+    }
+
+    input[type="email"]:focus {
+        border-color: var(--color-primary);
+    }
+
+    .submit-button {
+        background-color: var(--color-primary);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 0 4px 4px 0;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .submit-button:hover {
+        background-color: var(--color-primary-dark, #006644);
+    }
+
+    .privacy-notice {
+        margin-top: 0.75rem;
+        font-size: 0.8rem;
+        color: var(--color-text-muted, #777);
+    }
+
+    .privacy-notice a {
+        color: var(--color-primary);
+        text-decoration: none;
+    }
+
+    .privacy-notice a:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 576px) {
+        .newsletter-signup {
+            padding: 1.5rem;
+        }
+
+        .input-group {
+            flex-direction: column;
+        }
+
+        input[type="email"] {
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+
+        .submit-button {
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        .newsletter-signup.inline .newsletter-form {
+            width: 100%;
+        }
+    }
+</style>

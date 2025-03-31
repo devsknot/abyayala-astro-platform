@@ -1,0 +1,266 @@
+---
+interface Props {
+  id: string;
+  label?: string;
+  placeholder?: string;
+  class?: string;
+}
+
+const { id, label = "Seleccionar fecha", placeholder = "DD/MM/AAAA", class: className = "" } = Astro.props;
+---
+
+<div class={`date-picker-container ${className}`}>
+  {label && <label for={id} class="date-picker-label">{label}</label>}
+  <div class="date-picker-input-container">
+    <input 
+      type="text" 
+      id={id} 
+      class="date-picker-input" 
+      placeholder={placeholder} 
+      readonly 
+    />
+    <button type="button" class="date-picker-toggle" aria-label="Abrir calendario">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+    </button>
+  </div>
+  <div class="date-picker-calendar" id={`${id}-calendar`}>
+    <div class="date-picker-header">
+      <button type="button" class="date-picker-prev" aria-label="Mes anterior">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <div class="date-picker-month-year"></div>
+      <button type="button" class="date-picker-next" aria-label="Mes siguiente">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+    <div class="date-picker-weekdays">
+      <span>Do</span>
+      <span>Lu</span>
+      <span>Ma</span>
+      <span>Mi</span>
+      <span>Ju</span>
+      <span>Vi</span>
+      <span>Sa</span>
+    </div>
+    <div class="date-picker-days"></div>
+    <div class="date-picker-footer">
+      <button type="button" class="date-picker-clear">Limpiar</button>
+      <button type="button" class="date-picker-today">Hoy</button>
+      <button type="button" class="date-picker-close">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .date-picker-container {
+    position: relative;
+    width: 100%;
+    font-family: var(--font-family-sans);
+  }
+  
+  .date-picker-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+  
+  .date-picker-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  
+  .date-picker-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    padding-right: 2.5rem;
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 0.375rem;
+    background-color: var(--color-input-bg, white);
+    color: var(--color-text);
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .date-picker-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 0, 102, 204), 0.15);
+  }
+  
+  .date-picker-toggle {
+    position: absolute;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    color: var(--color-text-muted, #718096);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color 0.2s ease;
+  }
+  
+  .date-picker-toggle:hover {
+    color: var(--color-primary);
+  }
+  
+  .date-picker-calendar {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    width: 300px;
+    background-color: var(--color-card-bg, white);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 1rem;
+    z-index: 50;
+    display: none;
+    font-size: 0.9rem;
+    border: 1px solid var(--color-border, #e2e8f0);
+  }
+  
+  .date-picker-calendar.active {
+    display: block;
+  }
+  
+  .date-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  
+  .date-picker-month-year {
+    font-weight: 600;
+    color: var(--color-heading);
+  }
+  
+  .date-picker-prev,
+  .date-picker-next {
+    background: none;
+    border: none;
+    color: var(--color-text-muted, #718096);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+  }
+  
+  .date-picker-prev:hover,
+  .date-picker-next:hover {
+    background-color: var(--color-bg-hover, #f7fafc);
+    color: var(--color-primary);
+  }
+  
+  .date-picker-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+  
+  .date-picker-weekdays span {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--color-text-muted, #718096);
+    padding: 0.25rem 0;
+  }
+  
+  .date-picker-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+  }
+  
+  .date-picker-day {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+    color: var(--color-text);
+  }
+  
+  .date-picker-day:hover:not(.disabled):not(.selected) {
+    background-color: var(--color-bg-hover, #f7fafc);
+  }
+  
+  .date-picker-day.today {
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+  
+  .date-picker-day.selected {
+    background-color: var(--color-primary);
+    color: white;
+    font-weight: 600;
+  }
+  
+  .date-picker-day.disabled {
+    color: var(--color-text-muted, #cbd5e0);
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  
+  .date-picker-day.other-month {
+    color: var(--color-text-muted, #cbd5e0);
+    opacity: 0.5;
+  }
+  
+  .date-picker-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border, #e2e8f0);
+  }
+  
+  .date-picker-footer button {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+  }
+  
+  .date-picker-footer button:hover {
+    background-color: var(--color-bg-hover, #f7fafc);
+    color: var(--color-primary-dark);
+  }
+  
+  /* Responsive */
+  @media (max-width: 576px) {
+    .date-picker-calendar {
+      width: 280px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    
+    .date-picker-day {
+      height: 2.25rem;
+    }
+  }
+</style>

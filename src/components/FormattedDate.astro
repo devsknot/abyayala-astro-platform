@@ -1,0 +1,110 @@
+---
+import { formatDate, formatShortDate, formatRelativeDate } from '../utils/formatDate';
+
+interface Props {
+	date: Date | string | undefined;
+	format?: 'long' | 'short' | 'relative';
+	class?: string;
+	showIcon?: boolean;
+}
+
+const { date, format = 'long', class: className = '', showIcon = false } = Astro.props;
+
+let formattedDate = '';
+switch (format) {
+	case 'long':
+		formattedDate = formatDate(date);
+		break;
+	case 'short':
+		formattedDate = formatShortDate(date);
+		break;
+	case 'relative':
+		formattedDate = formatRelativeDate(date);
+		break;
+	default:
+		formattedDate = formatDate(date);
+}
+
+// Función para manejar la fecha de forma segura
+const getISODateSafely = (date: Date | string | undefined): string => {
+	if (!date) return '';
+	
+	try {
+		const dateObj = typeof date === 'string' ? new Date(date) : date;
+		
+		// Verificar si la fecha es válida
+		if (isNaN(dateObj.getTime())) {
+			return '';
+		}
+		
+		return dateObj.toISOString();
+	} catch (error) {
+		console.error('Error al formatear la fecha ISO:', error);
+		return '';
+	}
+};
+
+const isoDate = getISODateSafely(date);
+---
+
+<time datetime={isoDate} class={`date-display ${className}`}>
+	{showIcon && (
+		<span class="date-icon">
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+				<line x1="16" y1="2" x2="16" y2="6"></line>
+				<line x1="8" y1="2" x2="8" y2="6"></line>
+				<line x1="3" y1="10" x2="21" y2="10"></line>
+			</svg>
+		</span>
+	)}
+	<span class="date-text">{formattedDate}</span>
+</time>
+
+<style>
+	.date-display {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		font-size: 0.9rem;
+		color: var(--color-text-muted, #666);
+		font-weight: 500;
+	}
+	
+	.date-icon {
+		display: inline-flex;
+		align-items: center;
+		opacity: 0.8;
+	}
+	
+	.date-text {
+		display: inline-block;
+	}
+	
+	/* Estilos específicos para diferentes formatos */
+	:global(.date-long) {
+		font-style: italic;
+	}
+	
+	:global(.date-short) {
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+	
+	:global(.date-relative) {
+		color: var(--color-accent, #0066cc);
+		font-weight: 600;
+	}
+	
+	@media (max-width: 768px) {
+		.date-display {
+			font-size: 0.85rem;
+		}
+	}
+	
+	@media (max-width: 576px) {
+		.date-display {
+			font-size: 0.8rem;
+		}
+	}
+</style>

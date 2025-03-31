@@ -1,0 +1,516 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE_TITLE, CATEGORIES } from '../consts';
+import FormattedDate from '../components/FormattedDate.astro';
+import CategoryTag from '../components/CategoryTag.astro';
+import SearchBar from '../components/SearchBar.astro';
+
+// Obtener el parámetro de búsqueda
+const query = Astro.url.searchParams.get('q') || '';
+
+// Obtener todas las noticias
+const allNews = await Astro.glob('../content/blog/*.md');
+
+// Filtrar noticias según el término de búsqueda (si existe)
+const searchResults = query 
+  ? allNews.filter(news => {
+      const title = news.frontmatter.title.toLowerCase();
+      const description = news.frontmatter.description?.toLowerCase() || '';
+      const category = news.frontmatter.category?.toLowerCase() || '';
+      const content = news.rawContent?.toLowerCase() || '';
+      const searchTerm = query.toLowerCase();
+      
+      return title.includes(searchTerm) || 
+             description.includes(searchTerm) || 
+             category.includes(searchTerm) || 
+             content.includes(searchTerm);
+    })
+  : [];
+
+// Ordenar por fecha de publicación (más reciente primero)
+const sortedResults = searchResults.sort((a, b) => 
+  new Date(b.frontmatter.pubDate).valueOf() - new Date(a.frontmatter.pubDate).valueOf()
+);
+
+const pageTitle = query 
+  ? `Resultados para "${query}" | ${SITE_TITLE}` 
+  : `Búsqueda | ${SITE_TITLE}`;
+
+const pageDescription = query 
+  ? `Resultados de búsqueda para "${query}" en el colectivo agrario Abya Yala.` 
+  : `Busca noticias, artículos y contenido en el colectivo agrario Abya Yala.`;
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+  <main class="search-page">
+    <div class="container">
+      <div class="page-header">
+        <h1>Búsqueda</h1>
+        <div class="search-container">
+          <SearchBar placeholder="Buscar en Abya Yala..." buttonText="Buscar" fullWidth={true} />
+        </div>
+      </div>
+      
+      {query && (
+        <div class="search-results">
+          <div class="results-header">
+            <h2>Resultados para "{query}"</h2>
+            <p class="results-count">{sortedResults.length} resultado{sortedResults.length !== 1 ? 's' : ''} encontrado{sortedResults.length !== 1 ? 's' : ''}</p>
+          </div>
+          
+          {sortedResults.length > 0 ? (
+            <div class="results-list">
+              {sortedResults.map(result => (
+                <article class="result-item">
+                  <div class="result-content">
+                    <div class="result-meta">
+                      <CategoryTag category={result.frontmatter.category} absolute={false} />
+                      <FormattedDate date={result.frontmatter.pubDate} format="relative" showIcon={true} class="date-relative" />
+                    </div>
+                    <h2 class="result-title">
+                      <a href={`/news/${result.frontmatter.slug}`}>{result.frontmatter.title}</a>
+                    </h2>
+                    <p class="result-excerpt">{result.frontmatter.description}</p>
+                    <a href={`/news/${result.frontmatter.slug}`} class="read-more">Leer artículo completo</a>
+                  </div>
+                  {result.frontmatter.image && (
+                    <div class="result-image">
+                      <img src={result.frontmatter.image} alt={result.frontmatter.title} loading="lazy" />
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div class="no-results">
+              <div class="no-results-content">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  <line x1="8" y1="11" x2="14" y2="11"></line>
+                </svg>
+                <h3>No se encontraron resultados</h3>
+                <p>No hemos encontrado resultados para "{query}". Intenta con otros términos o explora por categorías.</p>
+              </div>
+            </div>
+          )}
+          
+          <div class="category-suggestions">
+            <h3>Explora por categorías:</h3>
+            <div class="category-tags">
+              {CATEGORIES.map(category => (
+                <a href={`/category/${category.id}`} class="category-link">
+                  <CategoryTag category={category.id} absolute={false} />
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {!query && (
+        <div class="search-home">
+          <div class="search-illustration">
+            <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <div class="search-instructions">
+            <h2>¿Qué estás buscando?</h2>
+            <p>Busca noticias, artículos y contenido relacionado con el colectivo agrario Abya Yala.</p>
+            <div class="search-examples">
+              <p>Ejemplos de búsqueda:</p>
+              <div class="search-tags">
+                <a href="/search?q=agricultura" class="search-tag">agricultura</a>
+                <a href="/search?q=sostenibilidad" class="search-tag">sostenibilidad</a>
+                <a href="/search?q=comunidad" class="search-tag">comunidad</a>
+                <a href="/search?q=tecnología rural" class="search-tag">tecnología rural</a>
+              </div>
+            </div>
+          </div>
+          
+          <div class="category-suggestions">
+            <h3>O explora por categorías:</h3>
+            <div class="category-grid">
+              {CATEGORIES.map(category => (
+                <a href={`/category/${category.id}`} class="category-card">
+                  <h4>{category.name}</h4>
+                  <p>{category.description}</p>
+                  <span class="category-arrow">→</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  
+  .page-header {
+    margin: 2rem 0;
+    text-align: center;
+  }
+  
+  .page-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-heading);
+  }
+  
+  .search-container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  /* Resultados de búsqueda */
+  .search-results {
+    margin: 3rem 0;
+  }
+  
+  .results-header {
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 1rem;
+  }
+  
+  .results-header h2 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .results-count {
+    color: var(--color-text-muted);
+    font-size: 1rem;
+  }
+  
+  .results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+  
+  .result-item {
+    display: flex;
+    gap: 2rem;
+    padding: 1.5rem;
+    border-radius: 8px;
+    background-color: var(--color-card-bg);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+  }
+  
+  .result-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+  
+  .result-content {
+    flex: 1;
+  }
+  
+  .result-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .result-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+  }
+  
+  .result-title a {
+    color: var(--color-heading);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+  
+  .result-title a:hover {
+    color: var(--color-primary);
+  }
+  
+  .result-excerpt {
+    color: var(--color-text);
+    margin-bottom: 1rem;
+    line-height: 1.6;
+  }
+  
+  .read-more {
+    display: inline-block;
+    color: var(--color-primary);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  
+  .read-more:hover {
+    color: var(--color-primary-dark);
+    text-decoration: underline;
+  }
+  
+  .result-image {
+    width: 200px;
+    height: 150px;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  
+  .result-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  
+  .result-item:hover .result-image img {
+    transform: scale(1.05);
+  }
+  
+  /* No hay resultados */
+  .no-results {
+    text-align: center;
+    padding: 3rem 0;
+  }
+  
+  .no-results-content {
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  
+  .no-results-content svg {
+    color: var(--color-text-muted);
+    margin-bottom: 1.5rem;
+  }
+  
+  .no-results-content h3 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: var(--color-heading);
+  }
+  
+  .no-results-content p {
+    color: var(--color-text-muted);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Página de inicio de búsqueda */
+  .search-home {
+    padding: 2rem 0 4rem;
+  }
+  
+  .search-illustration {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  
+  .search-illustration svg {
+    color: var(--color-text-muted);
+  }
+  
+  .search-instructions {
+    max-width: 700px;
+    margin: 0 auto 3rem;
+    text-align: center;
+  }
+  
+  .search-instructions h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--color-heading);
+  }
+  
+  .search-instructions p {
+    color: var(--color-text);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+  }
+  
+  .search-examples {
+    margin-top: 2rem;
+  }
+  
+  .search-examples p {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+  
+  .search-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  
+  .search-tag {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: var(--color-card-bg);
+    border-radius: 20px;
+    color: var(--color-text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border: 1px solid var(--color-border);
+  }
+  
+  .search-tag:hover {
+    background-color: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+  }
+  
+  /* Sugerencias de categorías */
+  .category-suggestions {
+    margin-top: 3rem;
+  }
+  
+  .category-suggestions h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    color: var(--color-heading);
+  }
+  
+  .category-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+  }
+  
+  .category-link {
+    text-decoration: none;
+    transition: transform 0.2s ease;
+  }
+  
+  .category-link:hover {
+    transform: translateY(-2px);
+  }
+  
+  .category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  
+  .category-card {
+    padding: 1.5rem;
+    border-radius: 8px;
+    background-color: var(--color-card-bg);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  
+  .category-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-3px);
+  }
+  
+  .category-card h4 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--color-heading);
+  }
+  
+  .category-card p {
+    color: var(--color-text);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+  }
+  
+  .category-arrow {
+    position: absolute;
+    bottom: 1rem;
+    right: 1.5rem;
+    font-size: 1.5rem;
+    color: var(--color-primary);
+    transition: transform 0.2s ease;
+  }
+  
+  .category-card:hover .category-arrow {
+    transform: translateX(5px);
+  }
+  
+  /* Responsive */
+  @media (max-width: 992px) {
+    .result-item {
+      flex-direction: column;
+    }
+    
+    .result-image {
+      width: 100%;
+      height: 200px;
+      order: -1;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .page-header h1 {
+      font-size: 2rem;
+    }
+    
+    .results-header h2 {
+      font-size: 1.5rem;
+    }
+    
+    .result-title {
+      font-size: 1.3rem;
+    }
+    
+    .search-instructions h2 {
+      font-size: 1.8rem;
+    }
+    
+    .category-grid {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .page-header {
+      margin: 1.5rem 0;
+    }
+    
+    .page-header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+    
+    .search-results {
+      margin: 2rem 0;
+    }
+    
+    .result-item {
+      padding: 1rem;
+    }
+    
+    .result-image {
+      height: 180px;
+    }
+    
+    .category-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

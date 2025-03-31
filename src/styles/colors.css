@@ -1,0 +1,77 @@
+:root {
+  /* Colores principales basados en el logo CAAY con fondo azul */
+  --color-primary: #1A5B92; /* Azul profundo del logo */
+  --color-primary-dark: #0F4A7B; /* Versión más oscura para hover */
+  --color-primary-light: #3A7DB2; /* Versión más clara para fondos sutiles */
+  
+  /* Colores complementarios */
+  --color-secondary: #4C9F70; /* Verde tierra, representa agricultura y sostenibilidad */
+  --color-secondary-dark: #3B8A5E; /* Versión más oscura para hover */
+  --color-secondary-light: #6DB58E; /* Versión más clara para fondos sutiles */
+  
+  /* Acento */
+  --color-accent: #E6A33E; /* Dorado/ocre, representa cosechas y tierra fértil */
+  --color-accent-dark: #D18C28; /* Versión más oscura para hover */
+  --color-accent-light: #F1BB6A; /* Versión más clara para fondos sutiles */
+  
+  /* Neutros */
+  --color-background: #FAFBFC; /* Fondo principal, casi blanco con toque azulado */
+  --color-background-alt: #F0F4F8; /* Fondo alternativo para tarjetas y secciones */
+  --color-text: #2D3748; /* Texto principal, casi negro con toque azulado */
+  --color-text-secondary: #4A5568; /* Texto secundario, gris oscuro */
+  --color-text-tertiary: #718096; /* Texto terciario, gris medio */
+  
+  /* Bordes y separadores */
+  --color-border: #E2E8F0; /* Bordes sutiles */
+  --color-border-dark: #CBD5E0; /* Bordes más visibles */
+  
+  /* Estados */
+  --color-success: #38A169; /* Verde para mensajes de éxito */
+  --color-warning: #DD6B20; /* Naranja para advertencias */
+  --color-error: #E53E3E; /* Rojo para errores */
+  --color-info: #3182CE; /* Azul para información */
+  
+  /* Sombras */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Clases de utilidad para colores de fondo */
+.bg-primary { background-color: var(--color-primary); }
+.bg-primary-dark { background-color: var(--color-primary-dark); }
+.bg-primary-light { background-color: var(--color-primary-light); }
+.bg-secondary { background-color: var(--color-secondary); }
+.bg-secondary-dark { background-color: var(--color-secondary-dark); }
+.bg-secondary-light { background-color: var(--color-secondary-light); }
+.bg-accent { background-color: var(--color-accent); }
+.bg-accent-dark { background-color: var(--color-accent-dark); }
+.bg-accent-light { background-color: var(--color-accent-light); }
+.bg-background { background-color: var(--color-background); }
+.bg-background-alt { background-color: var(--color-background-alt); }
+
+/* Clases de utilidad para colores de texto */
+.text-primary { color: var(--color-primary); }
+.text-primary-dark { color: var(--color-primary-dark); }
+.text-primary-light { color: var(--color-primary-light); }
+.text-secondary { color: var(--color-secondary); }
+.text-secondary-dark { color: var(--color-secondary-dark); }
+.text-secondary-light { color: var(--color-secondary-light); }
+.text-accent { color: var(--color-accent); }
+.text-accent-dark { color: var(--color-accent-dark); }
+.text-accent-light { color: var(--color-accent-light); }
+.text-default { color: var(--color-text); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-tertiary { color: var(--color-text-tertiary); }
+
+/* Clases de utilidad para bordes */
+.border-default { border-color: var(--color-border); }
+.border-dark { border-color: var(--color-border-dark); }
+.border-primary { border-color: var(--color-primary); }
+.border-secondary { border-color: var(--color-secondary); }
+.border-accent { border-color: var(--color-accent); }
+
+/* Clases de utilidad para sombras */
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }

@@ -1,0 +1,313 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE_TITLE, CATEGORIES } from '../consts';
+
+const pageTitle = `Página no encontrada | ${SITE_TITLE}`;
+const pageDescription = 'Lo sentimos, la página que estás buscando no existe o ha sido movida.';
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+  <main class="error-page">
+    <div class="container">
+      <div class="error-content">
+        <div class="error-illustration">
+          <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <h1>404</h1>
+        <h2>Página no encontrada</h2>
+        <p>Lo sentimos, la página que estás buscando no existe o ha sido movida.</p>
+        
+        <div class="error-actions">
+          <a href="/" class="btn-primary">Volver al inicio</a>
+          <a href="/search" class="btn-secondary">Buscar contenido</a>
+        </div>
+      </div>
+      
+      <div class="suggestions">
+        <h3>Quizás te interese explorar:</h3>
+        
+        <div class="suggestions-grid">
+          <div class="suggestion-card">
+            <div class="suggestion-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 20H5V4h14v16zm0-18H5c-1.103 0-2 .897-2 2v16c0 1.103.897 2 2 2h14c1.103 0 2-.897 2-2V4c0-1.103-.897-2-2-2z"></path>
+                <path d="m13.553 11.658-4-2-2.448 4.895 1.79.895 1.552-3.105 4 2 2.448-4.895-1.79-.895z"></path>
+              </svg>
+            </div>
+            <h4>Últimas noticias</h4>
+            <p>Mantente al día con las últimas actualizaciones del colectivo agrario.</p>
+            <a href="/news" class="suggestion-link">Ver noticias</a>
+          </div>
+          
+          <div class="suggestion-card">
+            <div class="suggestion-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 3H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zM9 9H5V5h4v4zm11-6h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zm-1 6h-4V5h4v4zm-9 4H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1zm-1 6H5v-4h4v4zm8-6c-2.206 0-4 1.794-4 4s1.794 4 4 4 4-1.794 4-4-1.794-4-4-4zm0 6c-1.103 0-2-.897-2-2s.897-2 2-2 2 .897 2 2-.897 2-2 2z"></path>
+              </svg>
+            </div>
+            <h4>Categorías</h4>
+            <p>Explora nuestro contenido organizado por temáticas.</p>
+            <a href="/categories" class="suggestion-link">Ver categorías</a>
+          </div>
+          
+          <div class="suggestion-card">
+            <div class="suggestion-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path>
+                <path d="M11 11h2v6h-2zm0-4h2v2h-2z"></path>
+              </svg>
+            </div>
+            <h4>Sobre nosotros</h4>
+            <p>Conoce más sobre el colectivo agrario Abya Yala.</p>
+            <a href="/about" class="suggestion-link">Leer más</a>
+          </div>
+          
+          <div class="suggestion-card">
+            <div class="suggestion-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 4H4c-1.103 0-2 .897-2 2v12c0 1.103.897 2 2 2h16c1.103 0 2-.897 2-2V6c0-1.103-.897-2-2-2zm0 2v.511l-8 6.223-8-6.222V6h16zM4 18V9.044l7.386 5.745a.994.994 0 0 0 1.228 0L20 9.044 20.002 18H4z"></path>
+              </svg>
+            </div>
+            <h4>Contacto</h4>
+            <p>¿Tienes alguna pregunta? Estamos aquí para ayudarte.</p>
+            <a href="/contact" class="suggestion-link">Contactar</a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="categories-section">
+        <h3>Explora por categorías:</h3>
+        <div class="categories-tags">
+          {CATEGORIES.map(category => (
+            <a href={`/category/${category.id}`} class="category-tag">
+              {category.name}
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .error-page {
+    padding: 2rem 0 4rem;
+  }
+
+  .error-content {
+    text-align: center;
+    margin-bottom: 4rem;
+  }
+
+  .error-illustration {
+    color: var(--color-primary);
+    opacity: 0.8;
+    margin: 0 auto 1.5rem;
+    max-width: 200px;
+  }
+
+  .error-content h1 {
+    font-size: 6rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin: 0;
+    line-height: 1;
+  }
+
+  .error-content h2 {
+    font-size: 2.5rem;
+    margin: 0.5rem 0 1.5rem;
+    color: var(--color-text-primary);
+  }
+
+  .error-content p {
+    font-size: 1.2rem;
+    color: var(--color-text-secondary);
+    max-width: 600px;
+    margin: 0 auto 2rem;
+    line-height: 1.6;
+  }
+
+  .error-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .btn-primary, .btn-secondary {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+  }
+
+  .btn-primary {
+    background-color: var(--color-primary);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-primary-dark, #006644);
+    transform: translateY(-3px);
+  }
+
+  .btn-secondary {
+    background-color: var(--color-bg-alt, #f5f5f5);
+    color: var(--color-text);
+    border: 1px solid var(--color-border, #eaeaea);
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--color-border, #eaeaea);
+    transform: translateY(-3px);
+  }
+
+  .suggestions {
+    margin-bottom: 3rem;
+  }
+
+  .suggestions h3 {
+    text-align: center;
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+    color: var(--color-text-primary);
+  }
+
+  .suggestions-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+  }
+
+  .suggestion-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .suggestion-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .suggestion-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background-color: var(--color-bg-alt, #f5f5f5);
+    color: var(--color-primary);
+    border-radius: 50%;
+    margin-bottom: 1rem;
+  }
+
+  .suggestion-card h4 {
+    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-text-primary);
+  }
+
+  .suggestion-card p {
+    color: var(--color-text-secondary);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+  }
+
+  .suggestion-link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .suggestion-link::after {
+    content: "→";
+    transition: transform 0.2s ease;
+  }
+
+  .suggestion-link:hover::after {
+    transform: translateX(3px);
+  }
+
+  .categories-section {
+    text-align: center;
+  }
+
+  .categories-section h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-text-primary);
+  }
+
+  .categories-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+
+  .category-tag {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: var(--color-bg-alt, #f5f5f5);
+    color: var(--color-text);
+    border-radius: 50px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+  }
+
+  .category-tag:hover {
+    background-color: var(--color-primary);
+    color: white;
+    transform: translateY(-3px);
+  }
+
+  @media (max-width: 992px) {
+    .suggestions-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .error-content h1 {
+      font-size: 4rem;
+    }
+
+    .error-content h2 {
+      font-size: 1.8rem;
+    }
+
+    .error-actions {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .btn-primary, .btn-secondary {
+      width: 100%;
+      max-width: 300px;
+      text-align: center;
+    }
+
+    .suggestions-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,744 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SITE_TITLE } from '../../consts';
+import FormattedDate from '../../components/FormattedDate.astro';
+import CategoryTag from '../../components/CategoryTag.astro';
+import DatePicker from '../../components/DatePicker.astro';
+
+// Obtener todas las noticias
+const allNews = await Astro.glob('../../content/blog/*.md');
+// Ordenar por fecha de publicación (más reciente primero)
+const sortedNews = allNews.sort((a, b) => new Date(b.frontmatter.pubDate).valueOf() - new Date(a.frontmatter.pubDate).valueOf());
+
+const pageTitle = `Todas las Noticias | ${SITE_TITLE}`;
+const pageDescription = 'Explora todas las noticias publicadas por el colectivo agrario Abya Yala. Mantente informado sobre agricultura, sostenibilidad, comunidad y más.';
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+  <main class="news-archive">
+    <div class="container">
+      <div class="page-header">
+        <h1>Archivo de Noticias</h1>
+        <p class="lead">Explora todas nuestras noticias, desde las más recientes hasta las más antiguas.</p>
+      </div>
+
+      <div class="news-filters">
+        <div class="filters-row">
+          <div class="search-box">
+            <input type="text" id="news-search" placeholder="Buscar noticias..." />
+            <button type="button" id="search-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="category-filter">
+            <select id="category-filter">
+              <option value="all">Todas las categorías</option>
+              <option value="agricultura">Agricultura</option>
+              <option value="comunidad">Comunidad</option>
+              <option value="sostenibilidad">Sostenibilidad</option>
+              <option value="politica-agraria">Política Agraria</option>
+              <option value="tecnologia-rural">Tecnología Rural</option>
+              <option value="cultura">Cultura</option>
+              <option value="eventos">Eventos</option>
+            </select>
+          </div>
+          
+          <div class="date-filter-group">
+            <DatePicker id="date-from" label="Desde" placeholder="Fecha inicial" />
+            <DatePicker id="date-to" label="Hasta" placeholder="Fecha final" />
+          </div>
+          
+          <button type="button" id="clear-filters" class="clear-filters-btn">
+            Limpiar filtros
+          </button>
+        </div>
+      </div>
+      
+      <div class="results-info">
+        <p class="results-count">Mostrando <span id="visible-count">{sortedNews.length}</span> de {sortedNews.length} noticias</p>
+        <div class="active-filters" id="active-filters"></div>
+      </div>
+
+      <div class="news-grid">
+        {sortedNews.map(news => (
+          <article class="news-item" data-category={news.frontmatter.category} data-date={news.frontmatter.pubDate}>
+            <div class="news-image">
+              {news.frontmatter.heroImage && (
+                <img 
+                  src={news.frontmatter.heroImage} 
+                  alt={news.frontmatter.title} 
+                  loading="lazy"
+                />
+              )}
+            </div>
+            <div class="news-content">
+              <div class="news-meta">
+                <CategoryTag category={news.frontmatter.category} absolute={false} />
+                <FormattedDate date={news.frontmatter.pubDate} format="relative" showIcon={true} class="date-relative" />
+              </div>
+              <h2 class="news-title">
+                <a href={`/news/${news.frontmatter.slug}`}>{news.frontmatter.title}</a>
+              </h2>
+              <p class="news-excerpt">{news.frontmatter.description}</p>
+              <div class="news-footer">
+                <a href={`/news/${news.frontmatter.slug}`} class="read-more">Leer artículo completo</a>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+      
+      <div class="no-results" style="display: none;">
+        <div class="no-results-content">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+          <h3>No se encontraron resultados</h3>
+          <p>No hay noticias que coincidan con los criterios de búsqueda. Intenta con otros filtros.</p>
+        </div>
+      </div>
+      
+      <div class="pagination">
+        <button type="button" class="pagination-prev" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          Anterior
+        </button>
+        <div class="pagination-info">Página <span class="current-page">1</span> de <span class="total-pages">1</span></div>
+        <button type="button" class="pagination-next" disabled>
+          Siguiente
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  
+  .page-header {
+    margin: 2rem 0;
+    text-align: center;
+  }
+  
+  .page-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--color-heading);
+  }
+  
+  .page-header .lead {
+    font-size: 1.1rem;
+    color: var(--color-text-muted);
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  
+  .news-filters {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background-color: var(--color-card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+  
+  .filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+  }
+  
+  .search-box {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+  }
+  
+  .search-box input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    padding-right: 3rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+  }
+  
+  .search-box input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 0, 102, 204), 0.15);
+  }
+  
+  .search-box button {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  
+  .search-box button:hover {
+    color: var(--color-primary);
+  }
+  
+  .category-filter {
+    flex: 0 0 auto;
+    min-width: 180px;
+  }
+  
+  .category-filter select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    background-color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .category-filter select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 0, 102, 204), 0.15);
+  }
+  
+  .date-filter-group {
+    display: flex;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+  }
+  
+  .clear-filters-btn {
+    padding: 0.75rem 1rem;
+    background-color: var(--color-secondary-light);
+    color: var(--color-secondary-dark);
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+  
+  .clear-filters-btn:hover {
+    background-color: var(--color-secondary-light-hover);
+  }
+  
+  .results-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+  
+  .results-count {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+  }
+  
+  .active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .active-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background-color: var(--color-primary-light, #e6f0ff);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--color-primary);
+  }
+  
+  .active-filter button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 0;
+    margin-left: 0.25rem;
+  }
+  
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+  }
+  
+  .news-item {
+    border-radius: 8px;
+    background-color: var(--color-card-bg);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .news-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-3px);
+  }
+  
+  .news-image {
+    height: 200px;
+    overflow: hidden;
+  }
+  
+  .news-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  
+  .news-item:hover .news-image img {
+    transform: scale(1.05);
+  }
+  
+  .news-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  
+  .news-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+  
+  .news-title {
+    font-size: 1.35rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+  }
+  
+  .news-title a {
+    color: var(--color-heading);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+  
+  .news-title a:hover {
+    color: var(--color-primary);
+  }
+  
+  .news-excerpt {
+    color: var(--color-text);
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+    flex: 1;
+  }
+  
+  .news-footer {
+    margin-top: auto;
+  }
+  
+  .read-more {
+    display: inline-block;
+    color: var(--color-primary);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  
+  .read-more:hover {
+    color: var(--color-primary-dark);
+    text-decoration: underline;
+  }
+  
+  .no-results {
+    text-align: center;
+    padding: 3rem 0;
+  }
+  
+  .no-results-content {
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  
+  .no-results-content svg {
+    color: var(--color-text-muted);
+    margin-bottom: 1.5rem;
+  }
+  
+  .no-results-content h3 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: var(--color-heading);
+  }
+  
+  .no-results-content p {
+    color: var(--color-text-muted);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+  
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    margin-bottom: 3rem;
+  }
+  
+  .pagination button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--color-card-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    color: var(--color-text);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .pagination button:hover:not(:disabled) {
+    background-color: var(--color-bg-hover);
+    color: var(--color-primary);
+  }
+  
+  .pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .pagination-info {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+  }
+  
+  /* Responsive */
+  @media (max-width: 992px) {
+    .news-grid {
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .page-header h1 {
+      font-size: 2rem;
+    }
+    
+    .filters-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .news-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .page-header h1 {
+      font-size: 1.8rem;
+    }
+    
+    .news-filters {
+      padding: 1rem;
+    }
+    
+    .news-content {
+      padding: 1.25rem;
+    }
+    
+    .news-title {
+      font-size: 1.25rem;
+    }
+    
+    .pagination {
+      flex-wrap: wrap;
+    }
+  }
+</style>
+
+<script>
+  import DatePicker from '../../scripts/datePicker.js';
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar selectores de fecha
+    const dateFromPicker = new DatePicker('date-from');
+    const dateToPicker = new DatePicker('date-to');
+    
+    // Elementos del DOM
+    const searchInput = document.getElementById('news-search') as HTMLInputElement;
+    const categoryFilter = document.getElementById('category-filter') as HTMLSelectElement;
+    const clearFiltersBtn = document.getElementById('clear-filters') as HTMLButtonElement;
+    const newsItems = document.querySelectorAll('.news-item');
+    const noResultsElement = document.querySelector('.no-results') as HTMLElement;
+    const visibleCountElement = document.getElementById('visible-count');
+    const activeFiltersElement = document.getElementById('active-filters');
+    
+    // Variables para paginación
+    const itemsPerPage = 9;
+    let currentPage = 1;
+    let filteredItems = Array.from(newsItems);
+    
+    // Elementos de paginación
+    const prevButton = document.querySelector('.pagination-prev') as HTMLButtonElement;
+    const nextButton = document.querySelector('.pagination-next') as HTMLButtonElement;
+    const currentPageElement = document.querySelector('.current-page');
+    const totalPagesElement = document.querySelector('.total-pages');
+    
+    // Función para aplicar todos los filtros
+    function applyFilters() {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const selectedCategory = categoryFilter.value;
+      const dateFrom = dateFromPicker.getSelectedDate();
+      const dateTo = dateToPicker.getSelectedDate();
+      
+      // Actualizar filtros activos
+      updateActiveFilters(searchTerm, selectedCategory, dateFrom, dateTo);
+      
+      // Filtrar elementos
+      filteredItems = Array.from(newsItems).filter(item => {
+        const title = item.querySelector('.news-title')?.textContent?.toLowerCase() || '';
+        const description = item.querySelector('.news-excerpt')?.textContent?.toLowerCase() || '';
+        const category = (item as HTMLElement).dataset.category?.toLowerCase() || '';
+        const dateStr = (item as HTMLElement).dataset.date || '';
+        const itemDate = dateStr ? new Date(dateStr) : null;
+        
+        // Filtrar por término de búsqueda
+        const matchesSearch = !searchTerm || 
+          title.includes(searchTerm) || 
+          description.includes(searchTerm) || 
+          category.includes(searchTerm);
+        
+        // Filtrar por categoría
+        const matchesCategory = selectedCategory === 'all' || 
+          category === selectedCategory.toLowerCase();
+        
+        // Filtrar por rango de fechas
+        let matchesDateRange = true;
+        if (itemDate) {
+          if (dateFrom && dateTo) {
+            matchesDateRange = itemDate >= dateFrom && itemDate <= dateTo;
+          } else if (dateFrom) {
+            matchesDateRange = itemDate >= dateFrom;
+          } else if (dateTo) {
+            matchesDateRange = itemDate <= dateTo;
+          }
+        }
+        
+        return matchesSearch && matchesCategory && matchesDateRange;
+      });
+      
+      // Actualizar la UI
+      updateUI();
+    }
+    
+    // Función para actualizar la UI después de filtrar
+    function updateUI() {
+      // Ocultar todos los elementos
+      newsItems.forEach(item => {
+        (item as HTMLElement).style.display = 'none';
+      });
+      
+      // Calcular paginación
+      const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+      if (currentPage > totalPages) {
+        currentPage = totalPages || 1;
+      }
+      
+      // Actualizar elementos de paginación
+      if (currentPageElement) currentPageElement.textContent = currentPage.toString();
+      if (totalPagesElement) totalPagesElement.textContent = totalPages.toString();
+      
+      // Habilitar/deshabilitar botones de paginación
+      if (prevButton) prevButton.disabled = currentPage <= 1;
+      if (nextButton) nextButton.disabled = currentPage >= totalPages;
+      
+      // Mostrar elementos de la página actual
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, filteredItems.length);
+      
+      for (let i = startIndex; i < endIndex; i++) {
+        (filteredItems[i] as HTMLElement).style.display = '';
+      }
+      
+      // Actualizar contador de resultados
+      if (visibleCountElement) {
+        visibleCountElement.textContent = filteredItems.length.toString();
+      }
+      
+      // Mostrar mensaje de no resultados si es necesario
+      if (noResultsElement) {
+        noResultsElement.style.display = filteredItems.length === 0 ? 'block' : 'none';
+      }
+    }
+    
+    // Función para actualizar los filtros activos
+    function updateActiveFilters(searchTerm: string, category: string, dateFrom: Date | null, dateTo: Date | null) {
+      if (!activeFiltersElement) return;
+      
+      activeFiltersElement.innerHTML = '';
+      
+      // Añadir filtro de búsqueda
+      if (searchTerm) {
+        addActiveFilter('Búsqueda', searchTerm, () => {
+          searchInput.value = '';
+          applyFilters();
+        });
+      }
+      
+      // Añadir filtro de categoría
+      if (category && category !== 'all') {
+        const categoryText = categoryFilter.options[categoryFilter.selectedIndex].text;
+        addActiveFilter('Categoría', categoryText, () => {
+          categoryFilter.value = 'all';
+          applyFilters();
+        });
+      }
+      
+      // Añadir filtro de fecha desde
+      if (dateFrom) {
+        const formattedDate = formatDate(dateFrom);
+        addActiveFilter('Desde', formattedDate, () => {
+          dateFromPicker.clearDate();
+          applyFilters();
+        });
+      }
+      
+      // Añadir filtro de fecha hasta
+      if (dateTo) {
+        const formattedDate = formatDate(dateTo);
+        addActiveFilter('Hasta', formattedDate, () => {
+          dateToPicker.clearDate();
+          applyFilters();
+        });
+      }
+    }
+    
+    // Función para añadir un filtro activo
+    function addActiveFilter(label: string, value: string, removeCallback: () => void) {
+      const filterElement = document.createElement('div');
+      filterElement.className = 'active-filter';
+      filterElement.innerHTML = `
+        <span>${label}: ${value}</span>
+        <button type="button" aria-label="Eliminar filtro">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      `;
+      
+      const removeButton = filterElement.querySelector('button');
+      if (removeButton) {
+        removeButton.addEventListener('click', removeCallback);
+      }
+      
+      activeFiltersElement?.appendChild(filterElement);
+    }
+    
+    // Función para formatear fecha
+    function formatDate(date: Date): string {
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+    
+    // Función para limpiar todos los filtros
+    function clearAllFilters() {
+      searchInput.value = '';
+      categoryFilter.value = 'all';
+      dateFromPicker.clearDate();
+      dateToPicker.clearDate();
+      currentPage = 1;
+      applyFilters();
+    }
+    
+    // Eventos
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        currentPage = 1;
+        applyFilters();
+      });
+    }
+    
+    if (categoryFilter) {
+      categoryFilter.addEventListener('change', () => {
+        currentPage = 1;
+        applyFilters();
+      });
+    }
+    
+    if (clearFiltersBtn) {
+      clearFiltersBtn.addEventListener('click', clearAllFilters);
+    }
+    
+    // Eventos de fecha
+    document.getElementById('date-from')?.addEventListener('change', () => {
+      currentPage = 1;
+      applyFilters();
+    });
+    
+    document.getElementById('date-to')?.addEventListener('change', () => {
+      currentPage = 1;
+      applyFilters();
+    });
+    
+    // Eventos de paginación
+    if (prevButton) {
+      prevButton.addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          updateUI();
+        }
+      });
+    }
+    
+    if (nextButton) {
+      nextButton.addEventListener('click', () => {
+        const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+        if (currentPage < totalPages) {
+          currentPage++;
+          updateUI();
+        }
+      });
+    }
+    
+    // Inicializar la UI
+    applyFilters();
+  });
+</script>

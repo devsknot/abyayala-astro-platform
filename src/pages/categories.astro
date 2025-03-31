@@ -1,0 +1,235 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE_TITLE, CATEGORIES } from '../consts';
+import CategoryTag from '../components/CategoryTag.astro';
+
+const pageTitle = `Categorías | ${SITE_TITLE}`;
+const pageDescription = 'Explora todas las categorías de noticias de la plataforma Abya Yala. Encuentra información sobre agricultura, sostenibilidad, comunidad y más.';
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+  <main class="categories-page">
+    <div class="container">
+      <div class="page-header">
+        <h1>Categorías</h1>
+        <p class="lead">Explora nuestras noticias por temáticas. Selecciona una categoría para ver todas las noticias relacionadas.</p>
+      </div>
+
+      <div class="categories-grid">
+        {CATEGORIES.map(category => (
+          <a href={`/category/${category.id}`} class="category-card">
+            <div class="category-header">
+              <CategoryTag category={category.id} size="large" absolute={false} />
+            </div>
+            <div class="category-content">
+              <h2>{category.name}</h2>
+              <p>{category.description}</p>
+            </div>
+            <div class="category-footer">
+              <span class="view-more">Ver noticias</span>
+            </div>
+          </a>
+        ))}
+      </div>
+
+      <div class="categories-info">
+        <div class="info-card">
+          <div class="info-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"></path>
+              <path d="M11 11h2v6h-2zm0-4h2v2h-2z"></path>
+            </svg>
+          </div>
+          <h3>¿No encuentras lo que buscas?</h3>
+          <p>Si estás interesado en algún tema específico que no aparece en nuestras categorías, no dudes en contactarnos. Estamos constantemente ampliando nuestras áreas de cobertura.</p>
+          <a href="/contact" class="btn-link">Contactar</a>
+        </div>
+
+        <div class="info-card">
+          <div class="info-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19 3H5c-1.103 0-2 .897-2 2v14c0 1.103.897 2 2 2h14c1.103 0 2-.897 2-2V5c0-1.103-.897-2-2-2zm0 16H5V5h14v14z"></path>
+              <path d="M11 7h2v10h-2zm-4 3h2v7H7zm8 2h2v5h-2z"></path>
+            </svg>
+          </div>
+          <h3>Estadísticas de contenido</h3>
+          <p>Actualmente contamos con más de 100 artículos distribuidos en 7 categorías. Publicamos nuevo contenido semanalmente para mantenerte informado sobre el mundo agrario.</p>
+          <a href="/" class="btn-link">Ver últimas noticias</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  .page-header {
+    text-align: center;
+    margin: 3rem 0;
+  }
+
+  .page-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .lead {
+    font-size: 1.2rem;
+    color: var(--color-text-secondary);
+    max-width: 800px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .categories-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-bottom: 3rem;
+  }
+
+  .category-card {
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    text-decoration: none;
+    color: var(--color-text);
+    height: 100%;
+  }
+
+  .category-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .category-header {
+    padding: 1.5rem;
+    background-color: var(--color-bg-alt, #f5f5f5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .category-content {
+    padding: 1.5rem;
+    flex-grow: 1;
+  }
+
+  .category-content h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-text-primary);
+  }
+
+  .category-content p {
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+  }
+
+  .category-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--color-border, #eaeaea);
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .view-more {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: var(--color-primary);
+  }
+
+  .view-more::after {
+    content: '→';
+    margin-left: 0.5rem;
+    transition: transform 0.2s ease;
+  }
+
+  .category-card:hover .view-more::after {
+    transform: translateX(5px);
+  }
+
+  .categories-info {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    margin-bottom: 3rem;
+  }
+
+  .info-card {
+    background-color: var(--color-bg-alt, #f5f5f5);
+    padding: 2rem;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 50%;
+    margin-bottom: 1.5rem;
+  }
+
+  .info-card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: var(--color-text-primary);
+  }
+
+  .info-card p {
+    margin-bottom: 1.5rem;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+  }
+
+  .btn-link {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: var(--color-primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+    margin-top: auto;
+  }
+
+  .btn-link:hover {
+    background-color: var(--color-primary-dark, #006644);
+  }
+
+  @media (max-width: 992px) {
+    .categories-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .page-header h1 {
+      font-size: 2rem;
+    }
+
+    .categories-grid,
+    .categories-info {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
