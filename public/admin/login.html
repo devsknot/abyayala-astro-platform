@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iniciar Sesión - Abya Yala CMS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    .login-container {
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      width: 4rem;
+      height: 4rem;
+      border-radius: 50%;
+      border: 0.25rem solid #e5e7eb;
+      border-top-color: #3b82f6;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="login-container">
+    <div class="card">
+      <div class="text-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Abya Yala CMS</h1>
+        <p class="text-gray-600">Inicia sesión para administrar el contenido</p>
+      </div>
+      
+      <div class="text-center p-4 bg-blue-50 rounded mb-6">
+        <p>Este panel de administración está protegido.</p>
+        <p class="mt-2">Para iniciar sesión, debes estar autorizado con Cloudflare Access.</p>
+        <p class="mt-2 text-green-600">Modo de desarrollo: Haz clic en el botón para simular inicio de sesión.</p>
+      </div>
+      
+      <div class="text-center">
+        <button id="login-btn" class="btn-primary">Iniciar sesión</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <p class="text-lg font-medium">Iniciando sesión...</p>
+  </div>
+  
+  <script>
+    document.getElementById('login-btn').addEventListener('click', function() {
+      // Mostrar overlay de carga
+      document.getElementById('loading-overlay').classList.remove('hidden');
+      
+      // Simular un retraso de autenticación
+      setTimeout(function() {
+        // Guardar estado de autenticación en localStorage
+        localStorage.setItem('abyayala_cms_auth', JSON.stringify({
+          authenticated: true,
+          user: {
+            name: 'Administrador de Desarrollo',
+            email: 'admin@abyayala.org',
+            role: 'admin'
+          },
+          timestamp: Date.now()
+        }));
+        
+        // Redirigir al panel de administración
+        window.location.href = 'index.html';
+      }, 1500);
+    });
+  </script>
+</body>
+</html>
