@@ -1,29 +1,8 @@
 name = "abyayala-astro-platform"
 compatibility_date = "2025-03-31"
-main = "./functions/_middleware.js"
-
-[site]
-bucket = "./public"
-
-[build]
-command = "npm run build"
-output_dir = "dist"
 
 # Configuración de R2
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "abyayala-media"
 preview_bucket_name = "abyayala-media-dev"
-
-[env.production]
-workers_dev = false
-route = "abyayala.org/*"
-
-[env.staging]
-workers_dev = true
-
-[env.development]
-workers_dev = true
-# Variables de entorno para desarrollo
-[env.development.vars]
-ENVIRONMENT = "development"
