@@ -287,9 +287,13 @@ export class ArticleManager {
   
   async editArticle(slug) {
     try {
-      // Mostrar indicador de carga
-      this.articleEditor.innerHTML = `<div class="loading">Cargando artículo...</div>`;
+      // Mostrar el editor y el indicador de carga
       this.showArticleEditor();
+      this.articleEditor.querySelector('.article-form').style.display = 'none';
+      this.articleEditor.insertAdjacentHTML('afterbegin', `<div class="loading-overlay p-4 text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mx-auto mb-4"></div>
+        <p class="text-lg font-medium">Cargando artículo...</p>
+      </div>`);
       
       // Obtener el artículo
       const article = await this.contentManager.getArticle(slug);
@@ -297,36 +301,72 @@ export class ArticleManager {
       // Guardar referencia al artículo actual
       this.currentArticle = article;
       
-      // Restaurar el contenido del editor
-      this.articleEditor.innerHTML = this.container.querySelector('.article-editor').innerHTML;
+      // Eliminar el indicador de carga
+      const loadingOverlay = this.articleEditor.querySelector('.loading-overlay');
+      if (loadingOverlay) {
+        loadingOverlay.remove();
+      }
       
-      // Volver a obtener referencias a los elementos después de restaurar el HTML
-      this.articleForm = this.container.querySelector('.article-form');
-      this.editorContainer = this.container.querySelector('#article-content-editor');
-      this.featuredImagePreview = this.container.querySelector('.featured-image-preview');
-      this.featuredImageInput = this.container.querySelector('#article-image');
-      
-      // Configurar eventos nuevamente
-      this.setupEvents();
+      // Mostrar el formulario
+      this.articleEditor.querySelector('.article-form').style.display = 'block';
       
       // Rellenar el formulario con los datos del artículo
-      this.container.querySelector('#article-title').value = article.title;
-      this.container.querySelector('#article-description').value = article.description;
-      this.container.querySelector('#article-category').value = article.category;
-      this.container.querySelector('#article-date').value = this.formatDateForInput(article.pubDate);
-      this.container.querySelector('#article-slug').value = article.slug;
+      this.container.querySelector('#article-title').value = article.title || '';
+      this.container.querySelector('#article-description').value = article.description || '';
+      this.container.querySelector('#article-category').value = article.category || '';
+      
+      // Formatear la fecha si existe
+      if (article.pubDate) {
+        try {
+          this.container.querySelector('#article-date').value = this.formatDateForInput(article.pubDate);
+        } catch (dateError) {
+          console.warn('Error al formatear la fecha:', dateError);
+          // Usar la fecha actual como fallback
+          this.container.querySelector('#article-date').value = this.formatDateForInput(new Date().toISOString());
+        }
+      }
+      
+      this.container.querySelector('#article-slug').value = article.slug || '';
       this.container.querySelector('#article-slug').dataset.modified = 'true';
       
       // Actualizar la imagen destacada
       if (article.heroImage) {
         this.updateFeaturedImagePreview(article.heroImage);
         this.featuredImageInput.value = article.heroImage;
+      } else {
+        this.resetFeaturedImagePreview();
+        this.featuredImageInput.value = '';
+      }
+      
+      // Limpiar el contenedor del editor si existe
+      if (this.editorContainer) {
+        this.editorContainer.innerHTML = '';
       }
       
       // Inicializar el editor de contenido con el contenido del artículo
+      // Usar un timeout para asegurar que el DOM esté listo
       setTimeout(() => {
-        this.editor = new ContentEditor(this.editorContainer, article.content || '');
-      }, 100);
+        try {
+          // Asegurarse de que el contenedor del editor existe
+          this.editorContainer = this.container.querySelector('#article-content-editor');
+          if (!this.editorContainer) {
+            throw new Error('No se encontró el contenedor del editor');
+          }
+          
+          // Crear una nueva instancia del editor
+          this.editor = new ContentEditor(this.editorContainer, article.content || '');
+          console.log('Editor inicializado correctamente');
+        } catch (editorError) {
+          console.error('Error al inicializar el editor:', editorError);
+          // Intentar recuperarse del error
+          this.editorContainer.innerHTML = `
+            <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p class="text-yellow-700">No se pudo cargar el editor avanzado. Usando editor básico.</p>
+              <textarea class="form-input mt-2" rows="10" id="basic-editor">${article.content || ''}</textarea>
+            </div>
+          `;
+        }
+      }, 300);
     } catch (error) {
       console.error('Error al cargar el artículo:', error);
       alert('Error al cargar el artículo. Por favor, intenta de nuevo.');
