@@ -298,7 +298,15 @@ export class ArticleManager {
       this.currentArticle = article;
       
       // Restaurar el contenido del editor
-      this.articleEditor.innerHTML = this.container.querySelector('.article-manager').innerHTML;
+      this.articleEditor.innerHTML = this.container.querySelector('.article-editor').innerHTML;
+      
+      // Volver a obtener referencias a los elementos después de restaurar el HTML
+      this.articleForm = this.container.querySelector('.article-form');
+      this.editorContainer = this.container.querySelector('#article-content-editor');
+      this.featuredImagePreview = this.container.querySelector('.featured-image-preview');
+      this.featuredImageInput = this.container.querySelector('#article-image');
+      
+      // Configurar eventos nuevamente
       this.setupEvents();
       
       // Rellenar el formulario con los datos del artículo
@@ -316,7 +324,9 @@ export class ArticleManager {
       }
       
       // Inicializar el editor de contenido con el contenido del artículo
-      this.editor = new ContentEditor(this.container.querySelector('#article-content-editor'), article.content);
+      setTimeout(() => {
+        this.editor = new ContentEditor(this.editorContainer, article.content || '');
+      }, 100);
     } catch (error) {
       console.error('Error al cargar el artículo:', error);
       alert('Error al cargar el artículo. Por favor, intenta de nuevo.');
