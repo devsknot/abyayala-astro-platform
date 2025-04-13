@@ -1,8 +1,13 @@
 name = "abyayala-astro-platform"
 compatibility_date = "2025-03-31"
+pages_build_output_dir = "dist"
 
 # Configuración de R2
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "abyayala-media"
 preview_bucket_name = "abyayala-media-dev"
+
+# Variables de entorno
+[vars]
+ENVIRONMENT = "production"
