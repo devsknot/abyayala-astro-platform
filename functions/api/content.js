@@ -2,7 +2,7 @@
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const path = url.pathname.replace('/api/content', '');
+  const path = url.pathname;
   
   // Configurar cabeceras CORS
   const headers = {
@@ -33,15 +33,17 @@ export async function onRequest(context) {
   }
   
   try {
+    console.log(`Solicitud recibida: ${request.method} ${path}`);
+    
     // Manejar diferentes rutas y métodos
-    if (path === '/articles' || path === '/articles/') {
+    if (path === '/api/content/articles' || path === '/api/content/articles/') {
       if (request.method === 'GET') {
         return handleGetArticles(env, headers);
       } else if (request.method === 'POST') {
         return handleCreateArticle(await request.json(), env, headers);
       }
-    } else if (path.startsWith('/articles/')) {
-      const slug = path.replace('/articles/', '');
+    } else if (path.startsWith('/api/content/articles/')) {
+      const slug = path.replace('/api/content/articles/', '');
       
       if (request.method === 'GET') {
         return handleGetArticle(slug, env, headers);
@@ -50,12 +52,18 @@ export async function onRequest(context) {
       } else if (request.method === 'DELETE') {
         return handleDeleteArticle(slug, env, headers);
       }
-    } else if (path === '/categories' || path === '/categories/') {
+    } else if (path === '/api/content/categories' || path === '/api/content/categories/') {
       return handleGetCategories(env, headers);
+    } else if (path === '/api/content') {
+      // Redirigir a /api/content/articles para compatibilidad
+      return new Response(JSON.stringify({ message: 'API de contenido. Usa /api/content/articles o /api/content/categories' }), {
+        headers
+      });
     }
     
     // Ruta no encontrada
-    return new Response(JSON.stringify({ error: 'Ruta no encontrada' }), {
+    console.error(`Ruta no encontrada: ${path}`);
+    return new Response(JSON.stringify({ error: 'Ruta no encontrada', path }), {
       status: 404,
       headers
     });
