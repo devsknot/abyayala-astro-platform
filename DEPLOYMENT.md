@@ -50,6 +50,73 @@ Para proteger el panel de administración:
    - `R2_SECRET_ACCESS_KEY`: Tu clave secreta
    - `R2_BUCKET_NAME`: `abyayala-media`
 
+## Configuración de Cloudflare D1 (Base de datos)
+
+Para almacenar el contenido del CMS, utilizamos Cloudflare D1, una base de datos SQL que se integra con Cloudflare Pages Functions:
+
+1. **Crear una base de datos D1**:
+   ```bash
+   # Instalar o actualizar Wrangler si es necesario
+   npm install -g wrangler@latest
+   
+   # Iniciar sesión en Cloudflare
+   wrangler login
+   
+   # Crear la base de datos
+   wrangler d1 create abyayala-cms
+   ```
+
+2. **Configurar el binding en wrangler.toml**:
+   ```toml
+   [[d1_databases]]
+   binding = "DB"
+   database_name = "abyayala-cms"
+   database_id = "ID-de-tu-base-de-datos"
+   ```
+
+3. **Crear el esquema de la base de datos**:
+   Crea un archivo `schema.sql` con el siguiente contenido:
+   ```sql
+   CREATE TABLE articles (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     slug TEXT UNIQUE NOT NULL,
+     title TEXT NOT NULL,
+     description TEXT,
+     content TEXT,
+     pub_date TEXT,
+     category TEXT,
+     hero_image TEXT,
+     created_at TEXT DEFAULT (datetime('now')),
+     updated_at TEXT DEFAULT (datetime('now'))
+   );
+
+   CREATE TABLE categories (
+     id TEXT PRIMARY KEY,
+     name TEXT NOT NULL,
+     description TEXT
+   );
+
+   -- Insertar categorías predefinidas
+   INSERT INTO categories (id, name, description) VALUES
+     ('agricultura', 'Agricultura', 'Noticias sobre prácticas agrícolas, cultivos y temporadas'),
+     ('comunidad', 'Comunidad', 'Historias de miembros, cooperación y testimonios'),
+     ('sostenibilidad', 'Sostenibilidad', 'Prácticas ecológicas, conservación y biodiversidad'),
+     ('politica-agraria', 'Política Agraria', 'Legislación, derechos y movimientos sociales'),
+     ('tecnologia-rural', 'Tecnología Rural', 'Innovaciones, herramientas y digitalización'),
+     ('cultura', 'Cultura', 'Tradiciones, gastronomía y artesanía'),
+     ('eventos', 'Eventos', 'Ferias, encuentros y capacitaciones');
+   ```
+
+4. **Aplicar el esquema a la base de datos**:
+   ```bash
+   wrangler d1 execute abyayala-cms --file=schema.sql
+   ```
+
+5. **Probar la conexión**:
+   ```bash
+   wrangler d1 execute abyayala-cms --command="SELECT * FROM categories"
+   ```
+
 ## Despliegue Local con Wrangler
 
 Para probar el proyecto localmente con las Cloudflare Functions:
@@ -82,9 +149,24 @@ wrangler pages publish dist
 El proyecto utiliza Cloudflare Functions para la API del CMS:
 
 - `/functions/_middleware.js`: Middleware para autenticación y CORS
-- `/functions/api/auth.js`: Funciones para autenticación
-- `/functions/api/content.js`: Funciones para gestión de contenido
+- `/functions/api/content.js`: Funciones para gestión de contenido (artículos y categorías)
 - `/functions/api/media.js`: Funciones para gestión de archivos multimedia
+- `/functions/api/auth.js`: Funciones para autenticación
+
+### API Endpoints
+
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/api/content/articles` | GET | Obtener todos los artículos |
+| `/api/content/articles` | POST | Crear un nuevo artículo |
+| `/api/content/articles/{slug}` | GET | Obtener un artículo específico |
+| `/api/content/articles/{slug}` | PUT | Actualizar un artículo existente |
+| `/api/content/articles/{slug}` | DELETE | Eliminar un artículo |
+| `/api/content/categories` | GET | Obtener todas las categorías |
+| `/api/media/upload` | POST | Subir un archivo multimedia |
+| `/api/media/list` | GET | Listar archivos multimedia |
+| `/api/auth/login` | POST | Iniciar sesión |
+| `/api/auth/verify` | GET | Verificar autenticación |
 
 ## Configuración del CMS
 

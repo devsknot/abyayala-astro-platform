@@ -20,8 +20,8 @@ export async function onRequest(context) {
       });
     }
     
-    // Para solicitudes API, verificar autenticación
-    if (url.pathname.startsWith('/api/')) {
+    // Para solicitudes API, verificar autenticación (excepto GET)
+    if (url.pathname.startsWith('/api/') && request.method !== 'GET') {
       // Verificar cabeceras de Cloudflare Access
       const jwt = request.headers.get('CF-Access-Jwt-Assertion');
       const clientId = request.headers.get('CF-Access-Client-Id');

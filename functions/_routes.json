@@ -1,7 +1,11 @@
 {
   "version": 1,
   "include": [
-    "/api/*"
+    "/api/*",
+    "/api/content/*",
+    "/api/content/articles",
+    "/api/content/articles/*",
+    "/api/content/categories"
   ],
   "exclude": []
 }

@@ -110,3 +110,46 @@ Este proyecto está bajo la Licencia MIT. Consulta el archivo `LICENSE` para má
 Colectivo Agrario Abya Yala - [contacto@abyayala.org](mailto:contacto@abyayala.org)
 
 Sitio web: [https://abyayala.org](https://abyayala.org)
+
+## Implementación de API y Base de Datos
+
+El CMS ahora utiliza Cloudflare D1 como base de datos SQL para almacenar artículos y categorías. La implementación incluye:
+
+### Base de Datos D1
+
+- Tablas para artículos y categorías
+- Esquema SQL completo en `schema.sql`
+- Script de inicialización en `scripts/init-database.js`
+
+Para inicializar la base de datos:
+
+```bash
+# Instalar dependencias
+npm install
+
+# Inicializar la base de datos D1
+npm run init-db
+```
+
+### API RESTful
+
+La API implementada en Cloudflare Functions proporciona los siguientes endpoints:
+
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/api/content/articles` | GET | Obtener todos los artículos |
+| `/api/content/articles` | POST | Crear un nuevo artículo |
+| `/api/content/articles/{slug}` | GET | Obtener un artículo específico |
+| `/api/content/articles/{slug}` | PUT | Actualizar un artículo existente |
+| `/api/content/articles/{slug}` | DELETE | Eliminar un artículo |
+| `/api/content/categories` | GET | Obtener todas las categorías |
+
+### Características de la API
+
+- Autenticación mediante Cloudflare Access
+- Manejo de CORS para solicitudes desde el frontend
+- Validación de datos en todas las operaciones
+- Modo fallback para desarrollo sin conexión a D1
+- Manejo de errores robusto
+
+Para más detalles sobre la implementación y despliegue, consulta el archivo [DEPLOYMENT.md](./DEPLOYMENT.md).
