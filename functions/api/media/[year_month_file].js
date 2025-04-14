@@ -3,8 +3,18 @@ export async function onRequest(context) {
   const { request, env, params } = context;
   
   // Obtener la ruta completa del archivo
-  const path = params.path || [];
-  const fileId = Array.isArray(path) ? path.join('/') : path;
+  const yearMonthFile = params.year_month_file || '';
+  
+  // Reconstruir la ruta del archivo
+  let fileId = yearMonthFile;
+  
+  // Si la ruta contiene barras, es una ruta anidada que necesita ser procesada
+  if (yearMonthFile.includes('/')) {
+    // Ya está en formato correcto
+  } else if (yearMonthFile.includes('_')) {
+    // Convertir formato con guiones bajos a formato con barras
+    fileId = yearMonthFile.replace(/_/g, '/');
+  }
   
   console.log('Solicitando archivo con ruta:', fileId);
   
