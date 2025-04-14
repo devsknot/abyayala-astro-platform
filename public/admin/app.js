@@ -4,6 +4,7 @@ import { MediaLibrary } from './components/media-library.js';
 import { CategoryManager } from './components/category-manager.js';
 import { ContentManager } from './content-manager.js';
 import { notifications } from './components/notification.js';
+import { BulkImportManager } from './components/bulk-import-manager.js';
 
 // Componentes del panel de administración
 const components = {
@@ -11,7 +12,8 @@ const components = {
   articles: renderArticlesManager,
   media: renderMediaLibrary,
   categories: renderCategories,
-  settings: renderSettings
+  settings: renderSettings,
+  bulkImport: renderBulkImport
 };
 
 // Estado global de la aplicación
@@ -83,6 +85,9 @@ function renderApp(container) {
           </a>
           <a href="#settings" data-view="settings" class="sidebar-link ${appState.currentView === 'settings' ? 'active' : ''}">
             <span class="mr-2">⚙️</span> Configuración
+          </a>
+          <a href="#bulkImport" data-view="bulkImport" class="sidebar-link ${appState.currentView === 'bulkImport' ? 'active' : ''}">
+            <span class="mr-2">📈</span> Carga masiva
           </a>
         </nav>
         
@@ -368,6 +373,14 @@ function renderSettings(container) {
     e.preventDefault();
     notifications.success('Configuración guardada correctamente');
   });
+}
+
+// Renderizar carga masiva
+function renderBulkImport(container) {
+  container.innerHTML = '<div id="bulk-import-container"></div>';
+  const bulkImportContainer = document.getElementById('bulk-import-container');
+  const bulkImportManager = new BulkImportManager();
+  bulkImportManager.init(bulkImportContainer);
 }
 
 // Función auxiliar para obtener el nombre de la categoría

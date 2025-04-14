@@ -111,7 +111,8 @@ export class ContentManager {
   // Actualizar un artículo existente
   async updateArticle(slug, articleData) {
     try {
-      console.log('ContentManager.updateArticle - Datos del artículo:', articleData);
+      console.log(`ContentManager.updateArticle - Actualizando artículo: ${slug}`);
+      console.log('ContentManager.updateArticle - Datos:', articleData);
       
       const response = await fetch(`${this.apiBase}/articles/${slug}`, {
         method: 'PUT',
@@ -127,11 +128,48 @@ export class ContentManager {
         return data;
       }
       
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-      throw new Error(errorData.error || `Error al actualizar artículo: ${response.status}`);
+      console.error(`Error al actualizar artículo: ${response.status}`);
+      return null;
     } catch (error) {
-      console.error('Error al actualizar artículo:', error);
-      throw error;
+      console.error('Error al conectar con la API:', error);
+      return null;
+    }
+  }
+  
+  // Importar artículos en masa
+  async bulkImportArticles(articlesData) {
+    try {
+      console.log('ContentManager.bulkImportArticles - Iniciando importación masiva');
+      console.log(`ContentManager.bulkImportArticles - Total de artículos: ${articlesData.articles.length}`);
+      
+      const response = await fetch(`${this.apiBase}/bulk-import`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(articlesData)
+      });
+      
+      console.log(`ContentManager.bulkImportArticles - Código de respuesta: ${response.status}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('ContentManager.bulkImportArticles - Respuesta:', data);
+        return data;
+      }
+      
+      console.error(`Error en importación masiva: ${response.status}`);
+      
+      // Intentar leer el mensaje de error
+      try {
+        const errorData = await response.json();
+        console.error('Detalles del error:', errorData);
+        return errorData;
+      } catch (parseError) {
+        console.error('No se pudo parsear la respuesta de error');
+        return { error: 'Error en la importación masiva' };
+      }
+    } catch (error) {
+      console.error('Error al conectar con la API:', error);
+      return { error: error.message || 'Error de conexión' };
     }
   }
 
