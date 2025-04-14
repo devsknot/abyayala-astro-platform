@@ -336,7 +336,7 @@ export class ArticleManager {
           slug: this.container.querySelector('#article-slug').value,
           featured_image: this.featuredImageInput.value,
           content: this.editor.getContent(),
-          author: this.container.querySelector('#article-author').value,
+          author_id: this.container.querySelector('#article-author').value,
           tags: this.container.querySelector('#article-tags').value.split(',').map(tag => tag.trim())
         };
         
@@ -367,7 +367,7 @@ export class ArticleManager {
           user_name: 'Admin',
           details: {
             category: articleData.category,
-            author: articleData.author
+            author_id: articleData.author_id
           }
         });
         
@@ -541,8 +541,6 @@ export class ArticleManager {
           // Seleccionar el autor si existe
           if (article.author_id) {
             authorSelect.value = article.author_id;
-          } else if (article.author) {
-            authorSelect.value = article.author;
           } else {
             authorSelect.value = '';
           }
