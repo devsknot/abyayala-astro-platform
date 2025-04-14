@@ -132,6 +132,14 @@ async function handleCreateArticle(articleData, env, headers) {
       });
     }
     
+    // Formatear fecha correctamente
+    let pubDate = articleData.pubDate || new Date().toISOString();
+    // Asegurarse de que la fecha esté en formato ISO
+    if (pubDate && !pubDate.includes('T')) {
+      // Si es solo una fecha (YYYY-MM-DD), convertirla a formato ISO
+      pubDate = new Date(pubDate).toISOString();
+    }
+    
     // Insertar el artículo en D1
     const result = await env.DB.prepare(`
       INSERT INTO articles (
@@ -142,7 +150,7 @@ async function handleCreateArticle(articleData, env, headers) {
       articleData.title,
       articleData.description || '',
       articleData.content || '',
-      articleData.pubDate || new Date().toISOString(),
+      pubDate,
       articleData.category || '',
       articleData.heroImage || ''
     ).run();
@@ -176,7 +184,7 @@ function getFallbackArticles() {
       slug: 'record-cafe-organico',
       title: 'Récord en producción de café orgánico',
       description: 'Cooperativa local logra récord de producción con prácticas sostenibles',
-      pubDate: '2025-04-02',
+      pubDate: '2025-04-02T00:00:00.000Z',
       category: 'agricultura',
       heroImage: '/uploads/2025/04/cafe-organico.jpg'
     },
@@ -184,7 +192,7 @@ function getFallbackArticles() {
       slug: 'tecnica-riego-sostenible',
       title: 'Nueva técnica de riego sostenible',
       description: 'Innovadora técnica de riego que ahorra hasta un 60% de agua',
-      pubDate: '2025-03-20',
+      pubDate: '2025-03-20T00:00:00.000Z',
       category: 'tecnologia-rural',
       heroImage: '/uploads/2025/03/riego-sostenible.jpg'
     },
@@ -192,7 +200,7 @@ function getFallbackArticles() {
       slug: 'feria-semillas-ancestrales',
       title: 'Feria de semillas ancestrales',
       description: 'La tradicional feria de intercambio de semillas ancestrales organizada por Abya Yala contó con la participación de agricultores de toda la región',
-      pubDate: '2025-03-25',
+      pubDate: '2025-03-25T00:00:00.000Z',
       category: 'eventos',
       heroImage: '/uploads/2025/03/feria-semillas.jpg'
     }

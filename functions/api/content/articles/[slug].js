@@ -130,6 +130,20 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       });
     }
     
+    // Formatear fecha correctamente
+    let pubDate = articleData.pubDate || existingArticle.pub_date;
+    // Asegurarse de que la fecha esté en formato ISO
+    if (pubDate && !pubDate.includes('T')) {
+      // Si es solo una fecha (YYYY-MM-DD), convertirla a formato ISO
+      try {
+        pubDate = new Date(pubDate).toISOString();
+      } catch (e) {
+        console.error('Error al convertir fecha:', e);
+        // Mantener la fecha existente si hay error
+        pubDate = existingArticle.pub_date;
+      }
+    }
+    
     // Actualizar el artículo
     const result = await env.DB.prepare(`
       UPDATE articles SET
@@ -145,7 +159,7 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       articleData.title || existingArticle.title,
       articleData.description || existingArticle.description,
       articleData.content || existingArticle.content,
-      articleData.pubDate || existingArticle.pub_date,
+      pubDate,
       articleData.category || existingArticle.category,
       articleData.heroImage || existingArticle.hero_image,
       slug
@@ -215,7 +229,7 @@ function getFallbackArticle(slug) {
       title: 'Récord en producción de café orgánico',
       description: 'Cooperativa local logra récord de producción con prácticas sostenibles',
       content: '# Récord en producción de café orgánico\n\nLa cooperativa agraria Abya Yala ha alcanzado un nuevo récord en la producción de café orgánico, superando las expectativas del mercado nacional e internacional.',
-      pubDate: '2025-04-02',
+      pubDate: '2025-04-02T00:00:00.000Z',
       category: 'agricultura',
       heroImage: '/uploads/2025/04/cafe-organico.jpg'
     },
@@ -224,7 +238,7 @@ function getFallbackArticle(slug) {
       title: 'Nueva técnica de riego sostenible',
       description: 'Innovadora técnica de riego que ahorra hasta un 60% de agua',
       content: '# Nueva técnica de riego sostenible\n\nUn grupo de agricultores del colectivo Abya Yala ha implementado con éxito un sistema de riego por goteo subterráneo que ha permitido reducir el consumo de agua en un 40%.',
-      pubDate: '2025-03-20',
+      pubDate: '2025-03-20T00:00:00.000Z',
       category: 'tecnologia-rural',
       heroImage: '/uploads/2025/03/riego-sostenible.jpg'
     },
@@ -233,7 +247,7 @@ function getFallbackArticle(slug) {
       title: 'Feria de semillas ancestrales',
       description: 'La tradicional feria de intercambio de semillas ancestrales organizada por Abya Yala contó con la participación de agricultores de toda la región',
       content: '# Feria de semillas ancestrales\n\nEl pasado fin de semana se celebró con gran éxito la primera feria de intercambio de semillas ancestrales organizada por nuestro colectivo. Más de 500 agricultores de la región participaron en este evento que busca preservar la biodiversidad agrícola local.',
-      pubDate: '2025-03-25',
+      pubDate: '2025-03-25T00:00:00.000Z',
       category: 'eventos',
       heroImage: '/uploads/2025/03/feria-semillas.jpg'
     }

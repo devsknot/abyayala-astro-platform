@@ -457,19 +457,48 @@ export class ArticleManager {
   
   // Utilidades para formatear fechas
   formatDate(dateString) {
-    const date = new Date(dateString);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${months[date.getMonth()]} ${date.getDate()} ${date.getFullYear()}`;
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${months[date.getMonth()]} ${date.getDate()} ${date.getFullYear()}`;
+    } catch (error) {
+      console.error('Error al formatear fecha:', error, dateString);
+      return '';
+    }
   }
   
   formatDateShort(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      // Usar formato español
+      const options = { day: '2-digit', month: 'short', year: 'numeric' };
+      return date.toLocaleDateString('es-ES', options);
+    } catch (error) {
+      console.error('Error al formatear fecha corta:', error, dateString);
+      return '';
+    }
   }
   
   formatDateForInput(dateString) {
-    const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      // Formato YYYY-MM-DD para inputs de tipo date
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (error) {
+      console.error('Error al formatear fecha para input:', error, dateString);
+      return '';
+    }
   }
   
   // Utilidad para generar slug a partir del título
