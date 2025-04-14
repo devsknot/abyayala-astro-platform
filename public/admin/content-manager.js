@@ -138,28 +138,10 @@ export class ContentManager {
       }
       
       console.error(`Error al obtener categorías: ${response.status}`);
-      // Devolver categorías básicas como fallback
-      return [
-        { id: 'agricultura', name: 'Agricultura' },
-        { id: 'comunidad', name: 'Comunidad' },
-        { id: 'sostenibilidad', name: 'Sostenibilidad' },
-        { id: 'politica-agraria', name: 'Política Agraria' },
-        { id: 'tecnologia-rural', name: 'Tecnología Rural' },
-        { id: 'cultura', name: 'Cultura' },
-        { id: 'eventos', name: 'Eventos' }
-      ];
+      return [];
     } catch (error) {
       console.error('Error al conectar con la API:', error);
-      // Devolver categorías básicas como fallback
-      return [
-        { id: 'agricultura', name: 'Agricultura' },
-        { id: 'comunidad', name: 'Comunidad' },
-        { id: 'sostenibilidad', name: 'Sostenibilidad' },
-        { id: 'politica-agraria', name: 'Política Agraria' },
-        { id: 'tecnologia-rural', name: 'Tecnología Rural' },
-        { id: 'cultura', name: 'Cultura' },
-        { id: 'eventos', name: 'Eventos' }
-      ];
+      return [];
     }
   }
 
