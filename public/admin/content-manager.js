@@ -335,6 +335,113 @@ export class ContentManager {
     }
   }
 
+  // Método para obtener todos los autores
+  async getAuthors() {
+    try {
+      const response = await fetch(`${this.apiBase}/authors`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+      
+      console.error(`Error al obtener autores: ${response.status}`);
+      return [];
+    } catch (error) {
+      console.error('Error al conectar con la API de autores:', error);
+      return [];
+    }
+  }
+  
+  // Método para obtener un autor específico
+  async getAuthor(slug) {
+    try {
+      const response = await fetch(`${this.apiBase}/authors/${slug}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+      
+      console.error(`Error al obtener autor ${slug}: ${response.status}`);
+      return null;
+    } catch (error) {
+      console.error(`Error al conectar con la API para obtener autor ${slug}:`, error);
+      return null;
+    }
+  }
+  
+  // Método para crear un nuevo autor
+  async createAuthor(authorData) {
+    try {
+      const response = await fetch(`${this.apiBase}/authors`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(authorData)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+      
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Error ${response.status} al crear autor`);
+    } catch (error) {
+      console.error('Error al crear autor:', error);
+      throw error;
+    }
+  }
+  
+  // Método para actualizar un autor existente
+  async updateAuthor(slug, authorData) {
+    try {
+      const response = await fetch(`${this.apiBase}/authors/${slug}`, {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(authorData)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+      
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Error ${response.status} al actualizar autor`);
+    } catch (error) {
+      console.error(`Error al actualizar autor ${slug}:`, error);
+      throw error;
+    }
+  }
+  
+  // Método para eliminar un autor
+  async deleteAuthor(slug) {
+    try {
+      const response = await fetch(`${this.apiBase}/authors/${slug}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+      
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Error ${response.status} al eliminar autor`);
+    } catch (error) {
+      console.error(`Error al eliminar autor ${slug}:`, error);
+      throw error;
+    }
+  }
+
   // Convertir contenido del editor a Markdown
   convertToMarkdown(content) {
     // En una implementación real, usaríamos una biblioteca como turndown

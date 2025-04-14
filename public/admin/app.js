@@ -5,6 +5,7 @@ import { CategoryManager } from './components/category-manager.js';
 import { ContentManager } from './content-manager.js';
 import { notifications } from './components/notification.js';
 import { BulkImportManager } from './components/bulk-import-manager.js';
+import AuthorManager from './author-manager.js';
 
 // Componentes del panel de administración
 const components = {
@@ -13,7 +14,8 @@ const components = {
   media: renderMediaLibrary,
   categories: renderCategories,
   settings: renderSettings,
-  bulkImport: renderBulkImport
+  bulkImport: renderBulkImport,
+  authors: renderAuthors
 };
 
 // Estado global de la aplicación
@@ -88,6 +90,9 @@ function renderApp(container) {
           </a>
           <a href="#bulkImport" data-view="bulkImport" class="sidebar-link ${appState.currentView === 'bulkImport' ? 'active' : ''}">
             <span class="mr-2">📈</span> Carga masiva
+          </a>
+          <a href="#authors" data-view="authors" class="sidebar-link ${appState.currentView === 'authors' ? 'active' : ''}">
+            <span class="mr-2">👥</span> Autores
           </a>
         </nav>
         
@@ -381,6 +386,14 @@ function renderBulkImport(container) {
   const bulkImportContainer = document.getElementById('bulk-import-container');
   const bulkImportManager = new BulkImportManager();
   bulkImportManager.init(bulkImportContainer);
+}
+
+// Renderizar autores
+function renderAuthors(container) {
+  container.innerHTML = '<div id="authors-container"></div>';
+  const authorsContainer = document.getElementById('authors-container');
+  const authorManager = new AuthorManager();
+  authorManager.init(authorsContainer);
 }
 
 // Función auxiliar para obtener el nombre de la categoría

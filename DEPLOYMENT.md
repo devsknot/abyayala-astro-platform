@@ -150,10 +150,41 @@ Para almacenar el contenido del CMS, utilizamos Cloudflare D1, una base de datos
    wrangler d1 execute abyayala-cms --file=schema.sql
    ```
 
-5. **Probar la conexión**:
+5. **Ejecutar migraciones de base de datos**:
+   El proyecto incluye un sistema de migraciones para mantener el esquema de la base de datos actualizado. Estas migraciones deben ejecutarse después de cada despliegue o cuando se realicen cambios en el esquema.
+
+   Para ejecutar todas las migraciones disponibles:
    ```bash
-   wrangler d1 execute abyayala-cms --command="SELECT * FROM categories"
+   # Desde la raíz del proyecto
+   bash ./scripts/migrations/run-migration.sh
    ```
+
+   También puedes ejecutar migraciones individuales:
+   ```bash
+   # Ejecutar una migración específica
+   npx wrangler d1 execute DB --remote --file=./scripts/migrations/nombre-migracion.sql
+   ```
+
+   **Migraciones importantes incluidas**:
+   - `add-author-column.sql`: Añade la columna `author` a la tabla `articles`
+   - `add-tags-column.sql`: Añade la columna `tags` a la tabla `articles`
+   - `create-authors-table.sql`: Crea la tabla `authors` y añade la columna `author_id` a `articles`
+
+   **Nota**: Es recomendable ejecutar las migraciones como parte del proceso de despliegue para garantizar que la base de datos esté siempre actualizada.
+
+### 5. Automatizar migraciones en el despliegue
+
+Para automatizar la ejecución de migraciones durante el despliegue, puedes configurar un script de post-despliegue en Cloudflare Pages:
+
+1. En el dashboard de Cloudflare Pages, ve a tu proyecto
+2. Navega a **Settings** > **Functions**
+3. En la sección **Post-deployment script**, añade:
+   ```bash
+   bash ./scripts/migrations/run-migration.sh
+   ```
+4. Guarda los cambios
+
+Esto ejecutará automáticamente todas las migraciones después de cada despliegue exitoso, asegurando que la base de datos esté siempre sincronizada con el código más reciente.
 
 ## Despliegue Local con Wrangler
 

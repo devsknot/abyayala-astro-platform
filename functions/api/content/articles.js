@@ -103,9 +103,16 @@ async function handleGetArticles(env, headers) {
   try {
     console.log('Obteniendo todos los artículos');
     
-    // Usar D1 para obtener todos los artículos
+    // Usar D1 para obtener todos los artículos con información de autor
     const { results } = await env.DB.prepare(`
-      SELECT * FROM articles ORDER BY pub_date DESC
+      SELECT a.*, 
+             aut.id as author_id, 
+             aut.name as author_name, 
+             aut.slug as author_slug, 
+             aut.avatar as author_avatar
+      FROM articles a
+      LEFT JOIN authors aut ON a.author_id = aut.id
+      ORDER BY a.pub_date DESC
     `).all();
     
     console.log(`Recuperados ${results.length} artículos de la base de datos`);
@@ -119,7 +126,15 @@ async function handleGetArticles(env, headers) {
         content: article.content,
         pubDate: article.pub_date, // Transformar pub_date a pubDate
         category: article.category,
-        featured_image: article.featured_image // Usar solo featured_image
+        featured_image: article.featured_image, // Usar solo featured_image
+        author: article.author, // Campo de texto original
+        tags: article.tags ? JSON.parse(article.tags) : [],
+        author_info: article.author_id ? {
+          id: article.author_id,
+          name: article.author_name,
+          slug: article.author_slug,
+          avatar: article.author_avatar
+        } : null
       };
       
       return transformed;
@@ -218,9 +233,18 @@ async function handleGetArticle(slug, env, headers) {
   try {
     console.log(`Obteniendo artículo con slug: ${slug}`);
     
-    // Usar D1 para obtener el artículo
+    // Usar D1 para obtener el artículo con información de autor
     const article = await env.DB.prepare(`
-      SELECT * FROM articles WHERE slug = ?
+      SELECT a.*, 
+             aut.id as author_id, 
+             aut.name as author_name, 
+             aut.slug as author_slug, 
+             aut.bio as author_bio,
+             aut.avatar as author_avatar,
+             aut.social_media as author_social_media
+      FROM articles a
+      LEFT JOIN authors aut ON a.author_id = aut.id
+      WHERE a.slug = ?
     `).bind(slug).first();
     
     console.log('Artículo recuperado de la base de datos:', article);
@@ -241,7 +265,17 @@ async function handleGetArticle(slug, env, headers) {
       content: article.content,
       pubDate: article.pub_date, // Transformar pub_date a pubDate
       category: article.category,
-      featured_image: article.featured_image // Usar solo featured_image
+      featured_image: article.featured_image, // Usar solo featured_image
+      author: article.author, // Campo de texto original
+      tags: article.tags ? JSON.parse(article.tags) : [],
+      author_info: article.author_id ? {
+        id: article.author_id,
+        name: article.author_name,
+        slug: article.author_slug,
+        bio: article.author_bio,
+        avatar: article.author_avatar,
+        social_media: article.author_social_media
+      } : null
     };
     
     console.log('Artículo transformado para el frontend:', transformedArticle);

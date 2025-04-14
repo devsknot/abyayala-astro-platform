@@ -70,6 +70,22 @@ export class ArticleManager {
               </div>
             </div>
             
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="form-group">
+                <label for="article-author" class="form-label">Autor</label>
+                <select id="article-author" class="form-input">
+                  <option value="">Sin autor asignado</option>
+                  <!-- Los autores se cargarán dinámicamente -->
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="article-tags" class="form-label">Etiquetas</label>
+                <input type="text" id="article-tags" class="form-input" placeholder="agricultura, sostenible, comunidad">
+                <small class="text-gray-500">Separadas por comas</small>
+              </div>
+            </div>
+            
             <div class="form-group">
               <label for="article-slug" class="form-label">Slug (URL)</label>
               <input type="text" id="article-slug" class="form-input" required pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$">
@@ -137,6 +153,9 @@ export class ArticleManager {
     
     // Configurar eventos
     this.setupEvents();
+    
+    // Cargar autores para el selector
+    await this.loadAuthors();
     
     // Cargar artículos
     await this.loadArticles();
@@ -316,7 +335,9 @@ export class ArticleManager {
           pubDate: this.formatDate(this.container.querySelector('#article-date').value),
           slug: this.container.querySelector('#article-slug').value,
           featured_image: this.featuredImageInput.value,
-          content: this.editor.getContent()
+          content: this.editor.getContent(),
+          author: this.container.querySelector('#article-author').value,
+          tags: this.container.querySelector('#article-tags').value.split(',').map(tag => tag.trim())
         };
         
         // Validar datos
@@ -445,147 +466,120 @@ export class ArticleManager {
   
   async editArticle(slug) {
     try {
-      // Mostrar el editor y el indicador de carga
-      this.showArticleEditor();
-      this.articleEditor.querySelector('.article-form').style.display = 'none';
-      this.articleEditor.insertAdjacentHTML('afterbegin', `<div class="loading-overlay p-4 text-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mx-auto mb-4"></div>
-        <p class="text-lg font-medium">Cargando artículo...</p>
-      </div>`);
+      this.showLoading('Cargando artículo...');
       
-      // Mostrar notificación de carga
-      const loadingNotification = notifications.info('Cargando artículo...', 0);
-      
-      // Obtener el artículo
-      console.log(`Solicitando artículo con slug: ${slug}`);
+      // Obtener el artículo de la API
       const article = await this.contentManager.getArticle(slug);
-      console.log('Artículo cargado para edición:', article);
-      console.log('Propiedades del artículo:', Object.keys(article));
-      console.log('Valor de featured_image:', article.featured_image);
       
-      // Cerrar notificación de carga
-      notifications.close(loadingNotification);
+      if (!article) {
+        notifications.error('No se pudo cargar el artículo');
+        this.hideLoading();
+        return;
+      }
       
-      // Guardar referencia al artículo actual
+      // Mostrar el editor
+      this.showEditor();
+      
+      // Guardar el artículo actual
       this.currentArticle = article;
       
-      // Eliminar el indicador de carga
-      const loadingOverlay = this.articleEditor.querySelector('.loading-overlay');
-      if (loadingOverlay) {
-        loadingOverlay.remove();
-      }
+      // Actualizar título del editor
+      this.container.querySelector('.article-editor h3').textContent = 'Editar artículo';
       
-      // Mostrar el formulario
-      this.articleEditor.querySelector('.article-form').style.display = 'block';
-      
-      // Rellenar el formulario con los datos del artículo
-      this.container.querySelector('#article-title').value = article.title || '';
-      this.container.querySelector('#article-description').value = article.description || '';
-      this.container.querySelector('#article-category').value = article.category || '';
-      
-      // Formatear la fecha si existe
-      if (article.pubDate) {
-        try {
-          this.container.querySelector('#article-date').value = this.formatDateForInput(article.pubDate);
-        } catch (dateError) {
-          console.warn('Error al formatear la fecha:', dateError);
-          // Usar la fecha actual como fallback
-          this.container.querySelector('#article-date').value = this.formatDateForInput(new Date().toISOString());
-          notifications.warning('La fecha del artículo no es válida. Se ha establecido la fecha actual.');
-        }
-      }
-      
-      this.container.querySelector('#article-slug').value = article.slug || '';
-      this.container.querySelector('#article-slug').dataset.modified = 'true';
-      
-      // Actualizar la imagen destacada
-      if (article.featured_image) {
-        console.log('Imagen destacada del artículo:', article.featured_image);
-        
-        try {
-          // Crear instancia del gestor de medios
-          const mediaManager = new MediaManager();
-          
-          // Obtener la URL pública de la imagen
-          const imageUrl = mediaManager.getPublicUrl(article.featured_image);
-          console.log('URL pública de la imagen destacada:', imageUrl);
-          
-          // Verificar si la imagen existe (solo en desarrollo)
-          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            console.log('Verificando existencia de imagen en desarrollo local...');
-            
-            // Intentar cargar la imagen para verificar si existe
-            const img = new Image();
-            img.onload = () => {
-              console.log('Imagen cargada correctamente:', imageUrl);
-              // La imagen existe, actualizar la vista previa
-              this.updateFeaturedImagePreview(article.featured_image);
-            };
-            
-            img.onerror = () => {
-              console.warn('Error al cargar la imagen:', imageUrl);
-              // La imagen no existe, intentar con otra ruta
-              const alternativeUrl = article.featured_image.startsWith('/') 
-                ? article.featured_image 
-                : `/${article.featured_image}`;
-              
-              console.log('Intentando con ruta alternativa:', alternativeUrl);
-              this.updateFeaturedImagePreview(alternativeUrl);
-            };
-            
-            img.src = imageUrl;
-          } else {
-            // En producción, confiar en la URL generada
-            this.updateFeaturedImagePreview(article.featured_image);
-          }
-          
-          // Guardar la ruta original de la imagen
-          this.featuredImageInput.value = article.featured_image;
-        } catch (imageError) {
-          console.error('Error al procesar la imagen destacada:', imageError);
-          this.resetFeaturedImagePreview();
-          notifications.warning('No se pudo cargar la imagen destacada del artículo.');
-        }
-      } else {
-        console.log('El artículo no tiene imagen destacada');
-        this.resetFeaturedImagePreview();
-        this.featuredImageInput.value = '';
-      }
-      
-      // Limpiar el contenedor del editor si existe
-      if (this.editorContainer) {
-        this.editorContainer.innerHTML = '';
-      }
-      
-      // Inicializar el editor de contenido con el contenido del artículo
-      // Usar un timeout para asegurar que el DOM esté listo
+      // Esperar un poco para asegurar que el editor esté inicializado
       setTimeout(() => {
         try {
-          // Asegurarse de que el contenedor del editor existe
-          this.editorContainer = this.container.querySelector('#article-content-editor');
-          if (!this.editorContainer) {
-            throw new Error('No se encontró el contenedor del editor');
+          // Cargar los datos del artículo en el formulario
+          const titleInput = this.container.querySelector('#article-title');
+          const descriptionInput = this.container.querySelector('#article-description');
+          const categorySelect = this.container.querySelector('#article-category');
+          const dateInput = this.container.querySelector('#article-date');
+          const slugInput = this.container.querySelector('#article-slug');
+          const authorSelect = this.container.querySelector('#article-author');
+          const tagsInput = this.container.querySelector('#article-tags');
+          
+          // Asignar valores con comprobación de nulos
+          titleInput.value = article.title || '';
+          descriptionInput.value = article.description || '';
+          categorySelect.value = article.category || '';
+          
+          // Formatear la fecha para el input date
+          if (article.pubDate) {
+            try {
+              const date = new Date(article.pubDate);
+              if (!isNaN(date.getTime())) {
+                const formattedDate = date.toISOString().split('T')[0];
+                dateInput.value = formattedDate;
+              } else {
+                dateInput.value = new Date().toISOString().split('T')[0];
+                console.warn('Fecha inválida en el artículo:', article.pubDate);
+              }
+            } catch (dateError) {
+              console.error('Error al procesar fecha:', dateError);
+              dateInput.value = new Date().toISOString().split('T')[0];
+            }
+          } else {
+            dateInput.value = new Date().toISOString().split('T')[0];
           }
           
-          // Crear una nueva instancia del editor
-          this.editor = new ContentEditor(this.editorContainer, article.content || '');
-          console.log('Editor inicializado correctamente');
-        } catch (editorError) {
-          console.error('Error al inicializar el editor:', editorError);
-          // Intentar recuperarse del error
-          this.editorContainer.innerHTML = `
-            <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p class="text-yellow-700">No se pudo cargar el editor avanzado. Usando editor básico.</p>
-              <textarea class="form-input mt-2" rows="10" id="basic-editor">${article.content || ''}</textarea>
-            </div>
-          `;
-          notifications.warning('No se pudo cargar el editor avanzado. Se está usando un editor básico.');
+          slugInput.value = article.slug || '';
+          slugInput.dataset.edited = 'true';
+          
+          // Seleccionar el autor si existe
+          if (article.author_info && article.author_info.id) {
+            authorSelect.value = article.author_info.id;
+          } else {
+            authorSelect.value = '';
+          }
+          
+          // Cargar etiquetas
+          if (article.tags && Array.isArray(article.tags)) {
+            tagsInput.value = article.tags.join(', ');
+          } else {
+            tagsInput.value = '';
+          }
+          
+          // Cargar imagen destacada
+          if (article.featured_image) {
+            this.featuredImageInput.value = article.featured_image;
+            this.updateFeaturedImagePreview(article.featured_image);
+          } else {
+            this.featuredImageInput.value = '';
+            this.resetFeaturedImagePreview();
+          }
+          
+          // Cargar contenido en el editor
+          // Dar más tiempo al editor para inicializarse
+          setTimeout(() => {
+            try {
+              if (this.editor) {
+                this.editor.setContent(article.content || '');
+              } else {
+                console.error('Editor no inicializado');
+                notifications.warning('Editor no inicializado correctamente');
+                // Intentar recuperar inicializando el editor
+                this.editor = new ContentEditor(this.container.querySelector('.editor-container'));
+                setTimeout(() => {
+                  this.editor.setContent(article.content || '');
+                }, 500);
+              }
+            } catch (editorError) {
+              console.error('Error al establecer contenido en el editor:', editorError);
+              notifications.error('Error al cargar el contenido en el editor');
+            }
+            
+            this.hideLoading();
+          }, 1000);
+        } catch (formError) {
+          console.error('Error al cargar datos en el formulario:', formError);
+          notifications.error('Error al cargar los datos del artículo');
+          this.hideLoading();
         }
-      }, 300);
+      }, 500);
     } catch (error) {
-      console.error('Error al cargar el artículo:', error);
-      notifications.error('Error al cargar el artículo. Por favor, intenta de nuevo.');
-      this.showArticlesList();
+      console.error('Error al cargar artículo:', error);
+      notifications.error('Error al cargar el artículo');
+      this.hideLoading();
     }
   }
 
@@ -837,6 +831,30 @@ export class ArticleManager {
     } catch (error) {
       console.error('Error al cargar imágenes:', error);
       this.galleryGrid.innerHTML = `<div class="col-span-4 text-center py-4 text-red-500">Error al cargar imágenes</div>`;
+    }
+  }
+  
+  // Cargar autores para el selector
+  async loadAuthors() {
+    try {
+      const authors = await this.contentManager.getAuthors();
+      const authorSelect = this.container.querySelector('#article-author');
+      
+      // Mantener la opción "Sin autor asignado"
+      authorSelect.innerHTML = '<option value="">Sin autor asignado</option>';
+      
+      // Añadir los autores al selector
+      if (authors && authors.length > 0) {
+        authors.forEach(author => {
+          const option = document.createElement('option');
+          option.value = author.id;
+          option.textContent = author.name;
+          authorSelect.appendChild(option);
+        });
+      }
+    } catch (error) {
+      console.error('Error al cargar autores:', error);
+      notifications.error('No se pudieron cargar los autores');
     }
   }
 }

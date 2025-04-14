@@ -5,6 +5,7 @@
     "/api/content/*",
     "/api/content/articles/*",
     "/api/content/categories/*",
+    "/api/content/authors/*",
     "/api/content/bulk-import",
     "/api/media/*"
   ],
