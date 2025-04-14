@@ -194,8 +194,8 @@ async function handleCreateArticle(articleData, env, headers) {
     // Insertar el artículo en D1
     const result = await env.DB.prepare(`
       INSERT INTO articles (
-        slug, title, description, content, pub_date, category, featured_image
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        slug, title, description, content, pub_date, category, featured_image, author_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       articleData.slug,
       articleData.title,
@@ -203,12 +203,22 @@ async function handleCreateArticle(articleData, env, headers) {
       articleData.content || '',
       pubDate,
       articleData.category || '',
-      articleData.featured_image || ''
+      articleData.featured_image || '',
+      articleData.author || null
     ).run();
     
     // Obtener el artículo recién creado
     const article = await env.DB.prepare(`
-      SELECT * FROM articles WHERE slug = ?
+      SELECT a.*, 
+             aut.id as author_id, 
+             aut.name as author_name, 
+             aut.slug as author_slug, 
+             aut.bio as author_bio,
+             aut.avatar as author_avatar,
+             aut.social_media as author_social_media
+      FROM articles a
+      LEFT JOIN authors aut ON a.author_id = aut.id
+      WHERE a.slug = ?
     `).bind(articleData.slug).first();
     
     return new Response(JSON.stringify({
@@ -329,7 +339,8 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
         content = ?,
         pub_date = ?,
         category = ?,
-        featured_image = ?
+        featured_image = ?,
+        author_id = ?
       WHERE slug = ?
     `).bind(
       articleData.title,
@@ -338,12 +349,22 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       pubDate,
       articleData.category || '',
       articleData.featured_image || '',
+      articleData.author || null,
       slug
     ).run();
     
     // Obtener el artículo actualizado
     const article = await env.DB.prepare(`
-      SELECT * FROM articles WHERE slug = ?
+      SELECT a.*, 
+             aut.id as author_id, 
+             aut.name as author_name, 
+             aut.slug as author_slug, 
+             aut.bio as author_bio,
+             aut.avatar as author_avatar,
+             aut.social_media as author_social_media
+      FROM articles a
+      LEFT JOIN authors aut ON a.author_id = aut.id
+      WHERE a.slug = ?
     `).bind(slug).first();
     
     return new Response(JSON.stringify({

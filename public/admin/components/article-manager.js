@@ -539,8 +539,10 @@ export class ArticleManager {
           slugInput.dataset.edited = 'true';
           
           // Seleccionar el autor si existe
-          if (article.author_info && article.author_info.id) {
-            authorSelect.value = article.author_info.id;
+          if (article.author_id) {
+            authorSelect.value = article.author_id;
+          } else if (article.author) {
+            authorSelect.value = article.author;
           } else {
             authorSelect.value = '';
           }
