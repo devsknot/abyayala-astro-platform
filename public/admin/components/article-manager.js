@@ -193,13 +193,26 @@ export class ArticleManager {
           
           // Crear una instancia del gestor de medios para obtener la URL correcta
           const mediaManager = new MediaManager();
-          const imageUrl = mediaManager.getPublicUrl(imagePath);
+          
+          // Extraer el ID de la imagen (sin el dominio) si es una URL completa
+          let imageId = imagePath;
+          if (imagePath.includes('https://')) {
+            // Si es una URL completa, extraer solo la parte de la ruta después del dominio
+            try {
+              const url = new URL(imagePath);
+              imageId = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+            } catch (e) {
+              console.warn('URL inválida:', imagePath);
+            }
+          }
+          
+          const imageUrl = mediaManager.getPublicUrl(imageId);
           
           // Actualizar la vista previa
           this.updateFeaturedImagePreview(imageUrl);
           
           // Guardar la ruta de la imagen
-          this.featuredImageInput.value = imagePath;
+          this.featuredImageInput.value = imageId;
           
           // Cerrar la galería
           this.toggleImageGallery();
@@ -262,11 +275,28 @@ export class ArticleManager {
       // Obtener la ruta de la imagen
       const imagePath = imageItem.dataset.path;
       
+      // Crear una instancia del gestor de medios para obtener la URL correcta
+      const mediaManager = new MediaManager();
+      
+      // Extraer el ID de la imagen (sin el dominio) si es una URL completa
+      let imageId = imagePath;
+      if (imagePath.includes('https://')) {
+        // Si es una URL completa, extraer solo la parte de la ruta después del dominio
+        try {
+          const url = new URL(imagePath);
+          imageId = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+        } catch (e) {
+          console.warn('URL inválida:', imagePath);
+        }
+      }
+      
+      const imageUrl = mediaManager.getPublicUrl(imageId);
+      
       // Actualizar la vista previa
-      this.updateFeaturedImagePreview(imagePath);
+      this.updateFeaturedImagePreview(imageUrl);
       
       // Guardar la ruta de la imagen
-      this.featuredImageInput.value = imagePath;
+      this.featuredImageInput.value = imageId;
       
       // Cerrar la galería
       this.toggleImageGallery();
@@ -552,7 +582,22 @@ export class ArticleManager {
   updateFeaturedImagePreview(imagePath) {
     // Crear una instancia del gestor de medios para obtener la URL correcta
     const mediaManager = new MediaManager();
-    const imageUrl = mediaManager.getPublicUrl(imagePath);
+    
+    // Extraer el ID de la imagen (sin el dominio) si es una URL completa
+    let imageId = imagePath;
+    if (imagePath && imagePath.includes('https://')) {
+      // Si es una URL completa, extraer solo la parte de la ruta después del dominio
+      try {
+        const url = new URL(imagePath);
+        imageId = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+      } catch (e) {
+        console.warn('URL inválida:', imagePath);
+      }
+    }
+    
+    // Si ya es una URL completa y no se pudo extraer el ID, usar la URL tal cual
+    const imageUrl = imagePath && imagePath.includes('https://') && imageId === imagePath ? 
+      imagePath : mediaManager.getPublicUrl(imageId);
     
     this.featuredImagePreview.innerHTML = `
       <img src="${imageUrl}" alt="Imagen destacada" class="max-h-full max-w-full object-contain">
@@ -689,7 +734,8 @@ export class ArticleManager {
       // Crear elementos para cada imagen
       this.galleryGrid.innerHTML = imageFiles.map(file => {
         // Usar el MediaManager para generar la URL correcta de la imagen
-        const imageUrl = mediaManager.getPublicUrl(file.path);
+        // Usar file.id en lugar de file.path para evitar duplicación de dominio
+        const imageUrl = file.id ? mediaManager.getPublicUrl(file.id) : file.path;
         
         return `
         <div class="gallery-item cursor-pointer border rounded-lg overflow-hidden hover:border-blue-500 transition-colors" data-path="${file.path}">

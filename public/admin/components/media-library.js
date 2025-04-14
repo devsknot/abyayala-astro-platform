@@ -266,7 +266,10 @@ export class MediaLibrary {
         const mediaManager = new MediaManager();
         if (modalContainer.selectedFile.path) {
           // Generar la URL pública correcta para la imagen
-          modalContainer.selectedFile.publicUrl = mediaManager.getPublicUrl(modalContainer.selectedFile.path);
+          // Usar file.id en lugar de file.path para evitar duplicación de dominio
+          modalContainer.selectedFile.publicUrl = modalContainer.selectedFile.id ? 
+            mediaManager.getPublicUrl(modalContainer.selectedFile.id) : 
+            modalContainer.selectedFile.path;
         }
         
         onSelect(modalContainer.selectedFile);
