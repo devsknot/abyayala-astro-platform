@@ -145,6 +145,87 @@ export class ContentManager {
     }
   }
 
+  // Obtener una categoría por su slug
+  async getCategory(slug) {
+    try {
+      const response = await fetch(`${this.apiBase}/categories/${slug}`, {
+        headers: this.getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+      
+      console.error(`Error al obtener categoría: ${response.status}`);
+      return null;
+    } catch (error) {
+      console.error('Error al conectar con la API:', error);
+      return null;
+    }
+  }
+
+  // Crear una nueva categoría
+  async createCategory(categoryData) {
+    try {
+      const response = await fetch(`${this.apiBase}/categories`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(categoryData)
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+      
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      throw new Error(errorData.error || `Error al crear categoría: ${response.status}`);
+    } catch (error) {
+      console.error('Error al crear categoría:', error);
+      throw error;
+    }
+  }
+
+  // Actualizar una categoría existente
+  async updateCategory(slug, categoryData) {
+    try {
+      const response = await fetch(`${this.apiBase}/categories/${slug}`, {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(categoryData)
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+      
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      throw new Error(errorData.error || `Error al actualizar categoría: ${response.status}`);
+    } catch (error) {
+      console.error('Error al actualizar categoría:', error);
+      throw error;
+    }
+  }
+
+  // Eliminar una categoría
+  async deleteCategory(slug) {
+    try {
+      const response = await fetch(`${this.apiBase}/categories/${slug}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+      
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      throw new Error(errorData.error || `Error al eliminar categoría: ${response.status}`);
+    } catch (error) {
+      console.error('Error al eliminar categoría:', error);
+      throw error;
+    }
+  }
+
   // Convertir contenido del editor a Markdown
   convertToMarkdown(content) {
     // En una implementación real, usaríamos una biblioteca como turndown

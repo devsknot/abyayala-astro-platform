@@ -1,6 +1,7 @@
 // Aplicación principal del CMS
 import { ArticleManager } from './components/article-manager.js';
 import { MediaLibrary } from './components/media-library.js';
+import { CategoryManager } from './components/category-manager.js';
 import { ContentManager } from './content-manager.js';
 import { notifications } from './components/notification.js';
 
@@ -289,218 +290,32 @@ function renderMediaLibrary(container) {
 // Renderizar gestor de categorías
 function renderCategories(container) {
   container.innerHTML = `
-    <div class="categories-manager">
+    <div class="categories-manager p-6">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold">Categorías</h2>
-        <button type="button" class="btn-primary new-category-btn">Nueva categoría</button>
       </div>
       
-      <div class="categories-list card mb-6">
-        <h3 class="text-lg font-semibold mb-4">Todas las categorías</h3>
-        <div class="categories-container">
-          <div class="loading">Cargando categorías...</div>
+      <div id="category-manager-container">
+        <div class="flex flex-col items-center justify-center p-8">
+          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500 mb-2"></div>
+          <span class="text-gray-500">Inicializando gestor de categorías...</span>
         </div>
-      </div>
-      
-      <div class="category-editor card hidden">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold">Editor de categoría</h3>
-          <button type="button" class="text-gray-500 hover:text-gray-700 back-to-list-btn">
-            Volver a la lista
-          </button>
-        </div>
-        
-        <form class="category-form">
-          <div class="form-group">
-            <label for="category-name" class="form-label">Nombre</label>
-            <input type="text" id="category-name" class="form-input" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="category-slug" class="form-label">Slug (URL)</label>
-            <input type="text" id="category-slug" class="form-input" required pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$">
-            <small class="text-gray-500">Solo letras minúsculas, números y guiones. Ejemplo: mi-categoria</small>
-          </div>
-          
-          <div class="form-group">
-            <label for="category-description" class="form-label">Descripción</label>
-            <textarea id="category-description" class="form-input" rows="3"></textarea>
-          </div>
-          
-          <div class="flex justify-end mt-6">
-            <button type="button" class="btn-secondary mr-2 cancel-btn">Cancelar</button>
-            <button type="submit" class="btn-primary save-btn">Guardar categoría</button>
-          </div>
-        </form>
       </div>
     </div>
   `;
   
-  // Obtener referencias a los elementos
-  const categoriesList = container.querySelector('.categories-list');
-  const categoriesContainer = container.querySelector('.categories-container');
-  const categoryEditor = container.querySelector('.category-editor');
-  const categoryForm = container.querySelector('.category-form');
+  // Inicializar el gestor de categorías
+  const contentManager = new ContentManager();
+  const categoryManager = new CategoryManager(contentManager);
   
-  // Función para cargar categorías
-  async function loadCategories() {
-    try {
-      // Mostrar indicador de carga
-      categoriesContainer.innerHTML = `
-        <div class="flex flex-col items-center justify-center p-8">
-          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500 mb-2"></div>
-          <span class="text-gray-500">Cargando categorías...</span>
-        </div>
-      `;
-      
-      // Obtener categorías
-      const contentManager = new ContentManager();
-      const categories = await contentManager.getCategories();
-      
-      // Renderizar categorías
-      if (categories.length === 0) {
-        categoriesContainer.innerHTML = `<div class="empty-state">No hay categorías. Crea una nueva para comenzar.</div>`;
-        return;
-      }
-      
-      // Crear tabla de categorías
-      const categoriesTable = `
-        <table class="w-full">
-          <thead>
-            <tr class="border-b">
-              <th class="text-left pb-2">Nombre</th>
-              <th class="text-left pb-2">Slug</th>
-              <th class="text-left pb-2">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${categories.map(category => `
-              <tr class="border-b" data-slug="${category.slug}">
-                <td class="py-2">${category.name}</td>
-                <td class="py-2">${category.slug}</td>
-                <td class="py-2">
-                  <button type="button" class="text-blue-500 hover:underline mr-2 edit-category-btn" data-slug="${category.slug}">Editar</button>
-                  <button type="button" class="text-red-500 hover:underline delete-category-btn" data-slug="${category.slug}">Eliminar</button>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
-      
-      categoriesContainer.innerHTML = categoriesTable;
-      
-      // Configurar eventos para los botones de editar y eliminar
-      categoriesContainer.querySelectorAll('.edit-category-btn').forEach(button => {
-        button.addEventListener('click', () => {
-          const slug = button.dataset.slug;
-          notifications.info(`Función de editar categoría "${slug}" en desarrollo`);
-          // TODO: Implementar edición de categorías
-        });
+  // Inicializar el componente
+  setTimeout(() => {
+    categoryManager.init('category-manager-container')
+      .catch(error => {
+        console.error('Error al inicializar el gestor de categorías:', error);
+        notifications.error('Error al inicializar el gestor de categorías. Por favor, recarga la página.');
       });
-      
-      categoriesContainer.querySelectorAll('.delete-category-btn').forEach(button => {
-        button.addEventListener('click', async () => {
-          const slug = button.dataset.slug;
-          const confirmed = await notifications.confirm(`¿Estás seguro de que deseas eliminar la categoría "${slug}"? Esta acción no se puede deshacer.`);
-          if (!confirmed) return;
-          
-          notifications.info(`Función de eliminar categoría "${slug}" en desarrollo`);
-          // TODO: Implementar eliminación de categorías
-        });
-      });
-    } catch (error) {
-      console.error('Error al cargar categorías:', error);
-      categoriesContainer.innerHTML = `
-        <div class="error p-8 text-center">
-          <div class="text-red-500 mb-2">Error al cargar categorías</div>
-          <button class="btn-secondary">Reintentar</button>
-        </div>
-      `;
-      
-      notifications.error('Error al cargar las categorías. Por favor, intenta de nuevo.');
-      
-      // Configurar evento para reintentar
-      categoriesContainer.querySelector('button').addEventListener('click', () => {
-        loadCategories();
-      });
-    }
-  }
-  
-  // Cargar categorías
-  loadCategories();
-  
-  // Configurar eventos
-  container.querySelector('.new-category-btn').addEventListener('click', () => {
-    // Mostrar editor de categorías
-    categoriesList.classList.add('hidden');
-    categoryEditor.classList.remove('hidden');
-    
-    // Limpiar formulario
-    categoryForm.reset();
-  });
-  
-  container.querySelector('.back-to-list-btn').addEventListener('click', () => {
-    // Volver a la lista de categorías
-    categoryEditor.classList.add('hidden');
-    categoriesList.classList.remove('hidden');
-  });
-  
-  container.querySelector('.cancel-btn').addEventListener('click', () => {
-    // Volver a la lista de categorías
-    categoryEditor.classList.add('hidden');
-    categoriesList.classList.remove('hidden');
-  });
-  
-  // Evento para generar slug automáticamente a partir del nombre
-  container.querySelector('#category-name').addEventListener('input', (e) => {
-    const name = e.target.value;
-    const slugInput = container.querySelector('#category-slug');
-    
-    // Solo generar slug automáticamente si el campo está vacío o no ha sido modificado manualmente
-    if (!slugInput.dataset.modified) {
-      slugInput.value = name
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '') // Eliminar caracteres especiales
-        .replace(/\s+/g, '-') // Reemplazar espacios por guiones
-        .replace(/-+/g, '-') // Eliminar guiones duplicados
-        .trim(); // Eliminar espacios al inicio y al final
-    }
-  });
-  
-  // Marcar el campo de slug como modificado manualmente
-  container.querySelector('#category-slug').addEventListener('input', (e) => {
-    e.target.dataset.modified = 'true';
-  });
-  
-  // Evento para guardar la categoría
-  categoryForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    // Obtener datos del formulario
-    const categoryData = {
-      name: container.querySelector('#category-name').value,
-      slug: container.querySelector('#category-slug').value,
-      description: container.querySelector('#category-description').value
-    };
-    
-    // Validar datos
-    if (!categoryData.name || !categoryData.slug) {
-      notifications.error('El nombre y el slug son obligatorios');
-      return;
-    }
-    
-    // Validar formato del slug
-    const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-    if (!slugRegex.test(categoryData.slug)) {
-      notifications.error('El slug debe contener solo letras minúsculas, números y guiones');
-      return;
-    }
-    
-    // Mostrar notificación
-    notifications.info('Función de guardar categoría en desarrollo');
-    // TODO: Implementar guardado de categorías
-  });
+  }, 100);
 }
 
 // Renderizar configuración
