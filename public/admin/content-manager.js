@@ -84,14 +84,31 @@ export class ContentManager {
   // Crear un nuevo artículo
   async createArticle(articleData) {
     try {
+      console.log('ContentManager.createArticle - Datos originales:', articleData);
+      
+      // Normalizar los datos del artículo para asegurar consistencia
+      const normalizedData = { ...articleData };
+      
+      // Asegurar que se use featured_image como nombre de propiedad
+      if (normalizedData.featuredImage && !normalizedData.featured_image) {
+        normalizedData.featured_image = normalizedData.featuredImage;
+        delete normalizedData.featuredImage;
+      }
+      
+      console.log('ContentManager.createArticle - Datos normalizados:', normalizedData);
+      
       const response = await fetch(`${this.apiBase}/articles`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
-        body: JSON.stringify(articleData)
+        body: JSON.stringify(normalizedData)
       });
       
+      console.log(`ContentManager.createArticle - Código de respuesta: ${response.status}`);
+      
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        console.log('ContentManager.createArticle - Respuesta:', data);
+        return data;
       }
       
       const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
@@ -105,14 +122,31 @@ export class ContentManager {
   // Actualizar un artículo existente
   async updateArticle(slug, articleData) {
     try {
+      console.log('ContentManager.updateArticle - Datos originales:', articleData);
+      
+      // Normalizar los datos del artículo para asegurar consistencia
+      const normalizedData = { ...articleData };
+      
+      // Asegurar que se use featured_image como nombre de propiedad
+      if (normalizedData.featuredImage && !normalizedData.featured_image) {
+        normalizedData.featured_image = normalizedData.featuredImage;
+        delete normalizedData.featuredImage;
+      }
+      
+      console.log('ContentManager.updateArticle - Datos normalizados:', normalizedData);
+      
       const response = await fetch(`${this.apiBase}/articles/${slug}`, {
         method: 'PUT',
         headers: this.getAuthHeaders(),
-        body: JSON.stringify(articleData)
+        body: JSON.stringify(normalizedData)
       });
       
+      console.log(`ContentManager.updateArticle - Código de respuesta: ${response.status}`);
+      
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        console.log('ContentManager.updateArticle - Respuesta:', data);
+        return data;
       }
       
       const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
