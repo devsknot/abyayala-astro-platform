@@ -44,6 +44,21 @@ export async function onRequest(context) {
       }
     }
     
+    // Ruta para artículo específico /api/content/articles/{slug}
+    const match = path.match(/^\/api\/content\/articles\/([^\/]+)$/);
+    if (match) {
+      const slug = match[1];
+      console.log(`Solicitud para artículo específico: ${slug}`);
+      
+      if (request.method === 'GET') {
+        return handleGetArticle(slug, env, headers);
+      } else if (request.method === 'PUT') {
+        return handleUpdateArticle(slug, await request.json(), env, headers);
+      } else if (request.method === 'DELETE') {
+        return handleDeleteArticle(slug, env, headers);
+      }
+    }
+    
     // Ruta no encontrada
     console.error(`Ruta no encontrada: ${path}`);
     return new Response(JSON.stringify({ error: 'Ruta no encontrada', path }), {
@@ -100,7 +115,7 @@ async function handleGetArticles(env, headers) {
       content: article.content,
       pubDate: article.pub_date, // Transformar pub_date a pubDate
       category: article.category,
-      featuredImage: article.featured_image // Transformar featured_image a heroImage
+      featured_image: article.featured_image // Mantener el mismo nombre que espera el frontend
     }));
     
     return new Response(JSON.stringify(transformedResults || []), { headers });
@@ -181,6 +196,151 @@ async function handleCreateArticle(articleData, env, headers) {
     });
   } catch (error) {
     console.error('Error al crear artículo:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers
+    });
+  }
+}
+
+// Obtener un artículo específico
+async function handleGetArticle(slug, env, headers) {
+  try {
+    // Usar D1 para obtener el artículo
+    const article = await env.DB.prepare(`
+      SELECT * FROM articles WHERE slug = ?
+    `).bind(slug).first();
+    
+    if (!article) {
+      return new Response(JSON.stringify({ error: 'Artículo no encontrado' }), {
+        status: 404,
+        headers
+      });
+    }
+    
+    // Transformar los nombres de los campos para que coincidan con lo que espera el frontend
+    const transformedArticle = {
+      slug: article.slug,
+      title: article.title,
+      description: article.description,
+      content: article.content,
+      pubDate: article.pub_date, // Transformar pub_date a pubDate
+      category: article.category,
+      featured_image: article.featured_image // Mantener el mismo nombre que espera el frontend
+    };
+    
+    return new Response(JSON.stringify(transformedArticle), { headers });
+  } catch (error) {
+    console.error('Error al obtener artículo:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers
+    });
+  }
+}
+
+// Actualizar un artículo
+async function handleUpdateArticle(slug, articleData, env, headers) {
+  try {
+    // Validar datos
+    if (!articleData.title || !articleData.slug) {
+      return new Response(JSON.stringify({ error: 'Título y slug son obligatorios' }), {
+        status: 400,
+        headers
+      });
+    }
+    
+    // Verificar que el slug exista
+    const existingArticle = await env.DB.prepare(`
+      SELECT slug FROM articles WHERE slug = ?
+    `).bind(slug).first();
+    
+    if (!existingArticle) {
+      return new Response(JSON.stringify({ error: 'Artículo no encontrado' }), {
+        status: 404,
+        headers
+      });
+    }
+    
+    // Formatear fecha correctamente
+    let pubDate = articleData.pubDate || new Date().toISOString();
+    // Asegurarse de que la fecha esté en formato ISO
+    if (pubDate && !pubDate.includes('T')) {
+      // Si es solo una fecha (YYYY-MM-DD), convertirla a formato ISO
+      pubDate = new Date(pubDate).toISOString();
+    }
+    
+    // Actualizar el artículo en D1
+    const result = await env.DB.prepare(`
+      UPDATE articles SET
+        title = ?,
+        description = ?,
+        content = ?,
+        pub_date = ?,
+        category = ?,
+        featured_image = ?
+      WHERE slug = ?
+    `).bind(
+      articleData.title,
+      articleData.description || '',
+      articleData.content || '',
+      pubDate,
+      articleData.category || '',
+      articleData.featured_image || '',
+      slug
+    ).run();
+    
+    // Obtener el artículo actualizado
+    const article = await env.DB.prepare(`
+      SELECT * FROM articles WHERE slug = ?
+    `).bind(slug).first();
+    
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Artículo actualizado correctamente',
+      article
+    }), {
+      status: 200,
+      headers
+    });
+  } catch (error) {
+    console.error('Error al actualizar artículo:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers
+    });
+  }
+}
+
+// Eliminar un artículo
+async function handleDeleteArticle(slug, env, headers) {
+  try {
+    // Verificar que el slug exista
+    const existingArticle = await env.DB.prepare(`
+      SELECT slug FROM articles WHERE slug = ?
+    `).bind(slug).first();
+    
+    if (!existingArticle) {
+      return new Response(JSON.stringify({ error: 'Artículo no encontrado' }), {
+        status: 404,
+        headers
+      });
+    }
+    
+    // Eliminar el artículo en D1
+    const result = await env.DB.prepare(`
+      DELETE FROM articles WHERE slug = ?
+    `).bind(slug).run();
+    
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Artículo eliminado correctamente'
+    }), {
+      status: 200,
+      headers
+    });
+  } catch (error) {
+    console.error('Error al eliminar artículo:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers
