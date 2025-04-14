@@ -111,15 +111,27 @@ async function handleGetArticles(env, headers) {
     console.log(`Recuperados ${results.length} artículos de la base de datos`);
     
     // Transformar los nombres de los campos para que coincidan con lo que espera el frontend
-    const transformedResults = results.map(article => ({
-      slug: article.slug,
-      title: article.title,
-      description: article.description,
-      content: article.content,
-      pubDate: article.pub_date, // Transformar pub_date a pubDate
-      category: article.category,
-      featured_image: article.featured_image || article.featuredImage // Asegurar que siempre se use featured_image
-    }));
+    const transformedResults = results.map(article => {
+      const transformed = {
+        slug: article.slug,
+        title: article.title,
+        description: article.description,
+        content: article.content,
+        pubDate: article.pub_date, // Transformar pub_date a pubDate
+        category: article.category
+      };
+      
+      // Normalizar la propiedad de imagen destacada
+      if (article.featured_image) {
+        transformed.featured_image = article.featured_image;
+      } else if (article.featuredImage) {
+        // Si existe featuredImage pero no featured_image, usar featuredImage
+        transformed.featured_image = article.featuredImage;
+        console.log(`Artículo ${article.slug} tiene featuredImage pero no featured_image:`, article.featuredImage);
+      }
+      
+      return transformed;
+    });
     
     console.log('Artículos transformados para el frontend');
     
@@ -236,12 +248,15 @@ async function handleGetArticle(slug, env, headers) {
       description: article.description,
       content: article.content,
       pubDate: article.pub_date, // Transformar pub_date a pubDate
-      category: article.category,
-      featured_image: article.featured_image || article.featuredImage // Asegurar que siempre se use featured_image
+      category: article.category
     };
     
-    // Si el artículo tiene featuredImage pero no featured_image, registrarlo para depuración
-    if (article.featuredImage && !article.featured_image) {
+    // Normalizar la propiedad de imagen destacada
+    if (article.featured_image) {
+      transformedArticle.featured_image = article.featured_image;
+    } else if (article.featuredImage) {
+      // Si existe featuredImage pero no featured_image, usar featuredImage
+      transformedArticle.featured_image = article.featuredImage;
       console.log(`Artículo ${slug} tiene featuredImage pero no featured_image:`, article.featuredImage);
     }
     
