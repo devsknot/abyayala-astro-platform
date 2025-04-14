@@ -196,7 +196,11 @@ export class MediaManager {
 
   // Datos de ejemplo para cuando la API no está disponible
   getFallbackMediaFiles() {
-    return [
+    console.log('Usando datos de prueba para archivos multimedia');
+    
+    // Crear rutas relativas para las imágenes de ejemplo
+    // Estas rutas deben ser compatibles con la estructura de R2
+    const imagePaths = [
       {
         id: 'img1',
         name: 'cafe-organico.jpg',
@@ -219,15 +223,15 @@ export class MediaManager {
         path: '/2025/04/feria-semillas.jpg',
         type: 'image/jpeg',
         size: 180000,
-        uploaded: '2025-04-10T09:45:00.000Z'
+        uploaded: '2025-04-02T09:45:00.000Z'
       },
       {
         id: 'img4',
-        name: 'cooperativa-reunion.jpg',
-        path: '/2025/04/cooperativa-reunion.jpg',
+        name: 'semillas-nativas.jpg',
+        path: '/2025/04/semillas-nativas.jpg',
         type: 'image/jpeg',
         size: 210000,
-        uploaded: '2025-04-15T16:20:00.000Z'
+        uploaded: '2025-04-03T16:20:00.000Z'
       },
       {
         id: 'img5',
@@ -235,17 +239,30 @@ export class MediaManager {
         path: '/2025/04/cultivo-organico.jpg',
         type: 'image/jpeg',
         size: 275000,
-        uploaded: '2025-04-10T11:05:00.000Z'
+        uploaded: '2025-04-04T11:10:00.000Z'
       },
       {
         id: 'img6',
-        name: 'semillas-nativas.jpg',
-        path: '/2025/04/semillas-nativas.jpg',
+        name: 'cooperativa-reunion.jpg',
+        path: '/2025/04/cooperativa-reunion.jpg',
         type: 'image/jpeg',
         size: 195000,
-        uploaded: '2025-04-08T13:40:00.000Z'
+        uploaded: '2025-04-05T13:30:00.000Z'
       }
     ];
+    
+    // En desarrollo local, usar rutas relativas
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return imagePaths;
+    }
+    
+    // En producción, asegurarnos de que las rutas sean accesibles
+    // Añadir archivos locales en la carpeta /img/sample/ para desarrollo
+    return imagePaths.map(file => ({
+      ...file,
+      // Usar rutas locales para desarrollo que funcionan sin R2
+      path: `/img/sample/${file.name}`
+    }));
   }
   
   // Simular la subida de un archivo
