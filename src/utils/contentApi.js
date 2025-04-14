@@ -3,9 +3,9 @@
  * Proporciona métodos para interactuar con la API de artículos
  */
 
-// URL base de la API - en producción, usamos el mismo dominio
-const API_BASE_URL = '';
-console.log('API_BASE_URL configurada para producción (relativa al dominio actual)');
+// URL base de la API - usamos la URL completa para asegurar que funcione
+const API_BASE_URL = 'https://colectivoabyayala.org';
+console.log('API_BASE_URL configurada con URL completa:', API_BASE_URL);
 
 /**
  * Obtiene todos los artículos
@@ -68,7 +68,7 @@ export async function getAllCategories() {
   try {
     // Usar el mismo enfoque que el CMS para obtener categorías
     const url = `${API_BASE_URL}/api/content/categories`;
-    console.log('Intentando obtener categorías desde:', url);
+    console.log('getAllCategories - Intentando obtener categorías desde:', url);
     
     // Usar los mismos headers que el CMS
     const response = await fetch(url, {
@@ -79,24 +79,40 @@ export async function getAllCategories() {
       }
     });
     
-    console.log('Respuesta de la API:', response.status, response.statusText);
+    console.log('getAllCategories - Respuesta de la API:', response.status, response.statusText);
     
     if (!response.ok) {
-      console.error(`Error al obtener categorías: ${response.status}`);
+      console.error(`getAllCategories - Error al obtener categorías: ${response.status}`);
       return [];
     }
     
-    const data = await response.json();
-    console.log('Datos de categorías recibidos:', data);
+    // Obtener el texto de la respuesta para depuración
+    const responseText = await response.text();
+    console.log('getAllCategories - Respuesta en texto:', responseText);
+    
+    // Intentar parsear el texto como JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+      console.log('getAllCategories - Datos parseados correctamente');
+    } catch (parseError) {
+      console.error('getAllCategories - Error al parsear JSON:', parseError);
+      return [];
+    }
+    
+    console.log('getAllCategories - Datos de categorías recibidos:', data);
+    console.log('getAllCategories - Tipo de datos:', typeof data);
+    console.log('getAllCategories - Es array:', Array.isArray(data));
+    console.log('getAllCategories - Longitud:', data.length);
     
     if (!data || !Array.isArray(data) || data.length === 0) {
-      console.warn('No se encontraron categorías o el formato es incorrecto');
+      console.warn('getAllCategories - No se encontraron categorías o el formato es incorrecto');
       return [];
     }
     
     return data;
   } catch (error) {
-    console.error('Error al obtener categorías:', error);
+    console.error('getAllCategories - Error general:', error);
     return [];
   }
 }
