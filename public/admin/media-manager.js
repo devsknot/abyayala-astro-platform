@@ -126,15 +126,26 @@ export class MediaManager {
     // Si no hay fileId, devolver una cadena vacía
     if (!fileId) return '';
     
+    console.log('getPublicUrl - fileId original:', fileId);
+    
+    // Si ya es una URL completa, devolverla tal cual
+    if (fileId.startsWith('http://') || fileId.startsWith('https://')) {
+      console.log('getPublicUrl - URL completa detectada, devolviendo tal cual');
+      return fileId;
+    }
+    
     // Eliminar barras iniciales para evitar dobles barras
     const cleanFileId = fileId.startsWith('/') ? fileId.substring(1) : fileId;
+    console.log('getPublicUrl - cleanFileId:', cleanFileId);
     
     // En desarrollo local, usar la ruta tal cual
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.log('getPublicUrl - Entorno local detectado');
       return `/${cleanFileId}`;
     }
     
     // En producción, usar el dominio personalizado de R2
+    console.log('getPublicUrl - Entorno de producción, usando R2PublicUrl');
     return `${this.r2PublicUrl}/${cleanFileId}`;
   }
   

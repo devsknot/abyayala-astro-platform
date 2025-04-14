@@ -178,17 +178,26 @@ export class MediaLibrary {
       const fileType = file.mimeType || file.type || '';
       const isImage = fileType.startsWith('image/');
       
-      // Usar el ID del archivo en lugar de la ruta para generar la URL de la miniatura
-      // Esto evita problemas cuando file.path incluye '/api/media/'
-      const thumbnailUrl = isImage ? this.mediaManager.getPublicUrl(file.id) : '';
+      // Obtener el ID del archivo para generar la URL de la miniatura
+      const fileId = file.id || file.path;
       
-      const isSelected = this.selectedFile && this.selectedFile.id === file.id;
+      // Crear una instancia del gestor de medios para obtener la URL correcta
+      const mediaManager = new MediaManager();
+      
+      // Generar la URL de la miniatura usando el ID del archivo
+      const thumbnailUrl = isImage ? mediaManager.getPublicUrl(fileId) : '';
+      
+      // Verificar si el archivo está seleccionado
+      const isSelected = this.selectedFile && (this.selectedFile.id === file.id || this.selectedFile.path === file.path);
       
       return `
-        <div class="media-item ${isSelected ? 'border-blue-500 ring-2 ring-blue-300' : ''}" data-id="${file.id}">
+        <div class="media-item ${isSelected ? 'border-blue-500 ring-2 ring-blue-300' : ''}" 
+             data-id="${file.id || ''}" 
+             data-path="${file.path || ''}"
+             data-filename="${file.filename || file.name || ''}">
           <div class="media-preview">
             ${isImage 
-              ? `<img src="${thumbnailUrl}" alt="${file.filename || file.name}" loading="lazy">` 
+              ? `<img src="${thumbnailUrl}" alt="${file.filename || file.name}" loading="lazy" onerror="this.onerror=null; this.src='/img/placeholder-image.svg';">` 
               : `<div class="flex items-center justify-center h-full bg-gray-100">
                   <span class="text-3xl">📄</span>
                 </div>`
@@ -203,6 +212,48 @@ export class MediaLibrary {
     }).join('');
     
     this.mediaGrid.innerHTML = mediaItems;
+    
+    // Agregar eventos a los elementos de la galería
+    this.mediaGrid.querySelectorAll('.media-item').forEach(item => {
+      item.addEventListener('click', () => {
+        // Encontrar el archivo correspondiente
+        const fileId = item.dataset.id;
+        const filePath = item.dataset.path;
+        
+        // Buscar el archivo en la lista por id o path
+        const file = this.mediaFiles.find(f => 
+          (fileId && f.id === fileId) || (filePath && f.path === filePath)
+        );
+        
+        if (file) {
+          // Quitar selección anterior
+          this.mediaGrid.querySelectorAll('.media-item').forEach(i => 
+            i.classList.remove('border-blue-500', 'ring-2', 'ring-blue-300')
+          );
+          
+          // Agregar selección al elemento actual
+          item.classList.add('border-blue-500', 'ring-2', 'ring-blue-300');
+          
+          // Actualizar archivo seleccionado
+          this.selectFile(file);
+        }
+      });
+    });
+  }
+  
+  selectFile(file) {
+    this.selectedFile = file;
+    
+    // Asegurarse de que el archivo tenga las propiedades necesarias
+    if (!file.publicUrl) {
+      const mediaManager = new MediaManager();
+      file.publicUrl = mediaManager.getPublicUrl(file.id || file.path);
+    }
+    
+    // Llamar al callback de selección si existe
+    if (this.onSelect) {
+      this.onSelect(file);
+    }
   }
   
   filterMediaFiles() {
@@ -231,20 +282,6 @@ export class MediaLibrary {
     
     // Restaurar los archivos originales
     this.mediaFiles = originalFiles;
-  }
-  
-  selectFile(file) {
-    this.selectedFile = file;
-    
-    // Actualizar la interfaz para mostrar el archivo seleccionado
-    const mediaItems = this.mediaGrid.querySelectorAll('.media-item');
-    mediaItems.forEach(item => {
-      if (item.dataset.id === file.id) {
-        item.classList.add('border-blue-500', 'ring-2', 'ring-blue-300');
-      } else {
-        item.classList.remove('border-blue-500', 'ring-2', 'ring-blue-300');
-      }
-    });
   }
   
   // Utilidad para formatear el tamaño de archivo

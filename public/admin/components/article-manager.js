@@ -453,8 +453,14 @@ export class ArticleManager {
         <p class="text-lg font-medium">Cargando artículo...</p>
       </div>`);
       
+      // Mostrar notificación de carga
+      const loadingNotification = notifications.info('Cargando artículo...', 0);
+      
       // Obtener el artículo
       const article = await this.contentManager.getArticle(slug);
+      
+      // Cerrar notificación de carga
+      notifications.close(loadingNotification);
       
       // Guardar referencia al artículo actual
       this.currentArticle = article;
@@ -490,7 +496,19 @@ export class ArticleManager {
       
       // Actualizar la imagen destacada
       if (article.featured_image) {
+        console.log('Imagen destacada del artículo:', article.featured_image);
+        
+        // Crear instancia del gestor de medios
+        const mediaManager = new MediaManager();
+        
+        // Obtener la URL pública de la imagen
+        const imageUrl = mediaManager.getPublicUrl(article.featured_image);
+        console.log('URL pública de la imagen destacada:', imageUrl);
+        
+        // Actualizar la vista previa con la URL correcta
         this.updateFeaturedImagePreview(article.featured_image);
+        
+        // Guardar la ruta original de la imagen
         this.featuredImageInput.value = article.featured_image;
       } else {
         this.resetFeaturedImagePreview();
@@ -532,6 +550,61 @@ export class ArticleManager {
       notifications.error('Error al cargar el artículo. Por favor, intenta de nuevo.');
       this.showArticlesList();
     }
+  }
+
+  updateFeaturedImagePreview(imagePath) {
+    console.log('Actualizando vista previa de imagen destacada:', imagePath);
+    
+    // Si no hay ruta de imagen, mostrar mensaje de "No hay imagen seleccionada"
+    if (!imagePath) {
+      this.resetFeaturedImagePreview();
+      return;
+    }
+    
+    // Crear una instancia del gestor de medios para obtener la URL correcta
+    const mediaManager = new MediaManager();
+    
+    // Obtener la URL pública de la imagen
+    const imageUrl = mediaManager.getPublicUrl(imagePath);
+    console.log('URL pública generada:', imageUrl);
+    
+    // Actualizar la vista previa con la imagen
+    this.featuredImagePreview.innerHTML = `
+      <div class="relative w-full h-full flex items-center justify-center">
+        <img src="${imageUrl}" alt="Imagen destacada" class="max-h-full max-w-full object-contain">
+        <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+          <button type="button" class="remove-image-btn bg-red-500 text-white rounded-full p-2 shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `;
+    
+    // Agregar evento para eliminar la imagen
+    const removeButton = this.featuredImagePreview.querySelector('.remove-image-btn');
+    if (removeButton) {
+      removeButton.addEventListener('click', (e) => {
+        e.stopPropagation(); // Evitar que el clic se propague
+        this.resetFeaturedImagePreview();
+      });
+    }
+  }
+
+  resetFeaturedImagePreview() {
+    this.featuredImagePreview.innerHTML = `
+      <div class="flex flex-col items-center justify-center h-full">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300 mb-2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <circle cx="8.5" cy="8.5" r="1.5"></circle>
+          <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>
+        <span class="text-gray-500">No hay imagen seleccionada</span>
+      </div>
+    `;
+    this.featuredImageInput.value = '';
   }
   
   async deleteArticle(slug) {
@@ -587,38 +660,6 @@ export class ArticleManager {
         this.editor.setContent('');
       }
     }
-  }
-  
-  updateFeaturedImagePreview(imagePath) {
-    // Crear una instancia del gestor de medios para obtener la URL correcta
-    const mediaManager = new MediaManager();
-    
-    // Extraer el ID de la imagen (sin el dominio) si es una URL completa
-    let imageId = imagePath;
-    if (imagePath && imagePath.includes('https://')) {
-      // Si es una URL completa, extraer solo la parte de la ruta después del dominio
-      try {
-        const url = new URL(imagePath);
-        imageId = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-      } catch (e) {
-        console.warn('URL inválida:', imagePath);
-      }
-    }
-    
-    // Si ya es una URL completa y no se pudo extraer el ID, usar la URL tal cual
-    const imageUrl = imagePath && imagePath.includes('https://') && imageId === imagePath ? 
-      imagePath : mediaManager.getPublicUrl(imageId);
-    
-    this.featuredImagePreview.innerHTML = `
-      <img src="${imageUrl}" alt="Imagen destacada" class="max-h-full max-w-full object-contain">
-    `;
-  }
-  
-  resetFeaturedImagePreview() {
-    this.featuredImagePreview.innerHTML = `
-      <span class="text-gray-500">No hay imagen seleccionada</span>
-    `;
-    this.featuredImageInput.value = '';
   }
   
   validateArticleData(articleData) {
