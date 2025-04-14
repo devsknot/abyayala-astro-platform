@@ -48,15 +48,32 @@ export class ContentManager {
   // Obtener un artículo por su slug
   async getArticle(slug) {
     try {
-      const response = await fetch(`${this.apiBase}/articles/${slug}`, {
+      console.log(`ContentManager.getArticle - Solicitando artículo con slug: ${slug}`);
+      const url = `${this.apiBase}/articles/${slug}`;
+      console.log(`ContentManager.getArticle - URL de solicitud: ${url}`);
+      
+      const response = await fetch(url, {
         headers: this.getAuthHeaders()
       });
       
+      console.log(`ContentManager.getArticle - Código de respuesta: ${response.status}`);
+      
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        console.log('ContentManager.getArticle - Datos recibidos:', data);
+        return data;
       }
       
       console.error(`Error al obtener artículo: ${response.status}`);
+      
+      // Intentar leer el mensaje de error
+      try {
+        const errorData = await response.json();
+        console.error('Detalles del error:', errorData);
+      } catch (parseError) {
+        console.error('No se pudo parsear la respuesta de error');
+      }
+      
       return null;
     } catch (error) {
       console.error('Error al conectar con la API:', error);

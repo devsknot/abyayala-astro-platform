@@ -206,12 +206,17 @@ async function handleCreateArticle(articleData, env, headers) {
 // Obtener un artículo específico
 async function handleGetArticle(slug, env, headers) {
   try {
+    console.log(`Obteniendo artículo con slug: ${slug}`);
+    
     // Usar D1 para obtener el artículo
     const article = await env.DB.prepare(`
       SELECT * FROM articles WHERE slug = ?
     `).bind(slug).first();
     
+    console.log('Artículo recuperado de la base de datos:', article);
+    
     if (!article) {
+      console.log(`Artículo no encontrado con slug: ${slug}`);
       return new Response(JSON.stringify({ error: 'Artículo no encontrado' }), {
         status: 404,
         headers
@@ -228,6 +233,8 @@ async function handleGetArticle(slug, env, headers) {
       category: article.category,
       featured_image: article.featured_image // Mantener el mismo nombre que espera el frontend
     };
+    
+    console.log('Artículo transformado para el frontend:', transformedArticle);
     
     return new Response(JSON.stringify(transformedArticle), { headers });
   } catch (error) {
