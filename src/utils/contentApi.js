@@ -58,3 +58,20 @@ export async function getArticlesByCategory(category) {
     return [];
   }
 }
+
+/**
+ * Obtiene todas las categorías
+ * @returns {Promise<Array>} Lista de categorías
+ */
+export async function getAllCategories() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/content/categories`);
+    if (!response.ok) {
+      throw new Error(`Error al obtener categorías: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error al obtener categorías:', error);
+    return [];
+  }
+}

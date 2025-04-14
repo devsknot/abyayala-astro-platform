@@ -2,11 +2,14 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import NewsCard from '../components/NewsCard.astro';
 import CategoryTag from '../components/CategoryTag.astro';
-import { SITE_TITLE, SITE_DESCRIPTION, CATEGORIES } from '../consts';
-import { getAllArticles } from '../utils/contentApi.js';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import { getAllArticles, getAllCategories } from '../utils/contentApi.js';
 
 // Obtener artículos de la API
 const allArticles = await getAllArticles();
+
+// Obtener categorías de la API
+const categories = await getAllCategories();
 
 // Ordenar por fecha de publicación (más reciente primero)
 const sortedArticles = allArticles.sort(
@@ -79,14 +82,20 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
   <section class="categories-section">
     <div class="container">
       <h2 class="section-title">Explora por Categorías</h2>
-      <div class="categories-grid">
-        {CATEGORIES.map(category => (
-          <a href={`/category/${category.id}`} class="category-card">
-            <h3>{category.name}</h3>
-            <p>{category.description}</p>
-          </a>
-        ))}
-      </div>
+      {categories.length > 0 ? (
+        <div class="categories-grid">
+          {categories.map(category => (
+            <a href={`/category/${category.slug}`} class="category-card">
+              <h3>{category.name}</h3>
+              <p>{category.description}</p>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div class="no-content-message">
+          <p>No hay categorías disponibles en este momento. Por favor, vuelva a intentarlo más tarde.</p>
+        </div>
+      )}
     </div>
   </section>
 
