@@ -140,7 +140,11 @@ export class MediaLibrary {
       // Verificar si el archivo tiene mimeType o type (compatibilidad con datos de prueba)
       const fileType = file.mimeType || file.type || '';
       const isImage = fileType.startsWith('image/');
-      const thumbnailUrl = isImage ? this.mediaManager.generateThumbnailUrl(file.path) : '';
+      
+      // Usar el ID del archivo en lugar de la ruta para generar la URL de la miniatura
+      // Esto evita problemas cuando file.path incluye '/api/media/'
+      const thumbnailUrl = isImage ? this.mediaManager.getPublicUrl(file.id) : '';
+      
       const isSelected = this.selectedFile && this.selectedFile.id === file.id;
       
       return `
