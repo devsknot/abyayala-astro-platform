@@ -67,6 +67,7 @@ export async function getArticlesByCategory(category) {
 export async function getAllCategories() {
   try {
     const url = `${API_BASE_URL}/api/content/categories`;
+    console.log('Intentando obtener categorías desde:', url);
     
     const response = await fetch(url, {
       method: 'GET',
@@ -75,23 +76,69 @@ export async function getAllCategories() {
         'Content-Type': 'application/json'
       }
     });
+    console.log('Respuesta de la API:', response.status, response.statusText);
     
     if (!response.ok) {
-      throw new Error(`Error al obtener categorías: ${response.status}`);
+      console.error(`Error al obtener categorías: ${response.status}`);
+      return getFallbackCategories();
     }
     
     const data = await response.json();
+    console.log('Datos de categorías recibidos:', data);
     
     if (!data || !Array.isArray(data) || data.length === 0) {
       console.warn('No se encontraron categorías o el formato es incorrecto');
-      // En producción, no usamos datos de respaldo
-      return [];
+      return getFallbackCategories();
     }
     
     return data;
   } catch (error) {
     console.error('Error al obtener categorías:', error);
-    // En producción, no usamos datos de respaldo
-    return [];
+    return getFallbackCategories();
   }
+}
+
+/**
+ * Proporciona categorías de respaldo en caso de que la API falle
+ * @returns {Array} Lista de categorías de respaldo
+ */
+function getFallbackCategories() {
+  console.log('Usando categorías de respaldo');
+  return [
+    {
+      slug: 'agricultura',
+      name: 'Agricultura',
+      description: 'Noticias sobre prácticas agrícolas, cultivos y temporadas'
+    },
+    {
+      slug: 'comunidad',
+      name: 'Comunidad',
+      description: 'Historias de miembros, cooperación y testimonios'
+    },
+    {
+      slug: 'sostenibilidad',
+      name: 'Sostenibilidad',
+      description: 'Prácticas ecológicas, conservación y biodiversidad'
+    },
+    {
+      slug: 'politica-agraria',
+      name: 'Política Agraria',
+      description: 'Legislación, derechos y movimientos sociales'
+    },
+    {
+      slug: 'tecnologia-rural',
+      name: 'Tecnología Rural',
+      description: 'Innovaciones, herramientas y digitalización'
+    },
+    {
+      slug: 'cultura',
+      name: 'Cultura',
+      description: 'Tradiciones, gastronomía y artesanía'
+    },
+    {
+      slug: 'eventos',
+      name: 'Eventos',
+      description: 'Ferias, encuentros y capacitaciones'
+    }
+  ];
 }
