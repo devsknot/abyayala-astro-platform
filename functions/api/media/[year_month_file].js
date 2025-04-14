@@ -8,12 +8,11 @@ export async function onRequest(context) {
   // Reconstruir la ruta del archivo
   let fileId = yearMonthFile;
   
-  // Si la ruta contiene barras, es una ruta anidada que necesita ser procesada
-  if (yearMonthFile.includes('/')) {
-    // Ya está en formato correcto
-  } else if (yearMonthFile.includes('_')) {
+  // Si la ruta contiene guiones bajos, convertirlos a barras para R2
+  if (yearMonthFile.includes('_')) {
     // Convertir formato con guiones bajos a formato con barras
     fileId = yearMonthFile.replace(/_/g, '/');
+    console.log('Ruta convertida de guiones bajos a barras:', fileId);
   }
   
   console.log('Solicitando archivo con ruta:', fileId);
@@ -81,16 +80,26 @@ async function verifyAuthentication(request, env) {
 // Obtener un archivo multimedia de R2
 async function handleGetMedia(fileId, env) {
   try {
+    console.log('handleGetMedia - Intentando obtener archivo:', fileId);
+    
     // Si estamos en un entorno con R2 configurado
     if (env.R2_BUCKET) {
       try {
-        console.log('Intentando obtener archivo de R2:', fileId);
+        console.log('R2 configurado, intentando obtener archivo:', fileId);
         
         // Obtener el objeto de R2
         const object = await env.R2_BUCKET.get(fileId);
         
         if (object === null) {
           console.error('Archivo no encontrado en R2:', fileId);
+          
+          // Intentar listar objetos para depuración
+          try {
+            const objects = await env.R2_BUCKET.list();
+            console.log('Archivos disponibles en R2:', objects.objects.map(o => o.key));
+          } catch (listError) {
+            console.error('Error al listar archivos de R2:', listError);
+          }
           
           return new Response(JSON.stringify({ 
             success: false,

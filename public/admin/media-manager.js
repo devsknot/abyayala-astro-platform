@@ -97,10 +97,15 @@ export class MediaManager {
 
   // Obtener la URL para un archivo multimedia específico
   getMediaUrl(fileId) {
+    if (!fileId) return '';
+    
+    console.log('getMediaUrl - fileId original:', fileId);
+    
     // Si la ruta contiene barras (formato año/mes), reemplazarlas por guiones bajos
     // para que sea compatible con Cloudflare Pages Functions
     if (fileId && fileId.includes('/')) {
       const compatibleId = fileId.replace(/\//g, '_');
+      console.log('getMediaUrl - fileId convertido:', compatibleId);
       return `${this.apiBase}/${compatibleId}`;
     }
     
@@ -119,22 +124,30 @@ export class MediaManager {
     // Si no hay fileId, devolver una cadena vacía
     if (!fileId) return '';
     
+    console.log('getPublicUrl - fileId original:', fileId);
+    
     // Si el fileId ya es una ruta completa (comienza con /)
     if (fileId.startsWith('/')) {
       // Extraer el ID del archivo sin la barra inicial
       const id = fileId.substring(1);
+      console.log('getPublicUrl - ID extraído sin barra inicial:', id);
       
       // En desarrollo local, usar la ruta tal cual
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        console.log('getPublicUrl - Entorno local, devolviendo ruta original:', fileId);
         return fileId;
       }
       
       // En producción, usar el método getMediaUrl para manejar correctamente las rutas anidadas
-      return this.getMediaUrl(id);
+      const url = this.getMediaUrl(id);
+      console.log('getPublicUrl - URL final producción:', url);
+      return url;
     }
     
     // Si es un ID simple, usar el método getMediaUrl
-    return this.getMediaUrl(fileId);
+    const url = this.getMediaUrl(fileId);
+    console.log('getPublicUrl - URL final simple:', url);
+    return url;
   }
   
   // Determinar si un archivo es una imagen
