@@ -888,4 +888,19 @@ export class ArticleManager {
       notifications.error('No se pudieron cargar los autores');
     }
   }
+  
+  // Método para mostrar indicador de carga
+  showLoading(message = 'Cargando...') {
+    // Crear notificación de carga
+    this.loadingNotification = notifications.info(message, 0);
+  }
+  
+  // Método para ocultar indicador de carga
+  hideLoading() {
+    // Cerrar notificación de carga si existe
+    if (this.loadingNotification) {
+      notifications.close(this.loadingNotification);
+      this.loadingNotification = null;
+    }
+  }
 }
