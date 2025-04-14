@@ -3,8 +3,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import NewsCard from '../../components/NewsCard.astro';
 import { CATEGORIES } from '../../consts';
 import FormattedDate from '../../components/FormattedDate.astro';
+import { getArticlesByCategory } from '../../utils/contentApi.js';
 
-export function getStaticPaths() {
+export async function getStaticPaths() {
   return CATEGORIES.map(category => ({
     params: { category: category.id },
     props: { category },
@@ -13,154 +14,14 @@ export function getStaticPaths() {
 
 const { category } = Astro.props;
 
-// En un proyecto real, estas noticias vendrían filtradas de una colección de contenido
-// Aquí simulamos noticias para cada categoría
-const newsByCategory = {
-  'agricultura': [
-    {
-      title: "Cooperativa Abya Yala logra récord en producción de café orgánico",
-      description: "La cooperativa agraria Abya Yala ha alcanzado un nuevo récord en la producción de café orgánico, superando las expectativas del mercado nacional e internacional.",
-      pubDate: new Date('2025-03-15'),
-      category: "agricultura",
-      image: "/blog-placeholder-3.jpg",
-      slug: "record-cafe-organico"
-    },
-    {
-      title: "Nuevas variedades de maíz resistentes a la sequía",
-      description: "Investigadores del colectivo Abya Yala desarrollan variedades de maíz adaptadas a condiciones climáticas extremas, garantizando la seguridad alimentaria.",
-      pubDate: new Date('2025-03-05'),
-      category: "agricultura",
-      image: "/blog-placeholder-1.jpg",
-      slug: "variedades-maiz-resistentes"
-    },
-    {
-      title: "Calendario agrícola tradicional: Sabiduría ancestral para los cultivos",
-      description: "El colectivo Abya Yala recupera y difunde el conocimiento del calendario agrícola tradicional para optimizar los ciclos de siembra y cosecha.",
-      pubDate: new Date('2025-02-20'),
-      category: "agricultura",
-      image: "/blog-placeholder-5.jpg",
-      slug: "calendario-agricola-tradicional"
-    }
-  ],
-  'comunidad': [
-    {
-      title: "Mujeres rurales lideran proyecto de soberanía alimentaria",
-      description: "Un grupo de mujeres del colectivo Abya Yala ha puesto en marcha un ambicioso proyecto para garantizar la soberanía alimentaria en su comunidad.",
-      pubDate: new Date('2025-03-28'),
-      category: "comunidad",
-      image: "/blog-placeholder-1.jpg",
-      slug: "mujeres-soberania-alimentaria"
-    },
-    {
-      title: "Jóvenes retornan al campo: La nueva generación de agricultores",
-      description: "Cada vez más jóvenes deciden volver a sus comunidades rurales para dedicarse a la agricultura sostenible, revitalizando el campo.",
-      pubDate: new Date('2025-03-01'),
-      category: "comunidad",
-      image: "/blog-placeholder-4.jpg",
-      slug: "jovenes-retornan-campo"
-    }
-  ],
-  'sostenibilidad': [
-    {
-      title: "Nueva técnica de riego sostenible reduce el consumo de agua en un 40%",
-      description: "Agricultores del colectivo Abya Yala implementan innovadora técnica de riego que permite ahorrar agua y mejorar la calidad de los cultivos.",
-      pubDate: new Date('2025-03-20'),
-      category: "sostenibilidad",
-      image: "/blog-placeholder-4.jpg",
-      slug: "tecnica-riego-sostenible"
-    },
-    {
-      title: "Estudio revela beneficios de la agricultura regenerativa",
-      description: "Una investigación realizada por miembros del colectivo Abya Yala demuestra los múltiples beneficios de la agricultura regenerativa para el suelo y el medio ambiente.",
-      pubDate: new Date('2025-03-10'),
-      category: "sostenibilidad",
-      image: "/blog-placeholder-1.jpg",
-      slug: "beneficios-agricultura-regenerativa"
-    }
-  ],
-  'politica-agraria': [
-    {
-      title: "Nuevo decreto agrario: Análisis de su impacto en pequeños productores",
-      description: "Especialistas del colectivo Abya Yala analizan las implicaciones del reciente decreto agrario para los pequeños productores y comunidades rurales.",
-      pubDate: new Date('2025-03-26'),
-      category: "politica-agraria",
-      image: "/blog-placeholder-5.jpg",
-      slug: "analisis-decreto-agrario"
-    },
-    {
-      title: "Propuesta de ley para proteger semillas nativas",
-      description: "El colectivo Abya Yala presenta una propuesta de ley para proteger las semillas nativas y garantizar los derechos de los agricultores tradicionales.",
-      pubDate: new Date('2025-02-15'),
-      category: "politica-agraria",
-      image: "/blog-placeholder-2.jpg",
-      slug: "propuesta-ley-semillas"
-    }
-  ],
-  'tecnologia-rural': [
-    {
-      title: "Drones y agricultura de precisión: La revolución llega al campo",
-      description: "El colectivo Abya Yala incorpora tecnología de drones para optimizar la producción agrícola y reducir el impacto ambiental de sus actividades.",
-      pubDate: new Date('2025-03-18'),
-      category: "tecnologia-rural",
-      image: "/blog-placeholder-4.jpg",
-      slug: "drones-agricultura-precision"
-    },
-    {
-      title: "Aplicación móvil para monitoreo de cultivos",
-      description: "Desarrolladores del colectivo Abya Yala crean una aplicación móvil que permite a los agricultores monitorear sus cultivos y detectar problemas a tiempo.",
-      pubDate: new Date('2025-02-10'),
-      category: "tecnologia-rural",
-      image: "/blog-placeholder-3.jpg",
-      slug: "app-monitoreo-cultivos"
-    }
-  ],
-  'cultura': [
-    {
-      title: "Rescate de recetas tradicionales promueve la gastronomía local",
-      description: "Una iniciativa del colectivo Abya Yala busca preservar el patrimonio culinario de la región a través del rescate de recetas tradicionales.",
-      pubDate: new Date('2025-03-12'),
-      category: "cultura",
-      image: "/blog-placeholder-2.jpg",
-      slug: "rescate-recetas-tradicionales"
-    },
-    {
-      title: "Música y danzas del campo: Preservando la identidad cultural",
-      description: "El colectivo Abya Yala organiza talleres y presentaciones para mantener vivas las expresiones musicales y dancísticas tradicionales del campo.",
-      pubDate: new Date('2025-02-05'),
-      category: "cultura",
-      image: "/blog-placeholder-5.jpg",
-      slug: "musica-danzas-campo"
-    }
-  ],
-  'eventos': [
-    {
-      title: "Feria de semillas ancestrales reúne a más de 500 agricultores",
-      description: "La tradicional feria de intercambio de semillas ancestrales organizada por Abya Yala contó con la participación de agricultores de toda la región.",
-      pubDate: new Date('2025-03-25'),
-      category: "eventos",
-      image: "/blog-placeholder-2.jpg",
-      slug: "feria-semillas-ancestrales"
-    },
-    {
-      title: "Taller de agroecología atrae a jóvenes interesados en el campo",
-      description: "El reciente taller de agroecología organizado por Abya Yala ha despertado el interés de jóvenes que buscan alternativas sostenibles en el sector agrícola.",
-      pubDate: new Date('2025-03-22'),
-      category: "eventos",
-      image: "/blog-placeholder-3.jpg",
-      slug: "taller-agroecologia-jovenes"
-    },
-    {
-      title: "Conferencia internacional sobre soberanía alimentaria",
-      description: "Expertos de diversos países se reúnen en la conferencia organizada por Abya Yala para debatir sobre los desafíos y oportunidades de la soberanía alimentaria.",
-      pubDate: new Date('2025-02-28'),
-      category: "eventos",
-      image: "/blog-placeholder-1.jpg",
-      slug: "conferencia-soberania-alimentaria"
-    }
-  ]
-};
+// Obtener artículos de la API filtrados por categoría
+const newsItems = await getArticlesByCategory(category.id);
 
-const newsItems = newsByCategory[category.id] || [];
+// Ordenar por fecha de publicación (más reciente primero)
+newsItems.sort((a, b) => new Date(b.pubDate).valueOf() - new Date(a.pubDate).valueOf());
+
+// Mensaje para mostrar si no hay artículos
+const noArticlesMessage = `No hay artículos disponibles en la categoría ${category.name}. Por favor, vuelva a intentarlo más tarde.`;
 ---
 
 <BaseLayout title={`${category.name} - Abya Yala`} description={category.description}>
@@ -205,59 +66,34 @@ const newsItems = newsByCategory[category.id] || [];
         </div>
       </div>
       
-      <div class="category-stats">
-        <p><span class="news-count">{newsItems.length}</span> artículos en esta categoría</p>
-      </div>
-      
       {newsItems.length > 0 ? (
-        <div class="news-grid">
+        <div class="news-grid" id="news-grid">
           {newsItems.map(news => (
-            <NewsCard 
-              title={news.title}
-              description={news.description}
-              pubDate={news.pubDate}
-              category={news.category}
-              image={news.image}
-              slug={news.slug}
-            />
+            <div class="news-item" 
+              data-title={news.title.toLowerCase()}
+              data-date={new Date(news.pubDate).toISOString()}
+            >
+              <NewsCard 
+                title={news.title}
+                description={news.description}
+                pubDate={new Date(news.pubDate)}
+                category={news.category}
+                image={news.featured_image || "/blog-placeholder-1.jpg"}
+                slug={news.slug}
+              />
+            </div>
           ))}
         </div>
       ) : (
-        <div class="no-news">
-          <p>No hay noticias disponibles en esta categoría.</p>
+        <div class="no-content-message">
+          <p>{noArticlesMessage}</p>
         </div>
       )}
-    </div>
-  </section>
-  
-  <section class="other-categories">
-    <div class="container">
-      <h2>Explora otras categorías</h2>
-      <div class="categories-list">
-        {CATEGORIES.filter(cat => cat.id !== category.id).map(cat => (
-          <a href={`/category/${cat.id}`} class="category-link">
-            <span class="category-name">{cat.name}</span>
-            <span class="category-arrow">→</span>
-          </a>
-        ))}
-      </div>
-    </div>
-  </section>
-  
-  <section class="newsletter-section">
-    <div class="container">
-      <div class="newsletter-box">
-        <div class="newsletter-content">
-          <h2>Mantente informado</h2>
-          <p>Suscríbete a nuestro boletín para recibir las últimas noticias de {category.name} y otras categorías directamente en tu correo.</p>
-        </div>
-        <div class="newsletter-form">
-          <form>
-            <input type="email" placeholder="Tu correo electrónico" required />
-            <button type="submit">Suscribirse</button>
-          </form>
-          <p class="privacy-note">Al suscribirte, aceptas nuestra <a href="/privacy">política de privacidad</a>.</p>
-        </div>
+      
+      <div class="pagination">
+        <button class="pagination-btn" disabled>Anterior</button>
+        <span class="pagination-info">Página 1 de 1</span>
+        <button class="pagination-btn" disabled>Siguiente</button>
       </div>
     </div>
   </section>
@@ -268,20 +104,20 @@ const newsItems = newsByCategory[category.id] || [];
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 1rem;
+    padding: 0 1.5rem;
   }
   
   .category-header {
     background-color: var(--color-primary);
     color: white;
     padding: 3rem 0;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
     text-align: center;
   }
   
   .category-header h1 {
     font-size: 2.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
   }
   
   .category-header p {
@@ -292,18 +128,19 @@ const newsItems = newsByCategory[category.id] || [];
   }
   
   .category-content {
-    margin-bottom: 4rem;
+    padding-bottom: 4rem;
   }
   
   .category-filters {
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-between;
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background-color: var(--color-bg-alt, #f5f5f5);
-    border-radius: 8px;
     gap: 1rem;
+    margin-bottom: 2rem;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--color-bg-alt);
+    padding: 1rem;
+    border-radius: 8px;
   }
   
   .filter-group {
@@ -313,201 +150,125 @@ const newsItems = newsByCategory[category.id] || [];
   }
   
   .filter-select {
-    padding: 0.5rem 1rem;
-    border: 1px solid rgba(var(--gray-light), 1);
+    padding: 0.5rem;
     border-radius: 4px;
-    font-size: 1rem;
+    border: 1px solid var(--color-border);
     background-color: white;
+    font-size: 0.9rem;
   }
   
   .search-filter {
     display: flex;
-    align-items: center;
     flex: 1;
-    min-width: 250px;
+    max-width: 300px;
+    position: relative;
   }
   
-  #category-search {
-    padding: 0.5rem 1rem;
-    border: 1px solid rgba(var(--gray-light), 1);
-    border-right: none;
-    border-radius: 4px 0 0 4px;
-    font-size: 1rem;
+  .search-filter input {
     width: 100%;
+    padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    font-size: 0.9rem;
   }
   
-  #search-btn {
-    background-color: var(--color-primary);
-    color: white;
+  .search-filter button {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
     border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 0 4px 4px 0;
+    color: var(--color-text-muted);
     cursor: pointer;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   
-  .category-stats {
-    margin-bottom: 2rem;
-    color: var(--color-text-secondary, #666);
-    font-size: 1.1rem;
-  }
-  
-  .news-count {
-    font-weight: bold;
+  .search-filter button:hover {
     color: var(--color-primary);
   }
   
   .news-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
     margin-bottom: 2rem;
   }
   
-  .no-news {
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+  
+  .pagination-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  
+  .pagination-btn:not([disabled]):hover {
+    background-color: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+  }
+  
+  .pagination-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .pagination-info {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+  }
+  
+  .no-results {
     text-align: center;
     padding: 3rem 0;
-    font-size: 1.2rem;
-    color: var(--color-text);
-    background-color: var(--color-bg-alt, #f5f5f5);
-    border-radius: 8px;
+    color: var(--color-text-muted);
   }
   
-  .other-categories {
-    margin-bottom: 4rem;
+  .no-results p {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
   }
   
-  .other-categories h2 {
-    font-size: 1.8rem;
-    margin-bottom: 1.5rem;
+  /* No Content Message */
+  .no-content-message {
+    background-color: var(--color-bg-alt);
+    padding: 2rem;
     text-align: center;
-  }
-  
-  .categories-list {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1rem;
-  }
-  
-  .category-link {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem 1.5rem;
-    background-color: var(--color-background);
-    color: var(--color-text);
-    border: 1px solid rgba(var(--gray-light), 1);
     border-radius: 8px;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    min-width: 200px;
+    margin: 1rem 0;
   }
-  
-  .category-arrow {
-    opacity: 0;
-    transform: translateX(-10px);
-    transition: all 0.3s ease;
-  }
-  
-  .category-link:hover {
-    background-color: var(--color-primary);
-    color: white;
-    transform: translateY(-3px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  }
-  
-  .category-link:hover .category-arrow {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  
-  .newsletter-section {
-    margin-bottom: 4rem;
-  }
-  
-  .newsletter-box {
-    display: flex;
-    background-color: var(--color-primary);
-    color: white;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  
-  .newsletter-content {
-    flex: 1;
-    padding: 2.5rem;
-  }
-  
-  .newsletter-content h2 {
-    font-size: 1.8rem;
-    margin-bottom: 1rem;
-  }
-  
-  .newsletter-content p {
-    opacity: 0.9;
-    line-height: 1.6;
-  }
-  
-  .newsletter-form {
-    flex: 1;
-    padding: 2.5rem;
-    background-color: rgba(255, 255, 255, 0.1);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  
-  .newsletter-form form {
-    display: flex;
-    margin-bottom: 1rem;
-  }
-  
-  .newsletter-form input {
-    flex: 1;
-    padding: 0.75rem 1rem;
-    border: none;
-    border-radius: 4px 0 0 4px;
-    font-size: 1rem;
-  }
-  
-  .newsletter-form button {
-    padding: 0.75rem 1.5rem;
-    background-color: white;
-    color: var(--color-primary);
-    border: none;
-    border-radius: 0 4px 4px 0;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  
-  .newsletter-form button:hover {
-    background-color: #f0f0f0;
-  }
-  
-  .privacy-note {
-    font-size: 0.9rem;
-    opacity: 0.8;
-  }
-  
-  .privacy-note a {
-    color: white;
-    text-decoration: underline;
+
+  .no-content-message p {
+    font-size: 1.1rem;
+    color: var(--color-text-muted);
   }
   
   @media (max-width: 992px) {
-    .newsletter-box {
-      flex-direction: column;
+    .news-grid {
+      grid-template-columns: repeat(2, 1fr);
     }
     
     .category-filters {
       flex-direction: column;
+      align-items: flex-start;
     }
     
-    .filter-group, .search-filter {
+    .search-filter {
+      max-width: 100%;
       width: 100%;
     }
   }
@@ -524,7 +285,9 @@ const newsItems = newsByCategory[category.id] || [];
     .category-header p {
       font-size: 1rem;
     }
-    
+  }
+  
+  @media (max-width: 576px) {
     .news-grid {
       grid-template-columns: 1fr;
     }
@@ -534,113 +297,119 @@ const newsItems = newsByCategory[category.id] || [];
 <script>
   // Funcionalidad de filtrado y ordenación
   document.addEventListener('DOMContentLoaded', () => {
-    const sortSelect = document.getElementById('sort-by');
-    const timeSelect = document.getElementById('time-period');
-    const searchInput = document.getElementById('category-search');
-    const searchButton = document.getElementById('search-btn');
-    const newsGrid = document.querySelector('.news-grid');
-    const newsCards = document.querySelectorAll('.news-card');
-    const newsCount = document.querySelector('.news-count');
+    const sortBySelect = document.getElementById('sort-by') as HTMLSelectElement;
+    const timePeriodSelect = document.getElementById('time-period') as HTMLSelectElement;
+    const searchInput = document.getElementById('category-search') as HTMLInputElement;
+    const searchBtn = document.getElementById('search-btn');
+    const newsGrid = document.getElementById('news-grid');
+    const newsItems = document.querySelectorAll('.news-item');
     
-    if (sortSelect && newsGrid && newsCards.length) {
-      // Ordenar noticias
-      sortSelect.addEventListener('change', () => {
-        const sortValue = sortSelect.value;
-        const newsArray = Array.from(newsCards);
+    if (!sortBySelect || !timePeriodSelect || !searchInput || !searchBtn || !newsGrid) return;
+    
+    // Función para filtrar y ordenar los elementos
+    const filterAndSortItems = () => {
+      const sortBy = sortBySelect.value;
+      const timePeriod = timePeriodSelect.value;
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      
+      // Crear un array de los elementos para ordenar
+      const itemsArray = Array.from(newsItems);
+      
+      // Filtrar por período de tiempo
+      let filteredItems = itemsArray.filter(item => {
+        const dateStr = (item as HTMLElement).dataset.date;
+        if (!dateStr) return true;
         
-        newsArray.sort((a, b) => {
-          if (sortValue === 'date-desc') {
-            return new Date(b.dataset.date) - new Date(a.dataset.date);
-          } else if (sortValue === 'date-asc') {
-            return new Date(a.dataset.date) - new Date(b.dataset.date);
-          } else if (sortValue === 'title-asc') {
-            return a.dataset.title.localeCompare(b.dataset.title);
-          } else if (sortValue === 'title-desc') {
-            return b.dataset.title.localeCompare(a.dataset.title);
-          }
-          return 0;
-        });
+        const itemDate = new Date(dateStr);
+        const now = new Date();
         
-        // Limpiar el grid y agregar los elementos ordenados
-        newsGrid.innerHTML = '';
-        newsArray.forEach(card => {
-          newsGrid.appendChild(card);
-        });
+        switch (timePeriod) {
+          case 'month':
+            const oneMonthAgo = new Date(now.setMonth(now.getMonth() - 1));
+            return itemDate >= oneMonthAgo;
+          case 'quarter':
+            const threeMonthsAgo = new Date(now.setMonth(now.getMonth() - 3));
+            return itemDate >= threeMonthsAgo;
+          case 'year':
+            const oneYearAgo = new Date(now.setFullYear(now.getFullYear() - 1));
+            return itemDate >= oneYearAgo;
+          default:
+            return true;
+        }
       });
       
-      // Filtrar por período
-      if (timeSelect) {
-        timeSelect.addEventListener('change', () => {
-          const timeValue = timeSelect.value;
-          const now = new Date();
-          let visibleCount = 0;
-          
-          newsCards.forEach(card => {
-            const cardDate = new Date(card.dataset.date);
-            let show = true;
-            
-            if (timeValue === 'month') {
-              const oneMonthAgo = new Date(now);
-              oneMonthAgo.setMonth(now.getMonth() - 1);
-              show = cardDate >= oneMonthAgo;
-            } else if (timeValue === 'quarter') {
-              const threeMonthsAgo = new Date(now);
-              threeMonthsAgo.setMonth(now.getMonth() - 3);
-              show = cardDate >= threeMonthsAgo;
-            } else if (timeValue === 'year') {
-              const oneYearAgo = new Date(now);
-              oneYearAgo.setFullYear(now.getFullYear() - 1);
-              show = cardDate >= oneYearAgo;
-            }
-            
-            card.style.display = show ? 'block' : 'none';
-            if (show) visibleCount++;
-          });
-          
-          // Actualizar contador
-          if (newsCount) {
-            newsCount.textContent = visibleCount;
-          }
+      // Filtrar por término de búsqueda
+      if (searchTerm) {
+        filteredItems = filteredItems.filter(item => {
+          const title = (item as HTMLElement).dataset.title || '';
+          return title.includes(searchTerm);
         });
       }
       
-      // Buscar en la categoría
-      if (searchInput && searchButton) {
-        const searchHandler = () => {
-          const searchTerm = searchInput.value.toLowerCase().trim();
-          let visibleCount = 0;
-          
-          if (searchTerm === '') {
-            // Mostrar todas las noticias si no hay término de búsqueda
-            newsCards.forEach(card => {
-              card.style.display = 'block';
-              visibleCount++;
-            });
-          } else {
-            // Filtrar por término de búsqueda
-            newsCards.forEach(card => {
-              const title = card.dataset.title.toLowerCase();
-              const description = card.dataset.description.toLowerCase();
-              const show = title.includes(searchTerm) || description.includes(searchTerm);
-              
-              card.style.display = show ? 'block' : 'none';
-              if (show) visibleCount++;
-            });
-          }
-          
-          // Actualizar contador
-          if (newsCount) {
-            newsCount.textContent = visibleCount;
-          }
-        };
+      // Ordenar los elementos
+      filteredItems.sort((a, b) => {
+        const dateA = new Date((a as HTMLElement).dataset.date || '');
+        const dateB = new Date((b as HTMLElement).dataset.date || '');
+        const titleA = ((a as HTMLElement).dataset.title || '').toLowerCase();
+        const titleB = ((b as HTMLElement).dataset.title || '').toLowerCase();
         
-        searchButton.addEventListener('click', searchHandler);
-        searchInput.addEventListener('keyup', (e) => {
-          if (e.key === 'Enter') {
-            searchHandler();
-          }
+        switch (sortBy) {
+          case 'date-desc':
+            return dateB.getTime() - dateA.getTime();
+          case 'date-asc':
+            return dateA.getTime() - dateB.getTime();
+          case 'title-asc':
+            return titleA.localeCompare(titleB);
+          case 'title-desc':
+            return titleB.localeCompare(titleA);
+          default:
+            return 0;
+        }
+      });
+      
+      // Ocultar todos los elementos
+      itemsArray.forEach(item => {
+        (item as HTMLElement).style.display = 'none';
+      });
+      
+      // Mostrar los elementos filtrados y ordenados
+      if (filteredItems.length > 0) {
+        filteredItems.forEach(item => {
+          (item as HTMLElement).style.display = 'block';
         });
+        
+        // Reorganizar los elementos en el grid
+        filteredItems.forEach(item => {
+          newsGrid.appendChild(item);
+        });
+        
+        // Mostrar mensaje si no hay resultados
+        const noResultsEl = document.querySelector('.no-results');
+        if (noResultsEl) {
+          noResultsEl.remove();
+        }
+      } else {
+        // Mostrar mensaje si no hay resultados
+        if (!document.querySelector('.no-results')) {
+          const noResults = document.createElement('div');
+          noResults.className = 'no-results';
+          noResults.innerHTML = '<p>No se encontraron artículos con los criterios seleccionados.</p>';
+          newsGrid.parentNode?.insertBefore(noResults, newsGrid.nextSibling);
+        }
       }
-    }
+    };
+    
+    // Eventos para filtrar y ordenar
+    sortBySelect.addEventListener('change', filterAndSortItems);
+    timePeriodSelect.addEventListener('change', filterAndSortItems);
+    searchBtn.addEventListener('click', filterAndSortItems);
+    searchInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        filterAndSortItems();
+      }
+    });
+    
+    // Inicializar
+    filterAndSortItems();
   });
 </script>

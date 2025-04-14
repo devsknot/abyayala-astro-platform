@@ -34,92 +34,8 @@ const recentNews = sortedArticles.slice(3, 9).map(article => ({
   slug: article.slug
 }));
 
-// Usar datos hardcodeados como fallback si no hay suficientes artículos
-if (featuredNews.length === 0) {
-  featuredNews.push(
-    {
-      title: "Cooperativa Abya Yala logra récord en producción de café orgánico",
-      description: "La cooperativa agraria Abya Yala ha alcanzado un nuevo récord en la producción de café orgánico, superando las expectativas del mercado nacional e internacional.",
-      pubDate: new Date('2025-03-15'),
-      category: "agricultura",
-      image: "/blog-placeholder-3.jpg",
-      slug: "record-cafe-organico",
-      featured: true
-    },
-    {
-      title: "Nueva técnica de riego sostenible reduce el consumo de agua en un 40%",
-      description: "Agricultores del colectivo Abya Yala implementan innovadora técnica de riego que permite ahorrar agua y mejorar la calidad de los cultivos.",
-      pubDate: new Date('2025-03-20'),
-      category: "sostenibilidad",
-      image: "/blog-placeholder-4.jpg",
-      slug: "tecnica-riego-sostenible",
-      featured: false
-    },
-    {
-      title: "Feria de semillas ancestrales reúne a más de 500 agricultores",
-      description: "La tradicional feria de intercambio de semillas ancestrales organizada por Abya Yala contó con la participación de agricultores de toda la región.",
-      pubDate: new Date('2025-03-25'),
-      category: "eventos",
-      image: "/blog-placeholder-2.jpg",
-      slug: "feria-semillas-ancestrales",
-      featured: false
-    }
-  );
-}
-
-if (recentNews.length === 0) {
-  recentNews.push(
-    {
-      title: "Mujeres rurales lideran proyecto de soberanía alimentaria",
-      description: "Un grupo de mujeres del colectivo Abya Yala ha puesto en marcha un ambicioso proyecto para garantizar la soberanía alimentaria en su comunidad.",
-      pubDate: new Date('2025-03-28'),
-      category: "comunidad",
-      image: "/blog-placeholder-1.jpg",
-      slug: "mujeres-soberania-alimentaria"
-    },
-    {
-      title: "Nuevo decreto agrario: Análisis de su impacto en pequeños productores",
-      description: "Especialistas del colectivo Abya Yala analizan las implicaciones del reciente decreto agrario para los pequeños productores y comunidades rurales.",
-      pubDate: new Date('2025-03-26'),
-      category: "politica-agraria",
-      image: "/blog-placeholder-5.jpg",
-      slug: "analisis-decreto-agrario"
-    },
-    {
-      title: "Taller de agroecología atrae a jóvenes interesados en el campo",
-      description: "El reciente taller de agroecología organizado por Abya Yala ha despertado el interés de jóvenes que buscan alternativas sostenibles en el sector agrícola.",
-      pubDate: new Date('2025-03-22'),
-      category: "eventos",
-      image: "/blog-placeholder-3.jpg",
-      slug: "taller-agroecologia-jovenes"
-    },
-    {
-      title: "Drones y agricultura de precisión: La revolución llega al campo",
-      description: "El colectivo Abya Yala incorpora tecnología de drones para optimizar la producción agrícola y reducir el impacto ambiental de sus actividades.",
-      pubDate: new Date('2025-03-18'),
-      category: "tecnologia-rural",
-      image: "/blog-placeholder-4.jpg",
-      slug: "drones-agricultura-precision"
-    },
-    {
-      title: "Rescate de recetas tradicionales promueve la gastronomía local",
-      description: "Una iniciativa del colectivo Abya Yala busca preservar el patrimonio culinario de la región a través del rescate de recetas tradicionales.",
-      pubDate: new Date('2025-03-12'),
-      category: "cultura",
-      image: "/blog-placeholder-2.jpg",
-      slug: "rescate-recetas-tradicionales"
-    },
-    {
-      title: "Estudio revela beneficios de la agricultura regenerativa",
-      description: "Una investigación realizada por miembros del colectivo Abya Yala demuestra los múltiples beneficios de la agricultura regenerativa para el suelo y el medio ambiente.",
-      pubDate: new Date('2025-03-10'),
-      category: "sostenibilidad",
-      image: "/blog-placeholder-1.jpg",
-      slug: "beneficios-agricultura-regenerativa"
-    }
-  );
-}
-
+// Mensaje para mostrar si no hay artículos
+const noArticlesMessage = "No hay artículos disponibles en este momento. Por favor, vuelva a intentarlo más tarde.";
 ---
 
 <BaseLayout>
@@ -137,19 +53,25 @@ if (recentNews.length === 0) {
   <section class="featured-news">
     <div class="container">
       <h2 class="section-title">Noticias Destacadas</h2>
-      <div class="featured-grid">
-        {featuredNews.map(news => (
-          <NewsCard 
-            title={news.title}
-            description={news.description}
-            pubDate={news.pubDate}
-            category={news.category}
-            image={news.image}
-            slug={news.slug}
-            featured={news.featured}
-          />
-        ))}
-      </div>
+      {featuredNews.length > 0 ? (
+        <div class="featured-grid">
+          {featuredNews.map(news => (
+            <NewsCard 
+              title={news.title}
+              description={news.description}
+              pubDate={news.pubDate}
+              category={news.category}
+              image={news.image}
+              slug={news.slug}
+              featured={news.featured}
+            />
+          ))}
+        </div>
+      ) : (
+        <div class="no-content-message">
+          <p>{noArticlesMessage}</p>
+        </div>
+      )}
     </div>
   </section>
 
@@ -172,18 +94,24 @@ if (recentNews.length === 0) {
   <section class="recent-news">
     <div class="container">
       <h2 class="section-title">Noticias Recientes</h2>
-      <div class="news-grid">
-        {recentNews.map(news => (
-          <NewsCard 
-            title={news.title}
-            description={news.description}
-            pubDate={news.pubDate}
-            category={news.category}
-            image={news.image}
-            slug={news.slug}
-          />
-        ))}
-      </div>
+      {recentNews.length > 0 ? (
+        <div class="news-grid">
+          {recentNews.map(news => (
+            <NewsCard 
+              title={news.title}
+              description={news.description}
+              pubDate={news.pubDate}
+              category={news.category}
+              image={news.image}
+              slug={news.slug}
+            />
+          ))}
+        </div>
+      ) : (
+        <div class="no-content-message">
+          <p>{noArticlesMessage}</p>
+        </div>
+      )}
       <div class="view-all">
         <a href="/news" class="btn-primary">Ver todas las noticias</a>
       </div>
@@ -204,28 +132,26 @@ if (recentNews.length === 0) {
           <div class="stat-label">Años de Experiencia</div>
         </div>
         <div class="stat-card">
-          <div class="stat-number">30.000</div>
-          <div class="stat-label">Hectáreas Cultivadas</div>
+          <div class="stat-number">30+</div>
+          <div class="stat-label">Proyectos Comunitarios</div>
         </div>
         <div class="stat-card">
-          <div class="stat-number">12</div>
-          <div class="stat-label">Comunidades</div>
+          <div class="stat-number">1000+</div>
+          <div class="stat-label">Hectáreas Sostenibles</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Newsletter Section -->
-  <section class="newsletter-section">
+  <!-- Call to Action -->
+  <section class="cta-section">
     <div class="container">
-      <div class="newsletter-content">
-        <h2>Suscríbete a nuestro boletín</h2>
-        <p>Recibe las últimas noticias y actualizaciones del colectivo Abya Yala directamente en tu correo.</p>
-        <form class="newsletter-form">
-          <input type="email" placeholder="Tu correo electrónico" required />
-          <button type="submit" class="btn-primary">Suscribirse</button>
-        </form>
-      </div>
+      <h2>Únete a Nuestra Comunidad</h2>
+      <p>Recibe actualizaciones sobre nuestras actividades y noticias del sector agrario</p>
+      <form class="newsletter-form">
+        <input type="email" placeholder="Tu correo electrónico" required>
+        <button type="submit" class="btn-primary">Suscribirse</button>
+      </form>
     </div>
   </section>
 </BaseLayout>
@@ -236,21 +162,13 @@ if (recentNews.length === 0) {
     position: relative;
     height: 80vh;
     min-height: 500px;
-    background-image: url('/blog-placeholder-about.jpg');
+    background-image: url('/hero-agriculture.jpg');
     background-size: cover;
     background-position: center;
     color: white;
-    margin-bottom: 3rem;
-  }
-
-  .hero::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0.7));
+    display: flex;
+    align-items: center;
+    text-align: center;
   }
 
   .hero-overlay {
@@ -259,13 +177,14 @@ if (recentNews.length === 0) {
     left: 0;
     width: 100%;
     height: 100%;
+    background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7));
     display: flex;
     align-items: center;
-    text-align: center;
   }
 
   .hero h1 {
     font-size: 3.5rem;
+    font-weight: 700;
     margin-bottom: 1rem;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
   }
@@ -274,26 +193,17 @@ if (recentNews.length === 0) {
     font-size: 1.5rem;
     max-width: 800px;
     margin: 0 auto;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
   }
 
-  /* Container */
-  .container {
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-  }
-
-  /* Section Styles */
-  section {
-    margin-bottom: 5rem;
+  /* Featured News Section */
+  .featured-news {
+    padding: 4rem 0;
   }
 
   .section-title {
     font-size: 2rem;
     margin-bottom: 2rem;
-    text-align: center;
     position: relative;
     padding-bottom: 0.5rem;
   }
@@ -302,21 +212,24 @@ if (recentNews.length === 0) {
     content: '';
     position: absolute;
     bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
     width: 80px;
     height: 3px;
-    background-color: var(--color-primary);
+    background-color: var(--color-accent);
   }
 
-  /* Featured News */
   .featured-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr;
     gap: 1.5rem;
   }
 
   /* Categories Section */
+  .categories-section {
+    padding: 4rem 0;
+    background-color: var(--color-bg-alt);
+  }
+
   .categories-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -327,39 +240,33 @@ if (recentNews.length === 0) {
     background-color: var(--color-background);
     border-radius: 8px;
     padding: 1.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     text-decoration: none;
     color: var(--color-text);
-    border-left: 4px solid var(--color-primary);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
   }
 
   .category-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
   }
 
   .category-card h3 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
     font-size: 1.25rem;
+    margin-bottom: 0.5rem;
     color: var(--color-primary);
   }
 
-  .category-card p {
-    margin: 0;
-    font-size: 0.9rem;
-    line-height: 1.5;
+  /* Recent News Section */
+  .recent-news {
+    padding: 4rem 0;
   }
 
-  /* Recent News */
   .news-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
+    margin-bottom: 2rem;
   }
 
   .view-all {
@@ -368,22 +275,26 @@ if (recentNews.length === 0) {
   }
 
   .btn-primary {
-    display: inline-block;
     background-color: var(--color-primary);
     color: white;
     padding: 0.75rem 1.5rem;
     border-radius: 4px;
     text-decoration: none;
     font-weight: 600;
-    transition: background-color 0.3s ease, transform 0.2s ease;
+    display: inline-block;
+    transition: background-color 0.3s ease;
   }
 
   .btn-primary:hover {
-    background-color: var(--color-secondary);
-    transform: translateY(-2px);
+    background-color: var(--color-primary-dark);
   }
 
   /* Impact Section */
+  .impact-section {
+    padding: 4rem 0;
+    background-color: var(--color-bg-alt);
+  }
+
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -393,14 +304,9 @@ if (recentNews.length === 0) {
   .stat-card {
     background-color: var(--color-background);
     border-radius: 8px;
-    padding: 2rem 1rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 2rem 1.5rem;
     text-align: center;
-    transition: transform 0.3s ease;
-  }
-  
-  .stat-card:hover {
-    transform: translateY(-5px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   }
 
   .stat-number {
@@ -411,66 +317,64 @@ if (recentNews.length === 0) {
   }
 
   .stat-label {
-    font-size: 1rem;
-    color: var(--color-text);
+    font-size: 1.1rem;
+    color: var(--color-text-muted);
   }
 
-  /* Newsletter Section */
-  .newsletter-section {
-    background-color: var(--color-secondary);
-    color: white;
+  /* Call to Action Section */
+  .cta-section {
     padding: 4rem 0;
-    border-radius: 8px;
-    margin-bottom: 0;
-  }
-
-  .newsletter-content {
-    max-width: 600px;
-    margin: 0 auto;
+    background-color: var(--color-primary);
+    color: white;
     text-align: center;
   }
 
-  .newsletter-content h2 {
-    margin-top: 0;
-    margin-bottom: 1rem;
+  .cta-section h2 {
     font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .cta-section p {
+    font-size: 1.2rem;
+    max-width: 700px;
+    margin: 0 auto 2rem;
   }
 
   .newsletter-form {
     display: flex;
-    margin-top: 2rem;
-    gap: 0.5rem;
+    max-width: 500px;
+    margin: 0 auto;
   }
 
   .newsletter-form input {
     flex: 1;
     padding: 0.75rem 1rem;
     border: none;
-    border-radius: 4px;
+    border-radius: 4px 0 0 4px;
     font-size: 1rem;
   }
 
   .newsletter-form button {
     border: none;
+    border-radius: 0 4px 4px 0;
     cursor: pointer;
   }
 
-  /* Responsive Styles */
-  @media (max-width: 1200px) {
-    .container {
-      max-width: 100%;
-      padding: 0 1.25rem;
-    }
-    
-    .hero {
-      height: 70vh;
-    }
-    
-    .section-title {
-      font-size: 1.8rem;
-    }
+  /* No Content Message */
+  .no-content-message {
+    background-color: var(--color-bg-alt);
+    padding: 2rem;
+    text-align: center;
+    border-radius: 8px;
+    margin: 1rem 0;
   }
-  
+
+  .no-content-message p {
+    font-size: 1.1rem;
+    color: var(--color-text-muted);
+  }
+
+  /* Responsive Styles */
   @media (max-width: 992px) {
     .featured-grid {
       grid-template-columns: 1fr 1fr;
@@ -478,195 +382,57 @@ if (recentNews.length === 0) {
 
     .stats-grid {
       grid-template-columns: repeat(2, 1fr);
-      gap: 1.25rem;
     }
-    
-    .hero {
-      height: 60vh;
-      min-height: 400px;
-      margin-bottom: 2.5rem;
-    }
-    
+
     .hero h1 {
-      font-size: 3rem;
-    }
-    
-    .hero p {
-      font-size: 1.3rem;
-    }
-    
-    section {
-      margin-bottom: 4rem;
-    }
-    
-    .stat-number {
-      font-size: 2.2rem;
-    }
-    
-    .news-grid {
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      font-size: 2.8rem;
     }
   }
 
   @media (max-width: 768px) {
-    .hero {
-      height: 50vh;
-      min-height: 350px;
-      margin-bottom: 2rem;
-    }
-    
-    .hero h1 {
-      font-size: 2.5rem;
-    }
-
-    .hero p {
-      font-size: 1.2rem;
-      max-width: 90%;
-    }
-    
-    .section-title {
-      font-size: 1.6rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    .section-title::after {
-      width: 60px;
-      height: 2px;
-    }
-
-    .featured-grid {
-      grid-template-columns: 1fr;
-      gap: 1.25rem;
-    }
-    
-    .categories-grid {
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 1.25rem;
-    }
-    
-    .category-card {
-      padding: 1.25rem;
-    }
-    
-    .category-card h3 {
-      font-size: 1.1rem;
-    }
-    
-    .stat-card {
-      padding: 1.5rem 1rem;
-    }
-    
-    .stat-number {
-      font-size: 2rem;
-    }
-    
-    .stat-label {
-      font-size: 0.9rem;
-    }
-    
-    .newsletter-section {
-      padding: 3rem 0;
-    }
-    
-    .newsletter-content h2 {
-      font-size: 1.8rem;
+    .news-grid {
+      grid-template-columns: repeat(2, 1fr);
     }
 
     .newsletter-form {
       flex-direction: column;
-      gap: 0.75rem;
     }
 
     .newsletter-form input,
     .newsletter-form button {
       width: 100%;
+      border-radius: 4px;
     }
-    
-    section {
-      margin-bottom: 3rem;
+
+    .newsletter-form button {
+      margin-top: 1rem;
+    }
+
+    .hero {
+      height: 60vh;
+    }
+
+    .hero h1 {
+      font-size: 2.2rem;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
     }
   }
-  
+
   @media (max-width: 576px) {
-    .container {
-      padding: 0 1rem;
-    }
-    
-    .hero {
-      height: 45vh;
-      min-height: 300px;
-    }
-    
-    .hero h1 {
-      font-size: 2rem;
-      margin-bottom: 0.75rem;
-    }
-    
-    .hero p {
-      font-size: 1rem;
-    }
-    
-    .section-title {
-      font-size: 1.4rem;
-      margin-bottom: 1.25rem;
-    }
-    
+    .featured-grid,
     .news-grid {
       grid-template-columns: 1fr;
-      gap: 1rem;
     }
-    
-    .categories-grid {
-      grid-template-columns: 1fr;
+
+    .section-title {
+      font-size: 1.75rem;
     }
-    
-    .stats-grid {
-      grid-template-columns: 1fr;
-      gap: 1rem;
-    }
-    
-    .stat-card {
-      padding: 1.25rem 1rem;
-    }
-    
-    .newsletter-section {
-      padding: 2.5rem 0;
-      border-radius: 0;
-    }
-    
-    .newsletter-content h2 {
-      font-size: 1.5rem;
-    }
-    
-    .newsletter-content p {
-      font-size: 0.9rem;
-    }
-    
-    .btn-primary {
-      padding: 0.6rem 1.2rem;
-      font-size: 0.9rem;
-    }
-    
-    section {
-      margin-bottom: 2.5rem;
-    }
-  }
-  
-  @media (max-width: 400px) {
+
     .hero {
-      min-height: 250px;
-    }
-    
-    .hero h1 {
-      font-size: 1.8rem;
-    }
-    
-    .hero p {
-      font-size: 0.9rem;
-    }
-    
-    .section-title::after {
-      width: 50px;
+      height: 50vh;
     }
   }
 </style>
