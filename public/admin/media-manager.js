@@ -124,14 +124,16 @@ export class MediaManager {
     // Si no hay fileId, devolver una cadena vacía
     if (!fileId) return '';
     
+    // Eliminar barras iniciales para evitar dobles barras
+    const cleanFileId = fileId.startsWith('/') ? fileId.substring(1) : fileId;
+    
     // En desarrollo local, usar la ruta tal cual
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return fileId.startsWith('/') ? fileId : `/${fileId}`;
+      return `/${cleanFileId}`;
     }
     
     // En producción, usar la URL directa sin conversión de formato
-    // Esto evita problemas con la conversión de barras a guiones bajos
-    return `/api/media/${fileId}`;
+    return `/api/media/${cleanFileId}`;
   }
   
   // Determinar si un archivo es una imagen
