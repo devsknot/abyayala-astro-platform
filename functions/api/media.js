@@ -14,13 +14,14 @@ export async function onRequest(context) {
   }
   
   // Manejar diferentes rutas y métodos
-  if (path === '/list' || path === '/list/') {
+  if (path === '/list' || path === '/list/' || path === '') {
     return handleListMedia(env);
   } else if (path === '/upload' || path === '/upload/') {
     if (request.method === 'POST') {
       return handleUploadMedia(request, env);
     }
-  } else if (path.match(/^\/[a-zA-Z0-9-_]+$/)) {
+  } else if (path.match(/^\/[a-zA-Z0-9-_]+$/) || path.startsWith('/2025/')) {
+    // Extraer el fileId del path, eliminando la barra inicial
     const fileId = path.substring(1);
     
     if (request.method === 'DELETE') {
@@ -30,7 +31,12 @@ export async function onRequest(context) {
     }
   }
   
-  return new Response(JSON.stringify({ error: 'Ruta no encontrada' }), {
+  // Si llegamos aquí, la ruta no fue encontrada
+  return new Response(JSON.stringify({ 
+    error: 'Ruta no encontrada',
+    path: path,
+    url: url.toString()
+  }), {
     status: 404,
     headers: { 'Content-Type': 'application/json' }
   });
@@ -54,49 +60,81 @@ async function handleListMedia(env) {
   try {
     // Si estamos en un entorno con R2 configurado
     if (env.R2_BUCKET) {
-      const objects = await env.R2_BUCKET.list();
-      
-      const mediaFiles = objects.objects.map(object => ({
-        id: object.key,
-        name: object.key,
-        url: `/api/media/${object.key}`,
-        size: object.size,
-        type: getFileType(object.key),
-        lastModified: object.uploaded
-      }));
-      
-      return new Response(JSON.stringify({ files: mediaFiles }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
+      try {
+        const objects = await env.R2_BUCKET.list();
+        
+        // Transformar los objetos de R2 en un formato consistente
+        const mediaFiles = objects.objects.map(object => {
+          // Extraer el nombre del archivo de la clave
+          const name = object.key.split('/').pop();
+          
+          return {
+            id: object.key,
+            name: name,
+            path: `/${object.key}`,
+            url: `/api/media/${object.key}`,
+            size: object.size,
+            type: getFileType(object.key),
+            uploaded: object.uploaded
+          };
+        });
+        
+        return new Response(JSON.stringify({ 
+          success: true,
+          files: mediaFiles 
+        }), {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      } catch (r2Error) {
+        console.error('Error al acceder a R2:', r2Error);
+        
+        // Devolver respuesta de error detallada
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: 'Error al acceder al almacenamiento R2',
+          message: r2Error.message,
+          env: env.ENVIRONMENT || 'unknown'
+        }), {
+          status: 500,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
     } else {
-      // Si no hay R2 configurado, devolver datos de ejemplo
-      const mediaFiles = [
-        {
-          id: 'file1',
-          name: 'imagen1.jpg',
-          url: '/api/media/file1',
-          size: 1024 * 1024,
-          type: 'image/jpeg',
-          lastModified: new Date().toISOString()
-        },
-        {
-          id: 'file2',
-          name: 'documento1.pdf',
-          url: '/api/media/file2',
-          size: 2048 * 1024,
-          type: 'application/pdf',
-          lastModified: new Date().toISOString()
+      // Si no hay R2 configurado, devolver un error claro
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'R2 no está configurado',
+        message: 'El bucket de R2 no está disponible en este entorno',
+        env: env.ENVIRONMENT || 'unknown'
+      }), {
+        status: 503,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         }
-      ];
-      
-      return new Response(JSON.stringify({ files: mediaFiles }), {
-        headers: { 'Content-Type': 'application/json' }
       });
     }
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Error general en handleListMedia:', error);
+    
+    // Devolver respuesta de error general
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: 'Error interno del servidor',
+      message: error.message,
+      env: env.ENVIRONMENT || 'unknown'
+    }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     });
   }
 }
@@ -180,32 +218,81 @@ async function handleGetMedia(fileId, env) {
   try {
     // Si estamos en un entorno con R2 configurado
     if (env.R2_BUCKET) {
-      const object = await env.R2_BUCKET.get(fileId);
-      
-      if (!object) {
-        return new Response(JSON.stringify({ error: 'Archivo no encontrado' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' }
+      try {
+        // Obtener el objeto de R2
+        const object = await env.R2_BUCKET.get(fileId);
+        
+        if (object === null) {
+          return new Response(JSON.stringify({ 
+            success: false,
+            error: 'Archivo no encontrado',
+            fileId: fileId
+          }), {
+            status: 404,
+            headers: { 
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+        }
+        
+        // Determinar el tipo de contenido
+        const contentType = object.httpMetadata?.contentType || getFileType(fileId);
+        
+        // Devolver el archivo
+        return new Response(object.body, {
+          headers: { 
+            'Content-Type': contentType,
+            'Content-Length': object.size,
+            'Cache-Control': 'public, max-age=31536000',
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      } catch (r2Error) {
+        console.error('Error al acceder a R2:', r2Error);
+        
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: 'Error al acceder al archivo',
+          message: r2Error.message,
+          fileId: fileId
+        }), {
+          status: 500,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
         });
       }
-      
-      return new Response(object.body, {
-        headers: {
-          'Content-Type': object.httpMetadata.contentType || 'application/octet-stream',
-          'Cache-Control': 'public, max-age=31536000'
-        }
-      });
     } else {
-      // Si no hay R2 configurado, devolver un error
-      return new Response(JSON.stringify({ error: 'Servicio no disponible' }), {
+      // Si no hay R2 configurado, devolver un error claro
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'R2 no está configurado',
+        message: 'El bucket de R2 no está disponible en este entorno',
+        fileId: fileId
+      }), {
         status: 503,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
       });
     }
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('Error general en handleGetMedia:', error);
+    
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: 'Error interno del servidor',
+      message: error.message,
+      fileId: fileId
+    }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      }
     });
   }
 }
