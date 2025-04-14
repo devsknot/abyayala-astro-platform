@@ -4,8 +4,8 @@
  */
 
 // URL base de la API
-// Si no hay una variable de entorno, usamos la URL del servidor local
-const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:4321';
+// Si no hay una variable de entorno, usamos la URL de producción
+const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'https://colectivoabyayala.com';
 console.log('API_BASE_URL configurada como:', API_BASE_URL);
 
 /**
@@ -70,11 +70,20 @@ export async function getAllCategories() {
   console.log('API_BASE_URL:', API_BASE_URL);
   
   try {
+    // Intentar primero con la URL configurada
     const url = `${API_BASE_URL}/api/content/categories`;
     console.log('Intentando obtener categorías desde:', url);
     
-    const response = await fetch(url);
+    let response = await fetch(url);
     console.log('Respuesta de la API:', response.status, response.statusText);
+    
+    // Si falla, intentar con la URL de producción directamente
+    if (!response.ok && API_BASE_URL !== 'https://colectivoabyayala.com') {
+      const productionUrl = 'https://colectivoabyayala.com/api/content/categories';
+      console.log('Intentando con URL de producción directamente:', productionUrl);
+      response = await fetch(productionUrl);
+      console.log('Respuesta de la API de producción:', response.status, response.statusText);
+    }
     
     if (!response.ok) {
       throw new Error(`Error al obtener categorías: ${response.status}`);
