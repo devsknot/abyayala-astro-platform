@@ -458,6 +458,7 @@ export class ArticleManager {
       
       // Obtener el artículo
       const article = await this.contentManager.getArticle(slug);
+      console.log('Artículo cargado para edición:', article);
       
       // Cerrar notificación de carga
       notifications.close(loadingNotification);
@@ -498,19 +499,52 @@ export class ArticleManager {
       if (article.featured_image) {
         console.log('Imagen destacada del artículo:', article.featured_image);
         
-        // Crear instancia del gestor de medios
-        const mediaManager = new MediaManager();
-        
-        // Obtener la URL pública de la imagen
-        const imageUrl = mediaManager.getPublicUrl(article.featured_image);
-        console.log('URL pública de la imagen destacada:', imageUrl);
-        
-        // Actualizar la vista previa con la URL correcta
-        this.updateFeaturedImagePreview(article.featured_image);
-        
-        // Guardar la ruta original de la imagen
-        this.featuredImageInput.value = article.featured_image;
+        try {
+          // Crear instancia del gestor de medios
+          const mediaManager = new MediaManager();
+          
+          // Obtener la URL pública de la imagen
+          const imageUrl = mediaManager.getPublicUrl(article.featured_image);
+          console.log('URL pública de la imagen destacada:', imageUrl);
+          
+          // Verificar si la imagen existe (solo en desarrollo)
+          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.log('Verificando existencia de imagen en desarrollo local...');
+            
+            // Intentar cargar la imagen para verificar si existe
+            const img = new Image();
+            img.onload = () => {
+              console.log('Imagen cargada correctamente:', imageUrl);
+              // La imagen existe, actualizar la vista previa
+              this.updateFeaturedImagePreview(article.featured_image);
+            };
+            
+            img.onerror = () => {
+              console.warn('Error al cargar la imagen:', imageUrl);
+              // La imagen no existe, intentar con otra ruta
+              const alternativeUrl = article.featured_image.startsWith('/') 
+                ? article.featured_image 
+                : `/${article.featured_image}`;
+              
+              console.log('Intentando con ruta alternativa:', alternativeUrl);
+              this.updateFeaturedImagePreview(alternativeUrl);
+            };
+            
+            img.src = imageUrl;
+          } else {
+            // En producción, confiar en la URL generada
+            this.updateFeaturedImagePreview(article.featured_image);
+          }
+          
+          // Guardar la ruta original de la imagen
+          this.featuredImageInput.value = article.featured_image;
+        } catch (imageError) {
+          console.error('Error al procesar la imagen destacada:', imageError);
+          this.resetFeaturedImagePreview();
+          notifications.warning('No se pudo cargar la imagen destacada del artículo.');
+        }
       } else {
+        console.log('El artículo no tiene imagen destacada');
         this.resetFeaturedImagePreview();
         this.featuredImageInput.value = '';
       }
@@ -571,7 +605,8 @@ export class ArticleManager {
     // Actualizar la vista previa con la imagen
     this.featuredImagePreview.innerHTML = `
       <div class="relative w-full h-full flex items-center justify-center">
-        <img src="${imageUrl}" alt="Imagen destacada" class="max-h-full max-w-full object-contain">
+        <img src="${imageUrl}" alt="Imagen destacada" class="max-h-full max-w-full object-contain" 
+             onerror="this.onerror=null; this.src='/img/placeholder-image.svg'; console.error('Error al cargar imagen destacada, usando placeholder');">
         <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
           <button type="button" class="remove-image-btn bg-red-500 text-white rounded-full p-2 shadow-lg">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
