@@ -15,7 +15,10 @@ export async function onRequest(context) {
     console.log('Ruta convertida de guiones bajos a barras:', fileId);
   }
   
-  console.log('Solicitando archivo con ruta:', fileId);
+  // Asegurarse de que no hay dobles barras
+  fileId = fileId.replace(/\/\//g, '/');
+  
+  console.log('Solicitando archivo con ruta final:', fileId);
   
   // Manejar diferentes métodos
   if (request.method === 'GET') {
@@ -104,6 +107,29 @@ async function handleGetMedia(fileId, env) {
           
           if (similarObjects.length > 0) {
             console.log('Objetos similares encontrados:', similarObjects.map(o => o.key));
+            
+            // Si no encontramos el objeto exacto pero hay uno similar, usarlo
+            if (similarObjects.length === 1) {
+              const similarObject = await env.R2_BUCKET.get(similarObjects[0].key);
+              if (similarObject) {
+                console.log('Usando objeto similar:', similarObjects[0].key);
+                
+                // Determinar el tipo de contenido
+                const contentType = similarObject.httpMetadata?.contentType || getFileType(similarObjects[0].key);
+                
+                console.log('Archivo similar encontrado, devolviendo con tipo:', contentType);
+                
+                // Devolver el archivo
+                return new Response(similarObject.body, {
+                  headers: { 
+                    'Content-Type': contentType,
+                    'Content-Length': similarObject.size,
+                    'Cache-Control': 'public, max-age=31536000',
+                    'Access-Control-Allow-Origin': '*'
+                  }
+                });
+              }
+            }
           }
         } catch (listError) {
           console.error('Error al listar objetos de R2:', listError);
