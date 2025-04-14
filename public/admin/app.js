@@ -1,6 +1,7 @@
 // Aplicación principal del CMS
 import { ArticleManager } from './components/article-manager.js';
 import { MediaLibrary } from './components/media-library.js';
+import { ContentManager } from './content-manager.js';
 
 // Componentes del panel de administración
 const components = {
