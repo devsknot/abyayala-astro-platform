@@ -81,11 +81,33 @@ async function verifyAuthentication(request, env) {
 async function handleGetMedia(fileId, env) {
   try {
     console.log('handleGetMedia - Intentando obtener archivo:', fileId);
+    console.log('Información del entorno:', {
+      hasBucket: !!env.R2_BUCKET,
+      environment: env.ENVIRONMENT || 'no definido'
+    });
     
     // Si estamos en un entorno con R2 configurado
     if (env.R2_BUCKET) {
       try {
         console.log('R2 configurado, intentando obtener archivo:', fileId);
+        
+        // Listar todos los objetos en el bucket para depuración
+        try {
+          const objects = await env.R2_BUCKET.list();
+          console.log('Objetos en R2:', objects.objects.map(o => o.key));
+          
+          // Buscar si existe un objeto con una clave similar
+          const similarObjects = objects.objects.filter(o => 
+            o.key.includes(fileId.split('/').pop()) || 
+            fileId.includes(o.key.split('/').pop())
+          );
+          
+          if (similarObjects.length > 0) {
+            console.log('Objetos similares encontrados:', similarObjects.map(o => o.key));
+          }
+        } catch (listError) {
+          console.error('Error al listar objetos de R2:', listError);
+        }
         
         // Obtener el objeto de R2
         const object = await env.R2_BUCKET.get(fileId);
