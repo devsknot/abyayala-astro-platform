@@ -2,7 +2,7 @@
 import { ContentManager } from '../content-manager.js';
 import { ContentEditor } from './editor.js';
 import { MediaLibrary } from './media-library.js';
-import { MediaManager } from './media-manager.js';
+import { MediaManager } from '../media-manager.js';
 
 export class ArticleManager {
   constructor(container) {
