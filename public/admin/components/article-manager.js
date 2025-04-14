@@ -2,6 +2,7 @@
 import { ContentManager } from '../content-manager.js';
 import { ContentEditor } from './editor.js';
 import { MediaLibrary } from './media-library.js';
+import { MediaManager } from './media-manager.js';
 
 export class ArticleManager {
   constructor(container) {
@@ -80,7 +81,31 @@ export class ArticleManager {
                 <div class="featured-image-preview bg-gray-100 border rounded-lg p-4 flex items-center justify-center h-40 mb-2">
                   <span class="text-gray-500">No hay imagen seleccionada</span>
                 </div>
-                <button type="button" class="btn-primary select-image-btn">Seleccionar imagen</button>
+                
+                <div class="flex space-x-2 mb-2">
+                  <button type="button" class="btn-primary select-image-btn">Seleccionar imagen</button>
+                  <button type="button" class="btn-secondary toggle-gallery-btn">Mostrar galería</button>
+                  <label class="btn-secondary cursor-pointer">
+                    Subir imagen
+                    <input type="file" class="hidden upload-image-input" accept="image/*">
+                  </label>
+                </div>
+                
+                <div class="image-gallery hidden bg-gray-50 border rounded-lg p-3 mb-2">
+                  <div class="flex justify-between items-center mb-2">
+                    <h4 class="font-medium">Galería de imágenes</h4>
+                    <button type="button" class="text-gray-500 hover:text-gray-700 close-gallery-btn">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="gallery-grid grid grid-cols-4 gap-2 max-h-60 overflow-y-auto">
+                    <div class="loading">Cargando imágenes...</div>
+                  </div>
+                </div>
+                
                 <input type="hidden" id="article-image" value="">
               </div>
             </div>
@@ -107,6 +132,7 @@ export class ArticleManager {
     this.editorContainer = this.container.querySelector('#article-content-editor');
     this.featuredImagePreview = this.container.querySelector('.featured-image-preview');
     this.featuredImageInput = this.container.querySelector('#article-image');
+    this.galleryGrid = this.container.querySelector('.gallery-grid');
     
     // Configurar eventos
     this.setupEvents();
@@ -143,6 +169,82 @@ export class ArticleManager {
         // Guardar la ruta de la imagen
         this.featuredImageInput.value = file.path;
       });
+    });
+    
+    // Evento para mostrar la galería de imágenes
+    this.container.querySelector('.toggle-gallery-btn').addEventListener('click', async () => {
+      const gallery = this.container.querySelector('.image-gallery');
+      const isHidden = gallery.classList.contains('hidden');
+      
+      if (isHidden) {
+        // Si vamos a mostrar la galería, cargar las imágenes
+        await this.loadGalleryImages();
+      }
+      
+      this.toggleImageGallery();
+    });
+    
+    // Evento para cerrar la galería de imágenes
+    this.container.querySelector('.close-gallery-btn').addEventListener('click', () => {
+      this.toggleImageGallery();
+    });
+    
+    // Evento para subir imagen
+    this.container.querySelector('.upload-image-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      try {
+        // Mostrar indicador de carga
+        this.featuredImagePreview.innerHTML = `
+          <div class="flex flex-col items-center justify-center">
+            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500 mb-2"></div>
+            <span class="text-gray-500">Subiendo imagen...</span>
+          </div>
+        `;
+        
+        // Crear una instancia del gestor de medios
+        const mediaManager = new MediaManager();
+        
+        // Subir el archivo
+        const result = await mediaManager.uploadFile(file);
+        
+        // Actualizar la vista previa con la imagen subida
+        this.updateFeaturedImagePreview(result.path);
+        
+        // Guardar la ruta de la imagen
+        this.featuredImageInput.value = result.path;
+        
+        // Si la galería está visible, recargar las imágenes
+        if (!this.container.querySelector('.image-gallery').classList.contains('hidden')) {
+          await this.loadGalleryImages();
+        }
+      } catch (error) {
+        console.error('Error al subir imagen:', error);
+        alert('Error al subir la imagen. Por favor, intenta de nuevo.');
+        this.resetFeaturedImagePreview();
+      } finally {
+        // Limpiar el input de archivo
+        e.target.value = '';
+      }
+    });
+    
+    // Evento para seleccionar imagen desde la galería
+    this.galleryGrid.addEventListener('click', (e) => {
+      const imageItem = e.target.closest('.gallery-item');
+      if (!imageItem) return;
+      
+      // Obtener la ruta de la imagen
+      const imagePath = imageItem.dataset.path;
+      
+      // Actualizar la vista previa
+      this.updateFeaturedImagePreview(imagePath);
+      
+      // Guardar la ruta de la imagen
+      this.featuredImageInput.value = imagePath;
+      
+      // Cerrar la galería
+      this.toggleImageGallery();
     });
     
     // Evento para guardar el artículo
@@ -524,5 +626,49 @@ export class ArticleManager {
     };
     
     return categories[categoryId] || categoryId;
+  }
+  
+  toggleImageGallery() {
+    const gallery = this.container.querySelector('.image-gallery');
+    gallery.classList.toggle('hidden');
+  }
+  
+  // Cargar imágenes para la galería
+  async loadGalleryImages() {
+    try {
+      // Mostrar indicador de carga
+      this.galleryGrid.innerHTML = `<div class="loading col-span-4 text-center py-4">Cargando imágenes...</div>`;
+      
+      // Crear una instancia del gestor de medios
+      const mediaManager = new MediaManager();
+      
+      // Obtener los archivos de medios
+      const mediaFiles = await mediaManager.getMediaFiles();
+      
+      // Filtrar solo imágenes
+      const imageFiles = mediaFiles.filter(file => 
+        file.type.startsWith('image/') || 
+        file.path.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+      );
+      
+      // Renderizar la galería
+      if (imageFiles.length === 0) {
+        this.galleryGrid.innerHTML = `<div class="col-span-4 text-center py-4 text-gray-500">No hay imágenes disponibles</div>`;
+        return;
+      }
+      
+      // Crear elementos para cada imagen
+      this.galleryGrid.innerHTML = imageFiles.map(file => `
+        <div class="gallery-item cursor-pointer border rounded-lg overflow-hidden hover:border-blue-500 transition-colors" data-path="${file.path}">
+          <div class="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+            <img src="${file.path}" alt="${file.name}" class="w-full h-full object-cover">
+          </div>
+          <div class="p-1 text-xs truncate text-center">${file.name}</div>
+        </div>
+      `).join('');
+    } catch (error) {
+      console.error('Error al cargar imágenes:', error);
+      this.galleryGrid.innerHTML = `<div class="col-span-4 text-center py-4 text-red-500">Error al cargar imágenes</div>`;
+    }
   }
 }
