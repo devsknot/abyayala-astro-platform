@@ -311,6 +311,9 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       });
     }
     
+    console.log('Datos recibidos para actualizar artículo:', JSON.stringify(articleData, null, 2));
+    console.log('Autor recibido:', articleData.author);
+    
     // Verificar que el slug exista
     const existingArticle = await env.DB.prepare(`
       SELECT slug FROM articles WHERE slug = ?
@@ -331,6 +334,19 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       pubDate = new Date(pubDate).toISOString();
     }
     
+    // Convertir author_id a número si es una cadena
+    let authorId = null;
+    if (articleData.author) {
+      // Intentar convertir a número si es una cadena
+      authorId = parseInt(articleData.author, 10);
+      // Si no es un número válido, usar el valor original
+      if (isNaN(authorId)) {
+        authorId = articleData.author;
+      }
+    }
+    
+    console.log('Autor procesado para la base de datos:', authorId);
+    
     // Actualizar el artículo en D1
     const result = await env.DB.prepare(`
       UPDATE articles SET
@@ -349,9 +365,11 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       pubDate,
       articleData.category || '',
       articleData.featured_image || '',
-      articleData.author || null,
+      authorId,
       slug
     ).run();
+    
+    console.log('Resultado de la actualización:', result);
     
     // Obtener el artículo actualizado
     const article = await env.DB.prepare(`
@@ -367,10 +385,27 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       WHERE a.slug = ?
     `).bind(slug).first();
     
+    console.log('Artículo recuperado después de actualizar:', article);
+    
+    // Transformar el artículo para incluir información del autor en un formato más accesible
+    const transformedArticle = {
+      ...article,
+      author_info: article.author_id ? {
+        id: article.author_id,
+        name: article.author_name,
+        slug: article.author_slug,
+        bio: article.author_bio,
+        avatar: article.author_avatar,
+        social_media: article.author_social_media
+      } : null
+    };
+    
+    console.log('Artículo transformado para respuesta:', transformedArticle);
+    
     return new Response(JSON.stringify({
       success: true,
       message: 'Artículo actualizado correctamente',
-      article
+      article: transformedArticle
     }), {
       status: 200,
       headers
