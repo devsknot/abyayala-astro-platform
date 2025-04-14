@@ -96,7 +96,18 @@ async function handleGetArticle(slug, env, headers) {
       });
     }
     
-    return new Response(JSON.stringify(article), { headers });
+    // Transformar los nombres de los campos para que coincidan con lo que espera el frontend
+    const transformedArticle = {
+      slug: article.slug,
+      title: article.title,
+      description: article.description,
+      content: article.content,
+      pubDate: article.pub_date, // Transformar pub_date a pubDate
+      category: article.category,
+      heroImage: article.hero_image // Transformar hero_image a heroImage
+    };
+    
+    return new Response(JSON.stringify(transformedArticle), { headers });
   } catch (error) {
     console.error('Error al obtener artículo:', error);
     
