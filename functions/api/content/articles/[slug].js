@@ -104,7 +104,7 @@ async function handleGetArticle(slug, env, headers) {
       content: article.content,
       pubDate: article.pub_date, // Transformar pub_date a pubDate
       category: article.category,
-      featuredImage: article.featured_image // Transformar featured_image a featuredImage
+      featured_image: article.featured_image // Mantener el mismo nombre
     };
     
     return new Response(JSON.stringify(transformedArticle), { headers });
@@ -242,7 +242,7 @@ function getFallbackArticle(slug) {
       content: '# Récord en producción de café orgánico\n\nLa cooperativa agraria Abya Yala ha alcanzado un nuevo récord en la producción de café orgánico, superando las expectativas del mercado nacional e internacional.',
       pubDate: '2025-04-02T00:00:00.000Z',
       category: 'agricultura',
-      featuredImage: '/2025/04/cafe-organico.jpg'
+      featured_image: '/2025/04/cafe-organico.jpg'
     },
     'innovacion-en-riego-sostenible-para-pequenos-productores': {
       slug: 'innovacion-en-riego-sostenible-para-pequenos-productores',
@@ -251,7 +251,7 @@ function getFallbackArticle(slug) {
       content: '# Nueva técnica de riego sostenible\n\nUn grupo de agricultores del colectivo Abya Yala ha implementado con éxito un sistema de riego por goteo subterráneo que ha permitido reducir el consumo de agua en un 40%.',
       pubDate: '2025-03-20T00:00:00.000Z',
       category: 'tecnologia-rural',
-      featuredImage: '/2025/04/riego-sostenible.jpg'
+      featured_image: '/2025/04/riego-sostenible.jpg'
     },
     'feria-de-intercambio-de-semillas-promueve-biodiversidad': {
       slug: 'feria-de-intercambio-de-semillas-promueve-biodiversidad',
@@ -260,7 +260,7 @@ function getFallbackArticle(slug) {
       content: '# Feria de semillas ancestrales\n\nEl pasado fin de semana se celebró con gran éxito la primera feria de intercambio de semillas ancestrales organizada por nuestro colectivo. Más de 500 agricultores de la región participaron en este evento que busca preservar la biodiversidad agrícola local.',
       pubDate: '2025-03-25T00:00:00.000Z',
       category: 'eventos',
-      featuredImage: '/2025/04/feria-semillas.jpg'
+      featured_image: '/2025/04/feria-semillas.jpg'
     },
     'reunion-anual-de-cooperativas-define-agenda-2025': {
       slug: 'reunion-anual-de-cooperativas-define-agenda-2025',
@@ -269,7 +269,7 @@ function getFallbackArticle(slug) {
       content: '# Cooperativas definen agenda 2025\n\nEn un encuentro histórico, representantes de 12 cooperativas agrarias de la región se reunieron en la sede de Abya Yala para definir una agenda común de trabajo para el año 2025, enfocada en la soberanía alimentaria y la agroecología.',
       pubDate: '2025-04-10T00:00:00.000Z',
       category: 'cooperativismo',
-      featuredImage: '/2025/04/cooperativa-reunion.jpg'
+      featured_image: '/2025/04/cooperativa-reunion.jpg'
     }
   };
   
