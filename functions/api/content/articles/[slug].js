@@ -104,7 +104,8 @@ async function handleGetArticle(slug, env, headers) {
       content: article.content,
       pubDate: article.pub_date, // Transformar pub_date a pubDate
       category: article.category,
-      featured_image: article.featured_image // Mantener el mismo nombre
+      featured_image: article.featured_image, // Mantener el mismo nombre
+      author_id: article.author_id // Incluir el ID del autor
     };
     
     return new Response(JSON.stringify(transformedArticle), { headers });
