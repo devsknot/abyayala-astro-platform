@@ -5,6 +5,8 @@ export async function onRequest(context) {
   // Obtener la ruta completa del archivo
   const yearMonthFile = params.year_month_file || '';
   
+  console.log('Parámetro original recibido:', yearMonthFile);
+  
   // Reconstruir la ruta del archivo
   let fileId = yearMonthFile;
   
@@ -99,80 +101,96 @@ async function handleGetMedia(fileId, env) {
           const objects = await env.R2_BUCKET.list();
           console.log('Objetos en R2:', objects.objects.map(o => o.key));
           
-          // Buscar si existe un objeto con una clave similar
-          const similarObjects = objects.objects.filter(o => 
-            o.key.includes(fileId.split('/').pop()) || 
-            fileId.includes(o.key.split('/').pop())
-          );
+          // Intentar encontrar el objeto exacto primero
+          let object = await env.R2_BUCKET.get(fileId);
           
-          if (similarObjects.length > 0) {
-            console.log('Objetos similares encontrados:', similarObjects.map(o => o.key));
+          // Si no se encuentra, intentar con variaciones de la ruta
+          if (object === null) {
+            console.log('Objeto no encontrado con la ruta exacta, intentando variaciones...');
             
-            // Si no encontramos el objeto exacto pero hay uno similar, usarlo
-            if (similarObjects.length === 1) {
-              const similarObject = await env.R2_BUCKET.get(similarObjects[0].key);
-              if (similarObject) {
-                console.log('Usando objeto similar:', similarObjects[0].key);
+            // Variación 1: Convertir guiones bajos a barras (si aún quedan)
+            if (fileId.includes('_')) {
+              const altPath1 = fileId.replace(/_/g, '/');
+              console.log('Intentando con ruta alternativa 1:', altPath1);
+              object = await env.R2_BUCKET.get(altPath1);
+            }
+            
+            // Variación 2: Buscar por nombre de archivo sin la estructura de carpetas
+            if (object === null) {
+              const fileName = fileId.split('/').pop();
+              console.log('Intentando buscar solo por nombre de archivo:', fileName);
+              
+              // Buscar objetos que contengan el nombre del archivo
+              const similarObjects = objects.objects.filter(o => 
+                o.key.endsWith(fileName)
+              );
+              
+              if (similarObjects.length > 0) {
+                console.log('Objetos encontrados con nombre similar:', similarObjects.map(o => o.key));
                 
-                // Determinar el tipo de contenido
-                const contentType = similarObject.httpMetadata?.contentType || getFileType(similarObjects[0].key);
-                
-                console.log('Archivo similar encontrado, devolviendo con tipo:', contentType);
-                
-                // Devolver el archivo
-                return new Response(similarObject.body, {
-                  headers: { 
-                    'Content-Type': contentType,
-                    'Content-Length': similarObject.size,
-                    'Cache-Control': 'public, max-age=31536000',
-                    'Access-Control-Allow-Origin': '*'
-                  }
-                });
+                // Usar el primer objeto encontrado
+                object = await env.R2_BUCKET.get(similarObjects[0].key);
+                if (object) {
+                  console.log('Usando objeto encontrado por nombre:', similarObjects[0].key);
+                }
               }
             }
+          }
+          
+          // Si todavía no se encuentra, buscar objetos similares
+          if (object === null) {
+            // Buscar si existe un objeto con una clave similar
+            const similarObjects = objects.objects.filter(o => 
+              o.key.includes(fileId.split('/').pop()) || 
+              fileId.includes(o.key.split('/').pop())
+            );
+            
+            if (similarObjects.length > 0) {
+              console.log('Objetos similares encontrados:', similarObjects.map(o => o.key));
+              
+              // Si no encontramos el objeto exacto pero hay uno similar, usarlo
+              if (similarObjects.length >= 1) {
+                const similarObject = await env.R2_BUCKET.get(similarObjects[0].key);
+                if (similarObject) {
+                  console.log('Usando objeto similar:', similarObjects[0].key);
+                  object = similarObject;
+                }
+              }
+            }
+          }
+          
+          // Si finalmente encontramos un objeto, devolverlo
+          if (object !== null) {
+            // Determinar el tipo de contenido
+            const contentType = object.httpMetadata?.contentType || getFileType(fileId);
+            
+            console.log('Archivo encontrado, devolviendo con tipo:', contentType);
+            
+            // Devolver el archivo
+            return new Response(object.body, {
+              headers: { 
+                'Content-Type': contentType,
+                'Content-Length': object.size,
+                'Cache-Control': 'public, max-age=31536000',
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
+          } else {
+            console.error('Archivo no encontrado después de intentar todas las variaciones:', fileId);
           }
         } catch (listError) {
           console.error('Error al listar objetos de R2:', listError);
         }
         
-        // Obtener el objeto de R2
-        const object = await env.R2_BUCKET.get(fileId);
-        
-        if (object === null) {
-          console.error('Archivo no encontrado en R2:', fileId);
-          
-          // Intentar listar objetos para depuración
-          try {
-            const objects = await env.R2_BUCKET.list();
-            console.log('Archivos disponibles en R2:', objects.objects.map(o => o.key));
-          } catch (listError) {
-            console.error('Error al listar archivos de R2:', listError);
-          }
-          
-          return new Response(JSON.stringify({ 
-            success: false,
-            error: 'Archivo no encontrado',
-            fileId: fileId
-          }), {
-            status: 404,
-            headers: { 
-              'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-        }
-        
-        // Determinar el tipo de contenido
-        const contentType = object.httpMetadata?.contentType || getFileType(fileId);
-        
-        console.log('Archivo encontrado, devolviendo con tipo:', contentType);
-        
-        // Devolver el archivo
-        return new Response(object.body, {
+        // Si llegamos aquí, no se encontró el objeto
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: 'Archivo no encontrado',
+          fileId: fileId
+        }), {
+          status: 404,
           headers: { 
-            'Content-Type': contentType,
-            'Content-Length': object.size,
-            'Cache-Control': 'public, max-age=31536000',
+            'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*'
           }
         });
