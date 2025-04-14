@@ -322,14 +322,36 @@ class AuthorManager {
       this.showStatusMessage('Guardando autor...', 'info');
       
       let result;
+      let activityType;
+      
       if (this.isEditing && this.currentAuthor) {
         // Actualizar autor existente
         result = await this.contentManager.updateAuthor(this.currentAuthor.slug, authorData);
+        activityType = 'edit';
         this.showStatusMessage(`Autor "${authorData.name}" actualizado correctamente`, 'success');
       } else {
         // Crear nuevo autor
         result = await this.contentManager.createAuthor(authorData);
+        activityType = 'create';
         this.showStatusMessage(`Autor "${authorData.name}" creado correctamente`, 'success');
+      }
+      
+      // Registrar la actividad
+      try {
+        await this.contentManager.logActivity({
+          type: activityType,
+          entity_type: 'author',
+          entity_id: authorData.slug,
+          entity_title: authorData.name,
+          user_name: 'Admin',
+          details: {
+            email: authorData.email,
+            bio_length: authorData.bio ? authorData.bio.length : 0
+          }
+        });
+      } catch (activityError) {
+        console.error('Error al registrar actividad de autor:', activityError);
+        // No interrumpir el flujo si falla el registro de actividad
       }
       
       // Ocultar formulario y recargar lista
@@ -394,10 +416,31 @@ class AuthorManager {
     try {
       this.showStatusMessage('Eliminando autor...', 'info');
       
+      // Obtener información del autor antes de eliminarlo
+      const author = this.authors.find(a => a.slug === slug);
+      const authorName = author ? author.name : 'Autor desconocido';
+      
       const result = await this.contentManager.deleteAuthor(slug);
       
       if (result.error) {
         throw new Error(result.error);
+      }
+      
+      // Registrar la actividad
+      try {
+        await this.contentManager.logActivity({
+          type: 'delete',
+          entity_type: 'author',
+          entity_id: slug,
+          entity_title: authorName,
+          user_name: 'Admin',
+          details: {
+            articles_count: author && author.articles ? author.articles.length : 0
+          }
+        });
+      } catch (activityError) {
+        console.error('Error al registrar actividad de eliminación de autor:', activityError);
+        // No interrumpir el flujo si falla el registro de actividad
       }
       
       this.showStatusMessage('Autor eliminado correctamente', 'success');

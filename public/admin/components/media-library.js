@@ -1,6 +1,7 @@
 // Biblioteca de medios para el CMS
 import { MediaManager } from '../media-manager.js';
 import { notifications } from './notification.js';
+import { ContentManager } from '../content-manager.js'; // Importar el gestor de contenido
 
 export class MediaLibrary {
   constructor(container, onSelect = null) {
@@ -74,6 +75,25 @@ export class MediaLibrary {
         
         // Cerrar notificación de carga
         notifications.close(loadingNotification);
+        
+        // Registrar la actividad
+        try {
+          const contentManager = new ContentManager();
+          await contentManager.logActivity({
+            type: 'media_upload',
+            entity_type: 'media',
+            entity_id: result.id || result.path,
+            entity_title: file.name,
+            user_name: 'Admin',
+            details: {
+              size: this.formatFileSize(file.size),
+              type: file.type
+            }
+          });
+        } catch (activityError) {
+          console.error('Error al registrar actividad de subida:', activityError);
+          // No interrumpir el flujo si falla el registro de actividad
+        }
         
         // Mostrar notificación de éxito
         notifications.success(`Archivo "${file.name}" subido correctamente`);
@@ -299,11 +319,33 @@ export class MediaLibrary {
       const confirmed = await notifications.confirm('¿Estás seguro de que deseas eliminar este archivo? Esta acción no se puede deshacer.');
       if (!confirmed) return;
       
+      // Obtener información del archivo antes de eliminarlo
+      const file = this.mediaFiles.find(f => f.id === fileId || f.path === fileId);
+      const fileName = file ? (file.filename || file.name) : 'Archivo desconocido';
+      
       // Mostrar notificación de carga
       const loadingNotification = notifications.info('Eliminando archivo...', 0);
       
-      // Eliminar el archivo
+      // Eliminar archivo
       await this.mediaManager.deleteFile(fileId);
+      
+      // Registrar la actividad
+      try {
+        const contentManager = new ContentManager();
+        await contentManager.logActivity({
+          type: 'delete',
+          entity_type: 'media',
+          entity_id: fileId,
+          entity_title: fileName,
+          user_name: 'Admin',
+          details: {
+            type: file ? (file.mimeType || file.type || '') : ''
+          }
+        });
+      } catch (activityError) {
+        console.error('Error al registrar actividad de eliminación:', activityError);
+        // No interrumpir el flujo si falla el registro de actividad
+      }
       
       // Cerrar notificación de carga
       notifications.close(loadingNotification);
@@ -313,12 +355,9 @@ export class MediaLibrary {
       
       // Recargar archivos
       await this.loadMediaFiles();
-      
-      return true;
     } catch (error) {
       console.error('Error al eliminar archivo:', error);
       notifications.error('Error al eliminar el archivo. Por favor, intenta de nuevo.');
-      return false;
     }
   }
   

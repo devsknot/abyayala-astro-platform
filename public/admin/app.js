@@ -184,103 +184,229 @@ function renderApp(container) {
   });
 }
 
-// Renderizar dashboard
+// Función para renderizar el dashboard
 async function renderDashboard(container) {
-  // Mostrar un estado de carga inicial
-  container.innerHTML = `
-    <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
-    <div class="loading-overlay p-4 text-center">
-      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mx-auto mb-4"></div>
-      <p class="text-lg font-medium">Cargando datos del dashboard...</p>
-    </div>
-  `;
-  
   try {
+    // Mostrar indicador de carga
+    container.innerHTML = `
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
+        <div class="animate-pulse">
+          <div class="bg-gray-200 h-8 w-1/4 mb-4 rounded"></div>
+          <div class="bg-gray-200 h-40 mb-6 rounded"></div>
+          <div class="bg-gray-200 h-8 w-1/4 mb-4 rounded"></div>
+          <div class="bg-gray-200 h-40 rounded"></div>
+        </div>
+      </div>
+    `;
+    
     // Crear instancia del gestor de contenido
     const contentManager = new ContentManager();
     
-    // Obtener datos de la API
-    const articles = await contentManager.getArticles();
-    const categories = await contentManager.getCategories();
+    // Obtener artículos y actividades recientes
+    const [articles, activities] = await Promise.all([
+      contentManager.getArticles(),
+      contentManager.getActivities(5)
+    ]);
     
-    // Ordenar artículos por fecha (más recientes primero)
-    const sortedArticles = [...articles].sort((a, b) => {
-      return new Date(b.pubDate) - new Date(a.pubDate);
-    });
-    
-    // Tomar los 3 artículos más recientes
-    const recentArticles = sortedArticles.slice(0, 3);
-    
-    // Generar HTML para los artículos recientes
-    const recentArticlesHTML = recentArticles.map(article => `
-      <tr class="border-b">
-        <td class="py-2">${article.title}</td>
-        <td class="py-2">${getCategoryName(article.category)}</td>
-        <td class="py-2">${formatDate(article.pubDate)}</td>
-      </tr>
-    `).join('');
-    
-    // Generar actividad reciente basada en los artículos
-    // En una implementación real, esto vendría de un registro de actividad en la API
-    const recentActivityHTML = generateRecentActivity(recentArticles);
-    
-    // Renderizar dashboard con datos reales
+    // Renderizar el dashboard con los datos obtenidos
     container.innerHTML = `
-      <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div class="card">
-          <h3 class="text-lg font-semibold mb-2">Artículos</h3>
-          <p class="text-3xl font-bold">${articles.length}</p>
-        </div>
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
         
-        <div class="card">
-          <h3 class="text-lg font-semibold mb-2">Categorías</h3>
-          <p class="text-3xl font-bold">${categories.length}</p>
-        </div>
-        
-        <div class="card">
-          <h3 class="text-lg font-semibold mb-2">Archivos multimedia</h3>
-          <p class="text-3xl font-bold">${getMediaCount()}</p>
-        </div>
-      </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="card">
-          <h3 class="text-lg font-semibold mb-4">Artículos recientes</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <!-- Estadísticas -->
+          <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold text-lg mb-2">Artículos</h3>
+            <p class="text-3xl font-bold">${articles.length}</p>
+          </div>
           
-          <table class="w-full">
-            <thead>
-              <tr class="border-b">
-                <th class="text-left pb-2">Título</th>
-                <th class="text-left pb-2">Categoría</th>
-                <th class="text-left pb-2">Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${recentArticlesHTML || '<tr><td colspan="3" class="py-4 text-center text-gray-500">No hay artículos recientes</td></tr>'}
-            </tbody>
-          </table>
+          <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold text-lg mb-2">Categorías</h3>
+            <p class="text-3xl font-bold">7</p>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-semibold text-lg mb-2">Archivos</h3>
+            <p class="text-3xl font-bold">${getMediaCount()}</p>
+          </div>
         </div>
         
-        <div class="card">
-          <h3 class="text-lg font-semibold mb-4">Actividad reciente</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Artículos recientes -->
+          <div class="bg-white rounded-lg shadow">
+            <div class="border-b p-4">
+              <h3 class="font-semibold text-lg">Artículos recientes</h3>
+            </div>
+            <div class="p-4">
+              <table class="min-w-full">
+                <thead>
+                  <tr>
+                    <th class="text-left pb-2">Título</th>
+                    <th class="text-left pb-2">Categoría</th>
+                    <th class="text-left pb-2">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${renderRecentArticles(articles.slice(0, 5))}
+                </tbody>
+              </table>
+            </div>
+          </div>
           
-          <ul class="space-y-3">
-            ${recentActivityHTML || '<li class="text-center text-gray-500 py-4">No hay actividad reciente</li>'}
-          </ul>
+          <!-- Actividad reciente -->
+          <div class="bg-white rounded-lg shadow">
+            <div class="border-b p-4">
+              <h3 class="font-semibold text-lg">Actividad reciente</h3>
+            </div>
+            <div class="p-4">
+              <div class="space-y-4">
+                ${renderRecentActivities(activities)}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     `;
   } catch (error) {
-    console.error('Error al cargar el dashboard:', error);
+    console.error('Error al renderizar dashboard:', error);
     container.innerHTML = `
-      <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
-      <div class="card p-4 text-center text-red-500">
-        <p>Error al cargar los datos del dashboard. Intenta recargar la página.</p>
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
+        <div class="bg-red-100 text-red-700 p-4 rounded">
+          Error al cargar el dashboard: ${error.message}
+        </div>
       </div>
     `;
   }
+}
+
+// Función para renderizar artículos recientes
+function renderRecentArticles(articles) {
+  if (!articles || articles.length === 0) {
+    return `
+      <tr>
+        <td colspan="3" class="py-2 text-gray-500">No hay artículos recientes</td>
+      </tr>
+    `;
+  }
+  
+  return articles.map(article => `
+    <tr>
+      <td class="py-2">
+        <a href="#articles" data-article="${article.slug}" class="text-blue-600 hover:underline article-link">
+          ${article.title}
+        </a>
+      </td>
+      <td class="py-2">${getCategoryName(article.category)}</td>
+      <td class="py-2">${formatDate(article.pubDate)}</td>
+    </tr>
+  `).join('');
+}
+
+// Función para renderizar actividades recientes
+function renderRecentActivities(activities) {
+  if (!activities || activities.length === 0) {
+    return `<div class="text-gray-500">No hay actividad reciente</div>`;
+  }
+  
+  return activities.map(activity => {
+    let icon = '📝';
+    let bgColor = 'bg-blue-100';
+    let textColor = 'text-blue-500';
+    
+    // Determinar icono y colores según el tipo de actividad
+    switch (activity.type) {
+      case 'create':
+        icon = '📝';
+        bgColor = 'bg-blue-100';
+        textColor = 'text-blue-500';
+        break;
+      case 'edit':
+        icon = '✏️';
+        bgColor = 'bg-yellow-100';
+        textColor = 'text-yellow-500';
+        break;
+      case 'delete':
+        icon = '🗑️';
+        bgColor = 'bg-red-100';
+        textColor = 'text-red-500';
+        break;
+      case 'media_upload':
+        icon = '🖼️';
+        bgColor = 'bg-green-100';
+        textColor = 'text-green-500';
+        break;
+      case 'bulk_import':
+        icon = '📊';
+        bgColor = 'bg-purple-100';
+        textColor = 'text-purple-500';
+        break;
+      default:
+        icon = '🔔';
+        bgColor = 'bg-gray-100';
+        textColor = 'text-gray-500';
+    }
+    
+    // Generar contenido según el tipo de actividad y entidad
+    let content = '';
+    
+    switch (activity.entity_type) {
+      case 'article':
+        if (activity.type === 'create') {
+          content = `Artículo creado: "${activity.entity_title}"`;
+        } else if (activity.type === 'edit') {
+          content = `Artículo editado: "${activity.entity_title}"`;
+        } else if (activity.type === 'delete') {
+          content = `Artículo eliminado: "${activity.entity_title}"`;
+        } else if (activity.type === 'bulk_import') {
+          const details = typeof activity.details === 'string' 
+            ? JSON.parse(activity.details) 
+            : activity.details;
+          const total = details?.total_articles || 0;
+          const processed = details?.processed_articles || 0;
+          content = `Importación masiva: ${processed} de ${total} artículos`;
+        }
+        break;
+      
+      case 'media':
+        if (activity.type === 'media_upload') {
+          content = `Archivo subido: "${activity.entity_title}"`;
+        } else if (activity.type === 'delete') {
+          content = `Archivo eliminado: "${activity.entity_title}"`;
+        }
+        break;
+      
+      case 'author':
+        if (activity.type === 'create') {
+          content = `Autor creado: "${activity.entity_title}"`;
+        } else if (activity.type === 'edit') {
+          content = `Autor editado: "${activity.entity_title}"`;
+        } else if (activity.type === 'delete') {
+          content = `Autor eliminado: "${activity.entity_title}"`;
+        }
+        break;
+      
+      default:
+        content = `Actividad: ${activity.type} - ${activity.entity_title}`;
+    }
+    
+    // Formatear la fecha relativa
+    const relativeTime = activity.relative_time || 'Hace un momento';
+    
+    return `
+      <div class="flex items-start">
+        <div class="${bgColor} ${textColor} p-2 rounded-lg mr-3">
+          <span class="text-xl">${icon}</span>
+        </div>
+        <div class="flex-1">
+          <p class="font-medium">${content}</p>
+          <p class="text-sm text-gray-500">${relativeTime}</p>
+          ${activity.user_name ? `<p class="text-xs text-gray-400">Por: ${activity.user_name}</p>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 // Renderizar gestor de artículos
@@ -435,69 +561,4 @@ function formatDate(dateString) {
 function getMediaCount() {
   // Por ahora retornamos un valor fijo, pero esto debería venir de la API
   return 24;
-}
-
-// Función para generar actividad reciente basada en los artículos
-function generateRecentActivity(articles) {
-  if (!articles || articles.length === 0) return '';
-  
-  // Generar actividad ficticia basada en los artículos existentes
-  const activities = [
-    {
-      type: 'create',
-      icon: '📝',
-      bgColor: 'bg-blue-100',
-      textColor: 'text-blue-500',
-      article: articles[0],
-      daysAgo: 2
-    },
-    {
-      type: 'media',
-      icon: '🖼️',
-      bgColor: 'bg-green-100',
-      textColor: 'text-green-500',
-      name: articles[1]?.featured_image?.split('/').pop() || 'imagen.jpg',
-      daysAgo: 3
-    },
-    {
-      type: 'edit',
-      icon: '✏️',
-      bgColor: 'bg-yellow-100',
-      textColor: 'text-yellow-500',
-      article: articles[2] || articles[0],
-      daysAgo: 5
-    }
-  ];
-  
-  return activities.map(activity => {
-    let content = '';
-    
-    if (activity.type === 'create') {
-      content = `
-        <p class="font-medium">Artículo creado: "${activity.article.title}"</p>
-        <p class="text-sm text-gray-500">Hace ${activity.daysAgo} días</p>
-      `;
-    } else if (activity.type === 'media') {
-      content = `
-        <p class="font-medium">Imagen subida: "${activity.name}"</p>
-        <p class="text-sm text-gray-500">Hace ${activity.daysAgo} días</p>
-      `;
-    } else if (activity.type === 'edit') {
-      content = `
-        <p class="font-medium">Artículo editado: "${activity.article.title}"</p>
-        <p class="text-sm text-gray-500">Hace ${activity.daysAgo} días</p>
-      `;
-    }
-    
-    return `
-      <li class="flex items-start">
-        <div class="w-8 h-8 rounded-full ${activity.bgColor} flex items-center justify-center ${activity.textColor} mr-2">
-          <span>${activity.icon}</span>
-        </div>
-        <div>
-          ${content}
-        </div>
-      </li>
-    `;
-  }).join('');
 }

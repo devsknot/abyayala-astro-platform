@@ -442,6 +442,49 @@ export class ContentManager {
     }
   }
 
+  // Método para obtener actividades recientes
+  async getActivities(limit = 10) {
+    try {
+      const response = await fetch(`${this.apiBase}/activities?limit=${limit}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+      
+      console.error(`Error al obtener actividades: ${response.status}`);
+      return [];
+    } catch (error) {
+      console.error('Error al conectar con la API de actividades:', error);
+      return [];
+    }
+  }
+  
+  // Método para registrar una nueva actividad
+  async logActivity(activityData) {
+    try {
+      const response = await fetch(`${this.apiBase}/activities`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(activityData)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+      
+      console.error(`Error al registrar actividad: ${response.status}`);
+      return { error: `Error ${response.status}` };
+    } catch (error) {
+      console.error('Error al conectar con la API para registrar actividad:', error);
+      return { error: error.message };
+    }
+  }
+
   // Convertir contenido del editor a Markdown
   convertToMarkdown(content) {
     // En una implementación real, usaríamos una biblioteca como turndown

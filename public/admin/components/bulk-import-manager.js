@@ -396,6 +396,27 @@ export class BulkImportManager {
           this.errors = result.errors;
         }
         
+        // Registrar la actividad de importación masiva
+        try {
+          await this.contentManager.logActivity({
+            type: 'bulk_import',
+            entity_type: 'article',
+            entity_id: 'bulk-import-' + new Date().getTime(),
+            entity_title: 'Importación masiva de artículos',
+            user_name: 'Admin',
+            details: {
+              total_articles: this.totalItems,
+              processed_articles: this.processedItems,
+              errors_count: this.errors.length,
+              categories: this.selectedCategories.length > 0 ? this.selectedCategories : ['todas'],
+              duplicate_handling: this.duplicateHandling
+            }
+          });
+        } catch (activityError) {
+          console.error('Error al registrar actividad de importación masiva:', activityError);
+          // No interrumpir el flujo si falla el registro de actividad
+        }
+        
         // Actualizar barra de progreso al 100%
         const progressBar = document.getElementById('progress-bar');
         const processedCount = document.getElementById('processed-count');

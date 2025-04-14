@@ -358,6 +358,19 @@ export class ArticleManager {
           result = await this.contentManager.createArticle(articleData);
         }
         
+        // Registrar la actividad
+        await this.contentManager.logActivity({
+          type: this.currentArticle ? 'edit' : 'create',
+          entity_type: 'article',
+          entity_id: articleData.slug,
+          entity_title: articleData.title,
+          user_name: 'Admin',
+          details: {
+            category: articleData.category,
+            author: articleData.author
+          }
+        });
+        
         // Mostrar mensaje de éxito
         notifications.success(this.currentArticle ? 'Artículo actualizado correctamente' : 'Artículo creado correctamente');
         
@@ -640,29 +653,47 @@ export class ArticleManager {
   }
   
   async deleteArticle(slug) {
-    const confirmed = await notifications.confirm(`¿Estás seguro de que deseas eliminar el artículo "${slug}"? Esta acción no se puede deshacer.`);
-    if (!confirmed) {
-      return;
-    }
-    
     try {
-      // Mostrar notificación de carga
-      const loadingNotification = notifications.info('Eliminando artículo...', 0);
+      if (!confirm('¿Estás seguro de que deseas eliminar este artículo? Esta acción no se puede deshacer.')) {
+        return;
+      }
+      
+      this.showLoading('Eliminando artículo...');
+      
+      // Obtener el título del artículo antes de eliminarlo
+      const article = this.articles.find(a => a.slug === slug);
+      const articleTitle = article ? article.title : 'Artículo desconocido';
+      const articleCategory = article ? article.category : '';
       
       // Eliminar el artículo
-      await this.contentManager.deleteArticle(slug);
+      const result = await this.contentManager.deleteArticle(slug);
       
-      // Cerrar notificación de carga
-      notifications.close(loadingNotification);
+      if (result.error) {
+        throw new Error(result.error);
+      }
       
-      // Mostrar mensaje de éxito
+      // Registrar la actividad
+      await this.contentManager.logActivity({
+        type: 'delete',
+        entity_type: 'article',
+        entity_id: slug,
+        entity_title: articleTitle,
+        user_name: 'Admin',
+        details: {
+          category: articleCategory
+        }
+      });
+      
       notifications.success('Artículo eliminado correctamente');
       
-      // Recargar artículos
+      // Recargar la lista de artículos
       await this.loadArticles();
+      
+      this.hideLoading();
     } catch (error) {
-      console.error('Error al eliminar el artículo:', error);
-      notifications.error('Error al eliminar el artículo. Por favor, intenta de nuevo.');
+      console.error('Error al eliminar artículo:', error);
+      this.hideLoading();
+      notifications.error('Error al eliminar el artículo: ' + error.message);
     }
   }
   

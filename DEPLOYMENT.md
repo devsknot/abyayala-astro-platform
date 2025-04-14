@@ -116,8 +116,25 @@ Para almacenar el contenido del CMS, utilizamos Cloudflare D1, una base de datos
      category TEXT,
      featured_image TEXT,
      created_at TEXT DEFAULT (datetime('now')),
-     updated_at TEXT DEFAULT (datetime('now'))
+     updated_at TEXT DEFAULT (datetime('now')),
+     author TEXT,
+     tags TEXT,
+     author_id INTEGER REFERENCES authors(id)
    );
+
+   CREATE TABLE authors (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     slug TEXT UNIQUE NOT NULL,
+     name TEXT NOT NULL,
+     bio TEXT,
+     email TEXT,
+     avatar TEXT,
+     social_media TEXT,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   CREATE INDEX idx_authors_slug ON authors(slug);
 
    CREATE TABLE categories (
      id TEXT PRIMARY KEY,
@@ -143,6 +160,12 @@ Para almacenar el contenido del CMS, utilizamos Cloudflare D1, una base de datos
      ('tecnologia-rural', 'Tecnología Rural', 'Innovaciones, herramientas y digitalización'),
      ('cultura', 'Cultura', 'Tradiciones, gastronomía y artesanía'),
      ('eventos', 'Eventos', 'Ferias, encuentros y capacitaciones');
+
+   -- Insertar autores predefinidos
+   INSERT INTO authors (slug, name, bio) VALUES
+     ('colectivo-abyayala', 'Colectivo Agrario Abya Yala', 'Colectivo de agricultores y activistas dedicados a la promoción de la agricultura sostenible y la soberanía alimentaria.'),
+     ('equipo-editorial', 'Equipo Editorial', 'Equipo de redacción y edición de la plataforma de noticias del Colectivo Agrario Abya Yala.'),
+     ('corresponsales-comunitarios', 'Corresponsales Comunitarios', 'Red de corresponsales locales que reportan desde sus comunidades sobre temas agrarios y ambientales.');
    ```
 
 4. **Aplicar el esquema a la base de datos**:
@@ -165,10 +188,51 @@ Para almacenar el contenido del CMS, utilizamos Cloudflare D1, una base de datos
    npx wrangler d1 execute DB --remote --file=./scripts/migrations/nombre-migracion.sql
    ```
 
-   **Migraciones importantes incluidas**:
-   - `add-author-column.sql`: Añade la columna `author` a la tabla `articles`
-   - `add-tags-column.sql`: Añade la columna `tags` a la tabla `articles`
-   - `create-authors-table.sql`: Crea la tabla `authors` y añade la columna `author_id` a `articles`
+   **Migraciones disponibles**:
+   - `add-author-column.sql`: Añade la columna `author` (TEXT) a la tabla `articles`
+   - `add-tags-column.sql`: Añade la columna `tags` (TEXT) a la tabla `articles`
+   - `create-authors-table.sql`: Crea la tabla `authors` y añade la columna `author_id` (INTEGER) a `articles`
+
+   **Estado actual de la base de datos**:
+   La base de datos en producción actualmente tiene las siguientes tablas:
+   - `articles`: Artículos del blog con campos para título, contenido, categoría, autor, etc.
+   - `authors`: Información de autores con campos para nombre, biografía, avatar, etc.
+   - `categories`: Categorías predefinidas para clasificar los artículos
+   - `media`: Información sobre archivos multimedia subidos al sistema
+
+   **Estructura actual de la tabla `articles`**:
+   ```sql
+   CREATE TABLE articles (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     slug TEXT UNIQUE NOT NULL,
+     title TEXT NOT NULL,
+     description TEXT,
+     content TEXT,
+     pub_date TEXT,
+     category TEXT,
+     featured_image TEXT,
+     created_at TEXT DEFAULT (datetime('now')),
+     updated_at TEXT DEFAULT (datetime('now')),
+     author TEXT,
+     tags TEXT,
+     author_id INTEGER REFERENCES authors(id)
+   );
+   ```
+
+   **Estructura actual de la tabla `authors`**:
+   ```sql
+   CREATE TABLE authors (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     slug TEXT UNIQUE NOT NULL,
+     name TEXT NOT NULL,
+     bio TEXT,
+     email TEXT,
+     avatar TEXT,
+     social_media TEXT,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
 
    **Nota**: Es recomendable ejecutar las migraciones como parte del proceso de despliegue para garantizar que la base de datos esté siempre actualizada.
 
