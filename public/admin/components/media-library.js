@@ -26,7 +26,7 @@ export class MediaLibrary {
         </div>
         
         <div class="media-filter mb-4">
-          <input type="text" placeholder="Buscar archivos..." class="form-input">
+          <input id="media-search" type="text" placeholder="Buscar archivos..." class="form-input">
         </div>
         
         <div class="media-grid">
@@ -38,7 +38,7 @@ export class MediaLibrary {
     // Obtener referencias a los elementos
     this.mediaGrid = this.container.querySelector('.media-grid');
     this.fileUpload = this.container.querySelector('#file-upload');
-    this.searchInput = this.container.querySelector('.media-filter input');
+    this.searchInput = this.container.querySelector('#media-search');
     
     // Configurar eventos
     this.setupEvents();
@@ -137,7 +137,9 @@ export class MediaLibrary {
     
     // Crear elementos para cada archivo
     const mediaItems = this.mediaFiles.map(file => {
-      const isImage = file.mimeType.startsWith('image/');
+      // Verificar si el archivo tiene mimeType o type (compatibilidad con datos de prueba)
+      const fileType = file.mimeType || file.type || '';
+      const isImage = fileType.startsWith('image/');
       const thumbnailUrl = isImage ? this.mediaManager.generateThumbnailUrl(file.path) : '';
       const isSelected = this.selectedFile && this.selectedFile.id === file.id;
       
@@ -145,14 +147,14 @@ export class MediaLibrary {
         <div class="media-item ${isSelected ? 'border-blue-500 ring-2 ring-blue-300' : ''}" data-id="${file.id}">
           <div class="media-preview">
             ${isImage 
-              ? `<img src="${thumbnailUrl}" alt="${file.filename}" loading="lazy">` 
+              ? `<img src="${thumbnailUrl}" alt="${file.filename || file.name}" loading="lazy">` 
               : `<div class="flex items-center justify-center h-full bg-gray-100">
                   <span class="text-3xl">📄</span>
                 </div>`
             }
           </div>
           <div class="media-info">
-            <div class="truncate text-sm font-medium">${file.filename}</div>
+            <div class="truncate text-sm font-medium">${file.filename || file.name}</div>
             <div class="text-xs text-gray-500">${this.formatFileSize(file.size)}</div>
           </div>
         </div>
@@ -163,23 +165,24 @@ export class MediaLibrary {
   }
   
   filterMediaFiles() {
-    const searchTerm = this.searchInput.value.toLowerCase();
+    const searchInput = this.container.querySelector('#media-search');
+    const searchTerm = searchInput.value.toLowerCase();
     
-    // Si no hay término de búsqueda, mostrar todos los archivos
     if (!searchTerm) {
+      // Si no hay término de búsqueda, restaurar los archivos originales
       this.renderMediaFiles();
       return;
     }
     
     // Filtrar archivos por nombre
     const filteredFiles = this.mediaFiles.filter(file => 
-      file.filename.toLowerCase().includes(searchTerm)
+      (file.filename || file.name).toLowerCase().includes(searchTerm)
     );
     
     // Guardar los archivos originales
     const originalFiles = this.mediaFiles;
     
-    // Establecer los archivos filtrados temporalmente
+    // Establecer temporalmente los archivos filtrados
     this.mediaFiles = filteredFiles;
     
     // Renderizar los archivos filtrados
