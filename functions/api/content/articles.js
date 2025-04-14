@@ -118,17 +118,9 @@ async function handleGetArticles(env, headers) {
         description: article.description,
         content: article.content,
         pubDate: article.pub_date, // Transformar pub_date a pubDate
-        category: article.category
+        category: article.category,
+        featured_image: article.featured_image // Usar solo featured_image
       };
-      
-      // Normalizar la propiedad de imagen destacada
-      if (article.featured_image) {
-        transformed.featured_image = article.featured_image;
-      } else if (article.featuredImage) {
-        // Si existe featuredImage pero no featured_image, usar featuredImage
-        transformed.featured_image = article.featuredImage;
-        console.log(`Artículo ${article.slug} tiene featuredImage pero no featured_image:`, article.featuredImage);
-      }
       
       return transformed;
     });
@@ -248,17 +240,9 @@ async function handleGetArticle(slug, env, headers) {
       description: article.description,
       content: article.content,
       pubDate: article.pub_date, // Transformar pub_date a pubDate
-      category: article.category
+      category: article.category,
+      featured_image: article.featured_image // Usar solo featured_image
     };
-    
-    // Normalizar la propiedad de imagen destacada
-    if (article.featured_image) {
-      transformedArticle.featured_image = article.featured_image;
-    } else if (article.featuredImage) {
-      // Si existe featuredImage pero no featured_image, usar featuredImage
-      transformedArticle.featured_image = article.featuredImage;
-      console.log(`Artículo ${slug} tiene featuredImage pero no featured_image:`, article.featuredImage);
-    }
     
     console.log('Artículo transformado para el frontend:', transformedArticle);
     
