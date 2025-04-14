@@ -491,7 +491,7 @@ export class ArticleManager {
       }
       
       // Mostrar el editor
-      this.showEditor();
+      this.showArticleEditor();
       
       // Guardar el artículo actual
       this.currentArticle = article;
