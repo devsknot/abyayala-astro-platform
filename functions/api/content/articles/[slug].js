@@ -105,7 +105,8 @@ async function handleGetArticle(slug, env, headers) {
       pubDate: article.pub_date, // Transformar pub_date a pubDate
       category: article.category,
       featured_image: article.featured_image, // Mantener el mismo nombre
-      author_id: article.author_id // Incluir el ID del autor
+      author_id: article.author_id, // Incluir el ID del autor
+      tags: article.tags ? JSON.parse(article.tags) : [] // Parsear las etiquetas JSON a array
     };
     
     return new Response(JSON.stringify(transformedArticle), { headers });
@@ -166,6 +167,7 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
         category = ?,
         featured_image = ?,
         author_id = ?,
+        tags = ?,
         updated_at = datetime('now')
       WHERE slug = ?
     `).bind(
@@ -176,6 +178,7 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       articleData.category || existingArticle.category,
       articleData.featured_image || existingArticle.featured_image,
       articleData.author_id || existingArticle.author_id,
+      articleData.tags ? JSON.stringify(articleData.tags) : existingArticle.tags,
       slug
     ).run();
     
