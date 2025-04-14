@@ -187,7 +187,7 @@ async function handleCreateArticle(articleData, env, headers) {
     // Insertar el artículo en D1
     const result = await env.DB.prepare(`
       INSERT INTO articles (
-        slug, title, description, content, pub_date, category, hero_image
+        slug, title, description, content, pub_date, category, featured_image
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(
       articleData.slug,
@@ -196,7 +196,7 @@ async function handleCreateArticle(articleData, env, headers) {
       articleData.content || '',
       articleData.pubDate || new Date().toISOString(),
       articleData.category || '',
-      articleData.heroImage || ''
+      articleData.featured_image || ''
     ).run();
     
     // Obtener el artículo recién creado
@@ -244,7 +244,7 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
         content = ?,
         pub_date = ?,
         category = ?,
-        hero_image = ?,
+        featured_image = ?,
         updated_at = datetime('now')
       WHERE slug = ?
     `).bind(
@@ -253,7 +253,7 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       articleData.content || existingArticle.content,
       articleData.pubDate || existingArticle.pub_date,
       articleData.category || existingArticle.category,
-      articleData.heroImage || existingArticle.hero_image,
+      articleData.featured_image || existingArticle.featured_image,
       slug
     ).run();
     
@@ -348,7 +348,7 @@ function getFallbackArticles() {
       description: 'Cooperativa local logra récord de producción con prácticas sostenibles',
       pubDate: '2025-04-02',
       category: 'agricultura',
-      heroImage: '/uploads/2025/04/cafe-organico.jpg'
+      featured_image: '/uploads/2025/04/cafe-organico.jpg'
     },
     {
       slug: 'tecnica-riego-sostenible',
@@ -356,7 +356,7 @@ function getFallbackArticles() {
       description: 'Innovadora técnica de riego que ahorra hasta un 60% de agua',
       pubDate: '2025-03-20',
       category: 'tecnologia-rural',
-      heroImage: '/uploads/2025/03/riego-sostenible.jpg'
+      featured_image: '/uploads/2025/03/riego-sostenible.jpg'
     },
     {
       slug: 'feria-semillas-ancestrales',
@@ -364,7 +364,7 @@ function getFallbackArticles() {
       description: 'La tradicional feria de intercambio de semillas ancestrales organizada por Abya Yala contó con la participación de agricultores de toda la región',
       pubDate: '2025-03-25',
       category: 'eventos',
-      heroImage: '/uploads/2025/03/feria-semillas.jpg'
+      featured_image: '/uploads/2025/03/feria-semillas.jpg'
     }
   ];
 }

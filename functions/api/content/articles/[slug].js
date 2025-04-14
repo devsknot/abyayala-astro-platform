@@ -172,7 +172,7 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       articleData.content || existingArticle.content,
       pubDate,
       articleData.category || existingArticle.category,
-      articleData.featuredImage || existingArticle.featured_image,
+      articleData.featured_image || existingArticle.featured_image,
       slug
     ).run();
     

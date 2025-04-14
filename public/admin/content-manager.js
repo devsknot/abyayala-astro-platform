@@ -158,7 +158,7 @@ export class ContentManager {
 title: '${articleData.title}'
 description: '${articleData.description}'
 pubDate: '${articleData.pubDate}'
-heroImage: '${articleData.heroImage}'
+featured_image: '${articleData.featured_image}'
 category: '${articleData.category}'
 slug: '${articleData.slug}'
 ---`;

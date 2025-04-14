@@ -314,7 +314,7 @@ export class ArticleManager {
           category: this.container.querySelector('#article-category').value,
           pubDate: this.formatDate(this.container.querySelector('#article-date').value),
           slug: this.container.querySelector('#article-slug').value,
-          heroImage: this.featuredImageInput.value,
+          featured_image: this.featuredImageInput.value,
           content: this.editor.getContent()
         };
         
@@ -487,9 +487,9 @@ export class ArticleManager {
       this.container.querySelector('#article-slug').dataset.modified = 'true';
       
       // Actualizar la imagen destacada
-      if (article.heroImage) {
-        this.updateFeaturedImagePreview(article.heroImage);
-        this.featuredImageInput.value = article.heroImage;
+      if (article.featured_image) {
+        this.updateFeaturedImagePreview(article.featured_image);
+        this.featuredImageInput.value = article.featured_image;
       } else {
         this.resetFeaturedImagePreview();
         this.featuredImageInput.value = '';

@@ -294,7 +294,7 @@ function generateRecentActivity(articles) {
       icon: '🖼️',
       bgColor: 'bg-green-100',
       textColor: 'text-green-500',
-      name: articles[1]?.heroImage?.split('/').pop() || 'imagen.jpg',
+      name: articles[1]?.featured_image?.split('/').pop() || 'imagen.jpg',
       daysAgo: 3
     },
     {
