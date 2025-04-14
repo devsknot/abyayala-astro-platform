@@ -178,7 +178,7 @@ async function handleCreateArticle(articleData, env, headers) {
       articleData.content || '',
       pubDate,
       articleData.category || '',
-      articleData.featuredImage || ''
+      articleData.featured_image || ''
     ).run();
     
     // Obtener el artículo recién creado
@@ -364,7 +364,7 @@ function getFallbackArticles() {
       description: 'La cooperativa Abya Yala presenta su nueva línea de café orgánico cultivado en altura y certificado por estándares internacionales.',
       pubDate: '2025-04-02T00:00:00.000Z',
       category: 'agricultura',
-      featuredImage: '/2025/04/cafe-organico.jpg'
+      featured_image: '/2025/04/cafe-organico.jpg'
     },
     {
       slug: 'innovacion-en-riego-sostenible-para-pequenos-productores',
@@ -372,7 +372,7 @@ function getFallbackArticles() {
       description: 'Un grupo de agricultores implementa sistema de riego por goteo que reduce el consumo de agua en un 40%.',
       pubDate: '2025-03-20T00:00:00.000Z',
       category: 'tecnologia-rural',
-      featuredImage: '/2025/04/riego-sostenible.jpg'
+      featured_image: '/2025/04/riego-sostenible.jpg'
     },
     {
       slug: 'feria-de-intercambio-de-semillas-promueve-biodiversidad',
@@ -380,7 +380,7 @@ function getFallbackArticles() {
       description: 'Más de 500 agricultores participaron en la primera feria de intercambio de semillas ancestrales.',
       pubDate: '2025-03-25T00:00:00.000Z',
       category: 'eventos',
-      featuredImage: '/2025/04/feria-semillas.jpg'
+      featured_image: '/2025/04/feria-semillas.jpg'
     },
     {
       slug: 'reunion-anual-de-cooperativas-define-agenda-2025',
@@ -388,7 +388,7 @@ function getFallbackArticles() {
       description: 'Representantes de 12 cooperativas agrarias se reunieron para definir la agenda de trabajo colaborativo para el próximo año.',
       pubDate: '2025-04-10T00:00:00.000Z',
       category: 'cooperativismo',
-      featuredImage: '/2025/04/cooperativa-reunion.jpg'
+      featured_image: '/2025/04/cooperativa-reunion.jpg'
     }
   ];
 }

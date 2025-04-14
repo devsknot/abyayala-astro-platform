@@ -459,10 +459,7 @@ export class ArticleManager {
       // Obtener el artículo
       console.log(`Solicitando artículo con slug: ${slug}`);
       const article = await this.contentManager.getArticle(slug);
-      console.log('Artículo cargado para edición (datos completos):', article);
-      console.log('Propiedades del artículo:', Object.keys(article));
-      console.log('Valor de featured_image:', article.featured_image);
-      console.log('Valor de featuredImage:', article.featuredImage);
+      console.log('Artículo cargado para edición:', article);
       
       // Cerrar notificación de carga
       notifications.close(loadingNotification);
@@ -499,19 +496,16 @@ export class ArticleManager {
       this.container.querySelector('#article-slug').value = article.slug || '';
       this.container.querySelector('#article-slug').dataset.modified = 'true';
       
-      // Normalizar la propiedad de imagen destacada (podría venir como featured_image o featuredImage)
-      const featuredImage = article.featured_image || article.featuredImage;
-      
       // Actualizar la imagen destacada
-      if (featuredImage) {
-        console.log('Imagen destacada del artículo (normalizada):', featuredImage);
+      if (article.featured_image) {
+        console.log('Imagen destacada del artículo:', article.featured_image);
         
         try {
           // Crear instancia del gestor de medios
           const mediaManager = new MediaManager();
           
           // Obtener la URL pública de la imagen
-          const imageUrl = mediaManager.getPublicUrl(featuredImage);
+          const imageUrl = mediaManager.getPublicUrl(article.featured_image);
           console.log('URL pública de la imagen destacada:', imageUrl);
           
           // Verificar si la imagen existe (solo en desarrollo)
@@ -523,15 +517,15 @@ export class ArticleManager {
             img.onload = () => {
               console.log('Imagen cargada correctamente:', imageUrl);
               // La imagen existe, actualizar la vista previa
-              this.updateFeaturedImagePreview(featuredImage);
+              this.updateFeaturedImagePreview(article.featured_image);
             };
             
             img.onerror = () => {
               console.warn('Error al cargar la imagen:', imageUrl);
               // La imagen no existe, intentar con otra ruta
-              const alternativeUrl = featuredImage.startsWith('/') 
-                ? featuredImage 
-                : `/${featuredImage}`;
+              const alternativeUrl = article.featured_image.startsWith('/') 
+                ? article.featured_image 
+                : `/${article.featured_image}`;
               
               console.log('Intentando con ruta alternativa:', alternativeUrl);
               this.updateFeaturedImagePreview(alternativeUrl);
@@ -540,11 +534,11 @@ export class ArticleManager {
             img.src = imageUrl;
           } else {
             // En producción, confiar en la URL generada
-            this.updateFeaturedImagePreview(featuredImage);
+            this.updateFeaturedImagePreview(article.featured_image);
           }
           
           // Guardar la ruta original de la imagen
-          this.featuredImageInput.value = featuredImage;
+          this.featuredImageInput.value = article.featured_image;
         } catch (imageError) {
           console.error('Error al procesar la imagen destacada:', imageError);
           this.resetFeaturedImagePreview();

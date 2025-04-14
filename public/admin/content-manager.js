@@ -84,23 +84,12 @@ export class ContentManager {
   // Crear un nuevo artículo
   async createArticle(articleData) {
     try {
-      console.log('ContentManager.createArticle - Datos originales:', articleData);
-      
-      // Normalizar los datos del artículo para asegurar consistencia
-      const normalizedData = { ...articleData };
-      
-      // Asegurar que se use featured_image como nombre de propiedad
-      if (normalizedData.featuredImage && !normalizedData.featured_image) {
-        normalizedData.featured_image = normalizedData.featuredImage;
-        delete normalizedData.featuredImage;
-      }
-      
-      console.log('ContentManager.createArticle - Datos normalizados:', normalizedData);
+      console.log('ContentManager.createArticle - Datos del artículo:', articleData);
       
       const response = await fetch(`${this.apiBase}/articles`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
-        body: JSON.stringify(normalizedData)
+        body: JSON.stringify(articleData)
       });
       
       console.log(`ContentManager.createArticle - Código de respuesta: ${response.status}`);
@@ -122,23 +111,12 @@ export class ContentManager {
   // Actualizar un artículo existente
   async updateArticle(slug, articleData) {
     try {
-      console.log('ContentManager.updateArticle - Datos originales:', articleData);
-      
-      // Normalizar los datos del artículo para asegurar consistencia
-      const normalizedData = { ...articleData };
-      
-      // Asegurar que se use featured_image como nombre de propiedad
-      if (normalizedData.featuredImage && !normalizedData.featured_image) {
-        normalizedData.featured_image = normalizedData.featuredImage;
-        delete normalizedData.featuredImage;
-      }
-      
-      console.log('ContentManager.updateArticle - Datos normalizados:', normalizedData);
+      console.log('ContentManager.updateArticle - Datos del artículo:', articleData);
       
       const response = await fetch(`${this.apiBase}/articles/${slug}`, {
         method: 'PUT',
         headers: this.getAuthHeaders(),
-        body: JSON.stringify(normalizedData)
+        body: JSON.stringify(articleData)
       });
       
       console.log(`ContentManager.updateArticle - Código de respuesta: ${response.status}`);
