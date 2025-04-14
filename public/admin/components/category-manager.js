@@ -1,5 +1,5 @@
 // Gestor de categorías para el CMS
-import { showNotification, showConfirmDialog } from './notification.js';
+import { notifications } from './notification.js';
 
 export class CategoryManager {
   constructor(contentManager) {
@@ -40,7 +40,7 @@ export class CategoryManager {
     } catch (error) {
       this.isLoading = false;
       this.updateLoadingState();
-      showNotification('error', `Error al cargar categorías: ${error.message}`);
+      notifications.error(`Error al cargar categorías: ${error.message}`);
       return [];
     }
   }
@@ -230,7 +230,7 @@ export class CategoryManager {
     
     // Validar datos
     if (!categoryData.name || !categoryData.slug) {
-      showNotification('error', 'El nombre y el slug son obligatorios');
+      notifications.error('El nombre y el slug son obligatorios');
       return;
     }
     
@@ -241,11 +241,11 @@ export class CategoryManager {
       if (this.currentEditingCategory) {
         // Actualizar categoría existente
         await this.contentManager.updateCategory(this.currentEditingCategory.slug, categoryData);
-        showNotification('success', 'Categoría actualizada correctamente');
+        notifications.success('Categoría actualizada correctamente');
       } else {
         // Crear nueva categoría
         await this.contentManager.createCategory(categoryData);
-        showNotification('success', 'Categoría creada correctamente');
+        notifications.success('Categoría creada correctamente');
       }
       
       // Recargar categorías y resetear formulario
@@ -254,7 +254,7 @@ export class CategoryManager {
       this.render();
       this.attachEventListeners();
     } catch (error) {
-      showNotification('error', error.message);
+      notifications.error(error.message);
     } finally {
       this.isLoading = false;
       this.updateLoadingState();
@@ -266,7 +266,7 @@ export class CategoryManager {
     try {
       const category = this.categories.find(c => c.slug === slug);
       if (!category) {
-        showNotification('error', 'Categoría no encontrada');
+        notifications.error('Categoría no encontrada');
         return;
       }
       
@@ -297,7 +297,7 @@ export class CategoryManager {
       // Hacer scroll al formulario
       this.container.querySelector('.category-form').scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
-      showNotification('error', `Error al cargar la categoría: ${error.message}`);
+      notifications.error(`Error al cargar la categoría: ${error.message}`);
     }
   }
 
@@ -305,18 +305,19 @@ export class CategoryManager {
   async confirmDeleteCategory(slug) {
     const category = this.categories.find(c => c.slug === slug);
     if (!category) {
-      showNotification('error', 'Categoría no encontrada');
+      notifications.error('Categoría no encontrada');
       return;
     }
     
-    showConfirmDialog({
-      title: 'Eliminar Categoría',
-      message: `¿Estás seguro de que deseas eliminar la categoría "${category.name}"? Esta acción no se puede deshacer.`,
-      confirmText: 'Eliminar',
-      cancelText: 'Cancelar',
-      confirmButtonClass: 'bg-red-600 hover:bg-red-700',
-      onConfirm: () => this.deleteCategory(slug)
-    });
+    const confirmed = await notifications.confirm(
+      `¿Estás seguro de que deseas eliminar la categoría "${category.name}"? Esta acción no se puede deshacer.`,
+      'Eliminar',
+      'Cancelar'
+    );
+    
+    if (confirmed) {
+      this.deleteCategory(slug);
+    }
   }
 
   // Eliminar categoría
@@ -327,7 +328,7 @@ export class CategoryManager {
       
       await this.contentManager.deleteCategory(slug);
       
-      showNotification('success', 'Categoría eliminada correctamente');
+      notifications.success('Categoría eliminada correctamente');
       
       // Recargar categorías
       await this.loadCategories();
@@ -336,9 +337,9 @@ export class CategoryManager {
     } catch (error) {
       // Mostrar mensaje específico si la categoría está en uso
       if (error.message.includes('está siendo utilizada')) {
-        showNotification('error', 'No se puede eliminar la categoría porque está siendo utilizada en artículos. Debes cambiar la categoría de esos artículos primero.');
+        notifications.error('No se puede eliminar la categoría porque está siendo utilizada en artículos. Debes cambiar la categoría de esos artículos primero.');
       } else {
-        showNotification('error', `Error al eliminar la categoría: ${error.message}`);
+        notifications.error(`Error al eliminar la categoría: ${error.message}`);
       }
     } finally {
       this.isLoading = false;
