@@ -3,10 +3,9 @@
  * Proporciona métodos para interactuar con la API de artículos
  */
 
-// URL base de la API
-// Si no hay una variable de entorno, usamos la URL de producción
-const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'https://colectivoabyayala.com';
-console.log('API_BASE_URL configurada como:', API_BASE_URL);
+// URL base de la API - en producción, usamos el mismo dominio
+const API_BASE_URL = '';
+console.log('API_BASE_URL configurada para producción (relativa al dominio actual)');
 
 /**
  * Obtiene todos los artículos
@@ -66,104 +65,33 @@ export async function getArticlesByCategory(category) {
  * @returns {Promise<Array>} Lista de categorías
  */
 export async function getAllCategories() {
-  console.log('Iniciando getAllCategories()');
-  console.log('API_BASE_URL:', API_BASE_URL);
-  
   try {
-    // Según la configuración de rutas, la ruta correcta es /api/content/categories
     const url = `${API_BASE_URL}/api/content/categories`;
-    console.log('Intentando obtener categorías desde:', url);
     
-    let response = await fetch(url, {
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
-      },
-      // Asegurarse de que se incluyan las credenciales (cookies, etc.)
-      credentials: 'include'
+      }
     });
-    console.log('Respuesta de la API:', response.status, response.statusText);
-    
-    // Si falla, intentar con la URL de producción directamente
-    if (!response.ok && API_BASE_URL !== 'https://colectivoabyayala.com') {
-      const productionUrl = 'https://colectivoabyayala.com/api/content/categories';
-      console.log('Intentando con URL de producción directamente:', productionUrl);
-      response = await fetch(productionUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
-      console.log('Respuesta de la API de producción:', response.status, response.statusText);
-    }
     
     if (!response.ok) {
       throw new Error(`Error al obtener categorías: ${response.status}`);
     }
     
     const data = await response.json();
-    console.log('Datos de categorías recibidos:', data);
     
     if (!data || !Array.isArray(data) || data.length === 0) {
       console.warn('No se encontraron categorías o el formato es incorrecto');
-      console.log('ATENCIÓN: Usando categorías de respaldo debido a que no hay datos');
-      // Usar datos de respaldo si no hay categorías
-      return getFallbackCategories();
+      // En producción, no usamos datos de respaldo
+      return [];
     }
     
     return data;
   } catch (error) {
     console.error('Error al obtener categorías:', error);
-    console.log('ATENCIÓN: Usando categorías de respaldo debido al error');
-    // Usar datos de respaldo en caso de error
-    return getFallbackCategories();
+    // En producción, no usamos datos de respaldo
+    return [];
   }
-}
-
-/**
- * Proporciona categorías de respaldo en caso de que la API falle
- * @returns {Array} Lista de categorías de respaldo
- */
-function getFallbackCategories() {
-  console.log('ATENCIÓN: Devolviendo categorías HARDCODEADAS de respaldo');
-  return [
-    {
-      slug: 'agricultura',
-      name: 'Agricultura',
-      description: 'Noticias sobre prácticas agrícolas, cultivos y temporadas'
-    },
-    {
-      slug: 'comunidad',
-      name: 'Comunidad',
-      description: 'Historias de miembros, cooperación y testimonios'
-    },
-    {
-      slug: 'sostenibilidad',
-      name: 'Sostenibilidad',
-      description: 'Prácticas ecológicas, conservación y biodiversidad'
-    },
-    {
-      slug: 'politica-agraria',
-      name: 'Política Agraria',
-      description: 'Legislación, derechos y movimientos sociales'
-    },
-    {
-      slug: 'tecnologia-rural',
-      name: 'Tecnología Rural',
-      description: 'Innovaciones, herramientas y digitalización'
-    },
-    {
-      slug: 'cultura',
-      name: 'Cultura',
-      description: 'Tradiciones, gastronomía y artesanía'
-    },
-    {
-      slug: 'eventos',
-      name: 'Eventos',
-      description: 'Ferias, encuentros y capacitaciones'
-    }
-  ];
 }
