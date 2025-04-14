@@ -53,7 +53,7 @@ async function handleListMedia(env) {
           return {
             id: object.key,
             name: name,
-            path: `/${object.key}`,
+            path: `/${compatiblePath}`,
             url: `/api/media/${compatiblePath}`,
             size: object.size,
             type: getFileType(object.key),

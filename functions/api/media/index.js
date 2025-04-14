@@ -2,7 +2,20 @@
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const path = url.pathname.replace('/api/media', '');
+  const path = url.pathname;
+  
+  console.log('Solicitud recibida en media/index.js:', path);
+  
+  // Si la ruta contiene barras después de /api/media/, redirigir a la versión con guiones bajos
+  if (path.startsWith('/api/media/') && path.slice(11).includes('/')) {
+    const mediaPath = path.slice(11); // Eliminar '/api/media/'
+    const compatiblePath = mediaPath.replace(/\//g, '_');
+    const newUrl = `/api/media/${compatiblePath}`;
+    
+    console.log('Redirigiendo de ruta con barras a ruta con guiones bajos:', path, '->', newUrl);
+    
+    return Response.redirect(new URL(newUrl, url.origin), 302);
+  }
   
   // Verificar autenticación
   const authenticated = await verifyAuthentication(request, env);
@@ -20,15 +33,15 @@ export async function onRequest(context) {
   }
   
   // Manejar diferentes rutas y métodos
-  if (path === '/list' || path === '/list/' || path === '' || path === '/') {
+  if (path === '/api/media/list' || path === '/api/media/list/' || path === '/api/media' || path === '/api/media/') {
     return handleListMedia(env);
-  } else if (path === '/upload' || path === '/upload/') {
+  } else if (path === '/api/media/upload' || path === '/api/media/upload/') {
     if (request.method === 'POST') {
       return handleUploadMedia(request, env);
     }
-  } else if (path.match(/^\/[a-zA-Z0-9-_]+$/) || path.startsWith('/2025/')) {
+  } else if (path.match(/^\/api\/media\/[a-zA-Z0-9-_]+$/) || path.startsWith('/api/media/2025/')) {
     // Extraer el fileId del path, eliminando la barra inicial
-    const fileId = path.substring(1);
+    const fileId = path.substring(11);
     
     if (request.method === 'DELETE') {
       return handleDeleteMedia(fileId, env);
