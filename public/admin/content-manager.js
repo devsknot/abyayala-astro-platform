@@ -290,43 +290,43 @@ export class ContentManager {
     };
   }
 
-  // Obtener categorías de prueba
+  // Datos de ejemplo para categorías cuando la API no está disponible
   getFallbackCategories() {
     return [
       {
-        id: 'agricultura',
+        slug: 'agricultura',
         name: 'Agricultura',
-        description: 'Noticias sobre prácticas agrícolas, cultivos y temporadas'
+        description: 'Noticias sobre prácticas agrícolas, cultivos y producción'
       },
       {
-        id: 'comunidad',
+        slug: 'comunidad',
         name: 'Comunidad',
-        description: 'Historias de miembros, cooperación y testimonios'
+        description: 'Información sobre actividades comunitarias y desarrollo local'
       },
       {
-        id: 'sostenibilidad',
+        slug: 'sostenibilidad',
         name: 'Sostenibilidad',
-        description: 'Prácticas ecológicas, conservación y biodiversidad'
+        description: 'Prácticas sostenibles y conservación del medio ambiente'
       },
       {
-        id: 'politica-agraria',
+        slug: 'politica-agraria',
         name: 'Política Agraria',
-        description: 'Legislación, derechos y movimientos sociales'
+        description: 'Análisis de políticas públicas relacionadas con el sector agrario'
       },
       {
-        id: 'tecnologia-rural',
+        slug: 'tecnologia-rural',
         name: 'Tecnología Rural',
-        description: 'Innovaciones, herramientas y digitalización'
+        description: 'Innovaciones tecnológicas aplicadas al entorno rural'
       },
       {
-        id: 'cultura',
+        slug: 'cultura',
         name: 'Cultura',
-        description: 'Tradiciones, gastronomía y artesanía'
+        description: 'Expresiones culturales y tradiciones del mundo rural'
       },
       {
-        id: 'eventos',
+        slug: 'eventos',
         name: 'Eventos',
-        description: 'Ferias, encuentros y capacitaciones'
+        description: 'Ferias, encuentros y actividades organizadas por el colectivo'
       }
     ];
   }

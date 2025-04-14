@@ -135,94 +135,208 @@ function renderApp(container) {
 }
 
 // Renderizar dashboard
-function renderDashboard(container) {
+async function renderDashboard(container) {
+  // Mostrar un estado de carga inicial
   container.innerHTML = `
     <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
-    
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-      <div class="card">
-        <h3 class="text-lg font-semibold mb-2">Artículos</h3>
-        <p class="text-3xl font-bold">12</p>
-      </div>
-      
-      <div class="card">
-        <h3 class="text-lg font-semibold mb-2">Categorías</h3>
-        <p class="text-3xl font-bold">7</p>
-      </div>
-      
-      <div class="card">
-        <h3 class="text-lg font-semibold mb-2">Archivos multimedia</h3>
-        <p class="text-3xl font-bold">24</p>
-      </div>
-    </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="card">
-        <h3 class="text-lg font-semibold mb-4">Artículos recientes</h3>
-        
-        <table class="w-full">
-          <thead>
-            <tr class="border-b">
-              <th class="text-left pb-2">Título</th>
-              <th class="text-left pb-2">Categoría</th>
-              <th class="text-left pb-2">Fecha</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="border-b">
-              <td class="py-2">Feria de semillas ancestrales</td>
-              <td class="py-2">Eventos</td>
-              <td class="py-2">15 abr 2025</td>
-            </tr>
-            <tr class="border-b">
-              <td class="py-2">Nueva técnica de riego sostenible</td>
-              <td class="py-2">Tecnología rural</td>
-              <td class="py-2">10 abr 2025</td>
-            </tr>
-            <tr>
-              <td class="py-2">Récord en producción de café orgánico</td>
-              <td class="py-2">Agricultura</td>
-              <td class="py-2">2 abr 2025</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      
-      <div class="card">
-        <h3 class="text-lg font-semibold mb-4">Actividad reciente</h3>
-        
-        <ul class="space-y-3">
-          <li class="flex items-start">
-            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 mr-2">
-              <span>📝</span>
-            </div>
-            <div>
-              <p class="font-medium">Artículo creado: "Feria de semillas ancestrales"</p>
-              <p class="text-sm text-gray-500">Hace 2 días</p>
-            </div>
-          </li>
-          <li class="flex items-start">
-            <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-500 mr-2">
-              <span>🖼️</span>
-            </div>
-            <div>
-              <p class="font-medium">Imagen subida: "riego-sostenible.jpg"</p>
-              <p class="text-sm text-gray-500">Hace 3 días</p>
-            </div>
-          </li>
-          <li class="flex items-start">
-            <div class="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-500 mr-2">
-              <span>✏️</span>
-            </div>
-            <div>
-              <p class="font-medium">Artículo editado: "Récord en producción de café orgánico"</p>
-              <p class="text-sm text-gray-500">Hace 5 días</p>
-            </div>
-          </li>
-        </ul>
-      </div>
+    <div class="loading-overlay p-4 text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mx-auto mb-4"></div>
+      <p class="text-lg font-medium">Cargando datos del dashboard...</p>
     </div>
   `;
+  
+  try {
+    // Crear instancia del gestor de contenido
+    const contentManager = new ContentManager();
+    
+    // Obtener datos de la API
+    const articles = await contentManager.getArticles();
+    const categories = await contentManager.getCategories();
+    
+    // Ordenar artículos por fecha (más recientes primero)
+    const sortedArticles = [...articles].sort((a, b) => {
+      return new Date(b.pubDate) - new Date(a.pubDate);
+    });
+    
+    // Tomar los 3 artículos más recientes
+    const recentArticles = sortedArticles.slice(0, 3);
+    
+    // Generar HTML para los artículos recientes
+    const recentArticlesHTML = recentArticles.map(article => `
+      <tr class="border-b">
+        <td class="py-2">${article.title}</td>
+        <td class="py-2">${getCategoryName(article.category)}</td>
+        <td class="py-2">${formatDate(article.pubDate)}</td>
+      </tr>
+    `).join('');
+    
+    // Generar actividad reciente basada en los artículos
+    // En una implementación real, esto vendría de un registro de actividad en la API
+    const recentActivityHTML = generateRecentActivity(recentArticles);
+    
+    // Renderizar dashboard con datos reales
+    container.innerHTML = `
+      <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="card">
+          <h3 class="text-lg font-semibold mb-2">Artículos</h3>
+          <p class="text-3xl font-bold">${articles.length}</p>
+        </div>
+        
+        <div class="card">
+          <h3 class="text-lg font-semibold mb-2">Categorías</h3>
+          <p class="text-3xl font-bold">${categories.length}</p>
+        </div>
+        
+        <div class="card">
+          <h3 class="text-lg font-semibold mb-2">Archivos multimedia</h3>
+          <p class="text-3xl font-bold">${getMediaCount()}</p>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="card">
+          <h3 class="text-lg font-semibold mb-4">Artículos recientes</h3>
+          
+          <table class="w-full">
+            <thead>
+              <tr class="border-b">
+                <th class="text-left pb-2">Título</th>
+                <th class="text-left pb-2">Categoría</th>
+                <th class="text-left pb-2">Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${recentArticlesHTML || '<tr><td colspan="3" class="py-4 text-center text-gray-500">No hay artículos recientes</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="card">
+          <h3 class="text-lg font-semibold mb-4">Actividad reciente</h3>
+          
+          <ul class="space-y-3">
+            ${recentActivityHTML || '<li class="text-center text-gray-500 py-4">No hay actividad reciente</li>'}
+          </ul>
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    console.error('Error al cargar el dashboard:', error);
+    container.innerHTML = `
+      <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
+      <div class="card p-4 text-center text-red-500">
+        <p>Error al cargar los datos del dashboard. Intenta recargar la página.</p>
+      </div>
+    `;
+  }
+}
+
+// Función auxiliar para obtener el nombre de la categoría
+function getCategoryName(slug) {
+  const categories = {
+    'agricultura': 'Agricultura',
+    'comunidad': 'Comunidad',
+    'sostenibilidad': 'Sostenibilidad',
+    'politica-agraria': 'Política Agraria',
+    'tecnologia-rural': 'Tecnología Rural',
+    'cultura': 'Cultura',
+    'eventos': 'Eventos'
+  };
+  
+  return categories[slug] || slug;
+}
+
+// Función auxiliar para formatear fechas
+function formatDate(dateString) {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    
+    // Formatear fecha como "DD MMM YYYY" en español
+    return date.toLocaleDateString('es-ES', { 
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  } catch (error) {
+    console.error('Error al formatear fecha:', error);
+    return '';
+  }
+}
+
+// Función para obtener el conteo de archivos multimedia
+// En una implementación real, esto vendría de la API
+function getMediaCount() {
+  // Por ahora retornamos un valor fijo, pero esto debería venir de la API
+  return 24;
+}
+
+// Función para generar actividad reciente basada en los artículos
+function generateRecentActivity(articles) {
+  if (!articles || articles.length === 0) return '';
+  
+  // Generar actividad ficticia basada en los artículos existentes
+  const activities = [
+    {
+      type: 'create',
+      icon: '📝',
+      bgColor: 'bg-blue-100',
+      textColor: 'text-blue-500',
+      article: articles[0],
+      daysAgo: 2
+    },
+    {
+      type: 'media',
+      icon: '🖼️',
+      bgColor: 'bg-green-100',
+      textColor: 'text-green-500',
+      name: articles[1]?.heroImage?.split('/').pop() || 'imagen.jpg',
+      daysAgo: 3
+    },
+    {
+      type: 'edit',
+      icon: '✏️',
+      bgColor: 'bg-yellow-100',
+      textColor: 'text-yellow-500',
+      article: articles[2] || articles[0],
+      daysAgo: 5
+    }
+  ];
+  
+  return activities.map(activity => {
+    let content = '';
+    
+    if (activity.type === 'create') {
+      content = `
+        <p class="font-medium">Artículo creado: "${activity.article.title}"</p>
+        <p class="text-sm text-gray-500">Hace ${activity.daysAgo} días</p>
+      `;
+    } else if (activity.type === 'media') {
+      content = `
+        <p class="font-medium">Imagen subida: "${activity.name}"</p>
+        <p class="text-sm text-gray-500">Hace ${activity.daysAgo} días</p>
+      `;
+    } else if (activity.type === 'edit') {
+      content = `
+        <p class="font-medium">Artículo editado: "${activity.article.title}"</p>
+        <p class="text-sm text-gray-500">Hace ${activity.daysAgo} días</p>
+      `;
+    }
+    
+    return `
+      <li class="flex items-start">
+        <div class="w-8 h-8 rounded-full ${activity.bgColor} flex items-center justify-center ${activity.textColor} mr-2">
+          <span>${activity.icon}</span>
+        </div>
+        <div>
+          ${content}
+        </div>
+      </li>
+    `;
+  }).join('');
 }
 
 // Renderizar gestor de artículos
