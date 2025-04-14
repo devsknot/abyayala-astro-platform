@@ -132,8 +132,10 @@ export class MediaManager {
       return `/${cleanFileId}`;
     }
     
-    // En producción, usar la URL directa sin conversión de formato
-    return `/api/media/${cleanFileId}`;
+    // En producción, usar la API de medios con formato de guiones bajos
+    // Convertir barras a guiones bajos para compatibilidad con Cloudflare Pages Functions
+    const compatiblePath = cleanFileId.replace(/\//g, '_');
+    return `/api/media/${compatiblePath}`;
   }
   
   // Determinar si un archivo es una imagen
