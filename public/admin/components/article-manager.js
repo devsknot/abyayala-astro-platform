@@ -460,6 +460,8 @@ export class ArticleManager {
       console.log(`Solicitando artículo con slug: ${slug}`);
       const article = await this.contentManager.getArticle(slug);
       console.log('Artículo cargado para edición:', article);
+      console.log('Propiedades del artículo:', Object.keys(article));
+      console.log('Valor de featured_image:', article.featured_image);
       
       // Cerrar notificación de carga
       notifications.close(loadingNotification);

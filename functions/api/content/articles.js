@@ -101,11 +101,14 @@ async function verifyAuthentication(request, env) {
 // Obtener todos los artículos
 async function handleGetArticles(env, headers) {
   try {
-    // Usar D1 para obtener los artículos
+    console.log('Obteniendo todos los artículos');
+    
+    // Usar D1 para obtener todos los artículos
     const { results } = await env.DB.prepare(`
-      SELECT * FROM articles 
-      ORDER BY pub_date DESC
+      SELECT * FROM articles ORDER BY pub_date DESC
     `).all();
+    
+    console.log(`Recuperados ${results.length} artículos de la base de datos`);
     
     // Transformar los nombres de los campos para que coincidan con lo que espera el frontend
     const transformedResults = results.map(article => ({
@@ -115,15 +118,18 @@ async function handleGetArticles(env, headers) {
       content: article.content,
       pubDate: article.pub_date, // Transformar pub_date a pubDate
       category: article.category,
-      featured_image: article.featured_image // Mantener el mismo nombre que espera el frontend
+      featured_image: article.featured_image || article.featuredImage // Asegurar que siempre se use featured_image
     }));
     
-    return new Response(JSON.stringify(transformedResults || []), { headers });
+    console.log('Artículos transformados para el frontend');
+    
+    return new Response(JSON.stringify(transformedResults), { headers });
   } catch (error) {
     console.error('Error al obtener artículos:', error);
     
     // Si hay un error con D1, usar datos de ejemplo como fallback
     if (env.ENVIRONMENT === 'development' || !env.DB) {
+      console.log('Usando datos de fallback para artículos');
       const fallbackArticles = getFallbackArticles();
       return new Response(JSON.stringify(fallbackArticles), { headers });
     }
@@ -231,8 +237,13 @@ async function handleGetArticle(slug, env, headers) {
       content: article.content,
       pubDate: article.pub_date, // Transformar pub_date a pubDate
       category: article.category,
-      featured_image: article.featured_image // Mantener el mismo nombre que espera el frontend
+      featured_image: article.featured_image || article.featuredImage // Asegurar que siempre se use featured_image
     };
+    
+    // Si el artículo tiene featuredImage pero no featured_image, registrarlo para depuración
+    if (article.featuredImage && !article.featured_image) {
+      console.log(`Artículo ${slug} tiene featuredImage pero no featured_image:`, article.featuredImage);
+    }
     
     console.log('Artículo transformado para el frontend:', transformedArticle);
     
