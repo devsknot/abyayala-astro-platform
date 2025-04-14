@@ -104,7 +104,7 @@ async function handleGetArticle(slug, env, headers) {
       content: article.content,
       pubDate: article.pub_date, // Transformar pub_date a pubDate
       category: article.category,
-      heroImage: article.hero_image // Transformar hero_image a heroImage
+      featuredImage: article.featured_image // Transformar featured_image a featuredImage
     };
     
     return new Response(JSON.stringify(transformedArticle), { headers });
@@ -163,7 +163,7 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
         content = ?,
         pub_date = ?,
         category = ?,
-        hero_image = ?,
+        featured_image = ?,
         updated_at = datetime('now')
       WHERE slug = ?
     `).bind(
@@ -172,7 +172,7 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       articleData.content || existingArticle.content,
       pubDate,
       articleData.category || existingArticle.category,
-      articleData.heroImage || existingArticle.hero_image,
+      articleData.featuredImage || existingArticle.featured_image,
       slug
     ).run();
     
@@ -235,32 +235,41 @@ async function handleDeleteArticle(slug, env, headers) {
 // Obtener un artículo de ejemplo específico
 function getFallbackArticle(slug) {
   const articles = {
-    'record-cafe-organico': {
-      slug: 'record-cafe-organico',
-      title: 'Récord en producción de café orgánico',
-      description: 'Cooperativa local logra récord de producción con prácticas sostenibles',
+    'cooperativa-agricola-lanza-nueva-linea-de-cafe-organico': {
+      slug: 'cooperativa-agricola-lanza-nueva-linea-de-cafe-organico',
+      title: 'Cooperativa agrícola lanza nueva línea de café orgánico',
+      description: 'La cooperativa Abya Yala presenta su nueva línea de café orgánico cultivado en altura y certificado por estándares internacionales.',
       content: '# Récord en producción de café orgánico\n\nLa cooperativa agraria Abya Yala ha alcanzado un nuevo récord en la producción de café orgánico, superando las expectativas del mercado nacional e internacional.',
       pubDate: '2025-04-02T00:00:00.000Z',
       category: 'agricultura',
-      heroImage: '/uploads/2025/04/cafe-organico.jpg'
+      featuredImage: '/2025/04/cafe-organico.jpg'
     },
-    'tecnica-riego-sostenible': {
-      slug: 'tecnica-riego-sostenible',
-      title: 'Nueva técnica de riego sostenible',
-      description: 'Innovadora técnica de riego que ahorra hasta un 60% de agua',
+    'innovacion-en-riego-sostenible-para-pequenos-productores': {
+      slug: 'innovacion-en-riego-sostenible-para-pequenos-productores',
+      title: 'Innovación en riego sostenible para pequeños productores',
+      description: 'Un grupo de agricultores implementa sistema de riego por goteo que reduce el consumo de agua en un 40%.',
       content: '# Nueva técnica de riego sostenible\n\nUn grupo de agricultores del colectivo Abya Yala ha implementado con éxito un sistema de riego por goteo subterráneo que ha permitido reducir el consumo de agua en un 40%.',
       pubDate: '2025-03-20T00:00:00.000Z',
       category: 'tecnologia-rural',
-      heroImage: '/uploads/2025/03/riego-sostenible.jpg'
+      featuredImage: '/2025/04/riego-sostenible.jpg'
     },
-    'feria-semillas-ancestrales': {
-      slug: 'feria-semillas-ancestrales',
-      title: 'Feria de semillas ancestrales',
-      description: 'La tradicional feria de intercambio de semillas ancestrales organizada por Abya Yala contó con la participación de agricultores de toda la región',
+    'feria-de-intercambio-de-semillas-promueve-biodiversidad': {
+      slug: 'feria-de-intercambio-de-semillas-promueve-biodiversidad',
+      title: 'Feria de intercambio de semillas promueve biodiversidad',
+      description: 'Más de 500 agricultores participaron en la primera feria de intercambio de semillas ancestrales.',
       content: '# Feria de semillas ancestrales\n\nEl pasado fin de semana se celebró con gran éxito la primera feria de intercambio de semillas ancestrales organizada por nuestro colectivo. Más de 500 agricultores de la región participaron en este evento que busca preservar la biodiversidad agrícola local.',
       pubDate: '2025-03-25T00:00:00.000Z',
       category: 'eventos',
-      heroImage: '/uploads/2025/03/feria-semillas.jpg'
+      featuredImage: '/2025/04/feria-semillas.jpg'
+    },
+    'reunion-anual-de-cooperativas-define-agenda-2025': {
+      slug: 'reunion-anual-de-cooperativas-define-agenda-2025',
+      title: 'Reunión anual de cooperativas define agenda 2025',
+      description: 'Representantes de 12 cooperativas agrarias se reunieron para definir la agenda de trabajo colaborativo para el próximo año.',
+      content: '# Cooperativas definen agenda 2025\n\nEn un encuentro histórico, representantes de 12 cooperativas agrarias de la región se reunieron en la sede de Abya Yala para definir una agenda común de trabajo para el año 2025, enfocada en la soberanía alimentaria y la agroecología.',
+      pubDate: '2025-04-10T00:00:00.000Z',
+      category: 'cooperativismo',
+      featuredImage: '/2025/04/cooperativa-reunion.jpg'
     }
   };
   

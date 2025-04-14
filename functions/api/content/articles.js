@@ -100,7 +100,7 @@ async function handleGetArticles(env, headers) {
       content: article.content,
       pubDate: article.pub_date, // Transformar pub_date a pubDate
       category: article.category,
-      heroImage: article.hero_image // Transformar hero_image a heroImage
+      featuredImage: article.featured_image // Transformar featured_image a heroImage
     }));
     
     return new Response(JSON.stringify(transformedResults || []), { headers });
@@ -154,7 +154,7 @@ async function handleCreateArticle(articleData, env, headers) {
     // Insertar el artículo en D1
     const result = await env.DB.prepare(`
       INSERT INTO articles (
-        slug, title, description, content, pub_date, category, hero_image
+        slug, title, description, content, pub_date, category, featured_image
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(
       articleData.slug,
@@ -163,7 +163,7 @@ async function handleCreateArticle(articleData, env, headers) {
       articleData.content || '',
       pubDate,
       articleData.category || '',
-      articleData.heroImage || ''
+      articleData.featuredImage || ''
     ).run();
     
     // Obtener el artículo recién creado
@@ -192,28 +192,36 @@ async function handleCreateArticle(articleData, env, headers) {
 function getFallbackArticles() {
   return [
     {
-      slug: 'record-cafe-organico',
-      title: 'Récord en producción de café orgánico',
-      description: 'Cooperativa local logra récord de producción con prácticas sostenibles',
+      slug: 'cooperativa-agricola-lanza-nueva-linea-de-cafe-organico',
+      title: 'Cooperativa agrícola lanza nueva línea de café orgánico',
+      description: 'La cooperativa Abya Yala presenta su nueva línea de café orgánico cultivado en altura y certificado por estándares internacionales.',
       pubDate: '2025-04-02T00:00:00.000Z',
       category: 'agricultura',
-      heroImage: '/uploads/2025/04/cafe-organico.jpg'
+      featuredImage: '/2025/04/cafe-organico.jpg'
     },
     {
-      slug: 'tecnica-riego-sostenible',
-      title: 'Nueva técnica de riego sostenible',
-      description: 'Innovadora técnica de riego que ahorra hasta un 60% de agua',
+      slug: 'innovacion-en-riego-sostenible-para-pequenos-productores',
+      title: 'Innovación en riego sostenible para pequeños productores',
+      description: 'Un grupo de agricultores implementa sistema de riego por goteo que reduce el consumo de agua en un 40%.',
       pubDate: '2025-03-20T00:00:00.000Z',
       category: 'tecnologia-rural',
-      heroImage: '/uploads/2025/03/riego-sostenible.jpg'
+      featuredImage: '/2025/04/riego-sostenible.jpg'
     },
     {
-      slug: 'feria-semillas-ancestrales',
-      title: 'Feria de semillas ancestrales',
-      description: 'La tradicional feria de intercambio de semillas ancestrales organizada por Abya Yala contó con la participación de agricultores de toda la región',
+      slug: 'feria-de-intercambio-de-semillas-promueve-biodiversidad',
+      title: 'Feria de intercambio de semillas promueve biodiversidad',
+      description: 'Más de 500 agricultores participaron en la primera feria de intercambio de semillas ancestrales.',
       pubDate: '2025-03-25T00:00:00.000Z',
       category: 'eventos',
-      heroImage: '/uploads/2025/03/feria-semillas.jpg'
+      featuredImage: '/2025/04/feria-semillas.jpg'
+    },
+    {
+      slug: 'reunion-anual-de-cooperativas-define-agenda-2025',
+      title: 'Reunión anual de cooperativas define agenda 2025',
+      description: 'Representantes de 12 cooperativas agrarias se reunieron para definir la agenda de trabajo colaborativo para el próximo año.',
+      pubDate: '2025-04-10T00:00:00.000Z',
+      category: 'cooperativismo',
+      featuredImage: '/2025/04/cooperativa-reunion.jpg'
     }
   ];
 }
