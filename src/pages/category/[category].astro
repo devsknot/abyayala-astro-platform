@@ -10,7 +10,7 @@ export async function getStaticPaths() {
   
   // Crear rutas para cada categoría
   return categories.map(category => ({
-    params: { category: category.slug },
+    params: { category: category.id },
     props: { category },
   }));
 }
@@ -18,7 +18,7 @@ export async function getStaticPaths() {
 const { category } = Astro.props;
 
 // Obtener artículos de la API filtrados por categoría
-const newsItems = await getArticlesByCategory(category.slug);
+const newsItems = await getArticlesByCategory(category.id);
 
 // Ordenar por fecha de publicación (más reciente primero)
 newsItems.sort((a, b) => new Date(b.pubDate).valueOf() - new Date(a.pubDate).valueOf());

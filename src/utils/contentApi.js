@@ -47,7 +47,7 @@ export async function getArticleBySlug(slug) {
 
 /**
  * Obtiene artículos filtrados por categoría
- * @param {string} category - Categoría para filtrar
+ * @param {string} category - Categoría para filtrar (id de la categoría)
  * @returns {Promise<Array>} Lista de artículos filtrados
  */
 export async function getArticlesByCategory(category) {
