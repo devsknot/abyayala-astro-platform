@@ -2,6 +2,7 @@
 import { ArticleManager } from './components/article-manager.js';
 import { MediaLibrary } from './components/media-library.js';
 import { ContentManager } from './content-manager.js';
+import { notifications } from './components/notification.js';
 
 // Componentes del panel de administración
 const components = {
@@ -42,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         // Autenticación expirada
         localStorage.removeItem('abyayala_cms_auth');
+        notifications.warning('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
         window.location.href = 'login.html';
       }
     } else {
@@ -50,6 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch (error) {
     console.error('Error de autenticación:', error);
+    notifications.error('Error de autenticación. Por favor, intenta nuevamente.');
     window.location.href = 'login.html';
   }
 });
@@ -104,34 +107,69 @@ function renderApp(container) {
   `;
   
   // Renderizar la vista actual
-  const mainContent = container.querySelector('#main-content');
-  components[appState.currentView](mainContent);
+  const mainContent = document.getElementById('main-content');
+  if (components[appState.currentView]) {
+    components[appState.currentView](mainContent);
+  } else {
+    // Vista no encontrada, mostrar dashboard por defecto
+    components.dashboard(mainContent);
+  }
   
-  // Configurar eventos para la navegación
-  container.querySelectorAll('.sidebar-link').forEach(link => {
+  // Configurar eventos de navegación
+  document.querySelectorAll('.sidebar-link').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
       const view = link.dataset.view;
       
-      // Actualizar la vista actual
-      appState.currentView = view;
-      
-      // Actualizar clases activas
-      container.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
-      link.classList.add('active');
-      
-      // Renderizar la nueva vista
-      components[view](mainContent);
+      if (view && components[view]) {
+        // Actualizar estado
+        appState.currentView = view;
+        
+        // Actualizar clases activas
+        document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        
+        // Renderizar la vista
+        components[view](mainContent);
+        
+        // Actualizar la URL
+        window.location.hash = view;
+      }
     });
   });
   
-  // Configurar evento para cerrar sesión
-  container.querySelector('#logout-btn').addEventListener('click', () => {
-    // Eliminar datos de autenticación
+  // Configurar evento de cierre de sesión
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    // Pedir confirmación
+    const confirmed = await notifications.confirm('¿Estás seguro de que deseas cerrar sesión?');
+    if (!confirmed) return;
+    
+    // Limpiar datos de autenticación
     localStorage.removeItem('abyayala_cms_auth');
     
-    // Redirigir a la página de inicio de sesión
-    window.location.href = 'login.html';
+    // Mostrar notificación
+    notifications.success('Has cerrado sesión correctamente');
+    
+    // Redirigir a la página de login
+    setTimeout(() => {
+      window.location.href = 'login.html';
+    }, 1000);
+  });
+  
+  // Manejar cambios en el hash de la URL
+  window.addEventListener('hashchange', () => {
+    const hash = window.location.hash.substring(1);
+    if (hash && components[hash]) {
+      // Actualizar estado
+      appState.currentView = hash;
+      
+      // Actualizar clases activas
+      document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+      document.querySelector(`[data-view="${hash}"]`)?.classList.add('active');
+      
+      // Renderizar la vista
+      components[hash](mainContent);
+    }
   });
 }
 
@@ -232,6 +270,289 @@ async function renderDashboard(container) {
       </div>
     `;
   }
+}
+
+// Renderizar gestor de artículos
+function renderArticlesManager(container) {
+  container.innerHTML = '<div id="articles-container"></div>';
+  const articlesContainer = container.querySelector('#articles-container');
+  new ArticleManager(articlesContainer);
+}
+
+// Renderizar biblioteca de medios
+function renderMediaLibrary(container) {
+  container.innerHTML = '<div id="media-container"></div>';
+  const mediaContainer = container.querySelector('#media-container');
+  new MediaLibrary(mediaContainer);
+}
+
+// Renderizar gestor de categorías
+function renderCategories(container) {
+  container.innerHTML = `
+    <div class="categories-manager">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">Categorías</h2>
+        <button type="button" class="btn-primary new-category-btn">Nueva categoría</button>
+      </div>
+      
+      <div class="categories-list card mb-6">
+        <h3 class="text-lg font-semibold mb-4">Todas las categorías</h3>
+        <div class="categories-container">
+          <div class="loading">Cargando categorías...</div>
+        </div>
+      </div>
+      
+      <div class="category-editor card hidden">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold">Editor de categoría</h3>
+          <button type="button" class="text-gray-500 hover:text-gray-700 back-to-list-btn">
+            Volver a la lista
+          </button>
+        </div>
+        
+        <form class="category-form">
+          <div class="form-group">
+            <label for="category-name" class="form-label">Nombre</label>
+            <input type="text" id="category-name" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="category-slug" class="form-label">Slug (URL)</label>
+            <input type="text" id="category-slug" class="form-input" required pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$">
+            <small class="text-gray-500">Solo letras minúsculas, números y guiones. Ejemplo: mi-categoria</small>
+          </div>
+          
+          <div class="form-group">
+            <label for="category-description" class="form-label">Descripción</label>
+            <textarea id="category-description" class="form-input" rows="3"></textarea>
+          </div>
+          
+          <div class="flex justify-end mt-6">
+            <button type="button" class="btn-secondary mr-2 cancel-btn">Cancelar</button>
+            <button type="submit" class="btn-primary save-btn">Guardar categoría</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  
+  // Obtener referencias a los elementos
+  const categoriesList = container.querySelector('.categories-list');
+  const categoriesContainer = container.querySelector('.categories-container');
+  const categoryEditor = container.querySelector('.category-editor');
+  const categoryForm = container.querySelector('.category-form');
+  
+  // Función para cargar categorías
+  async function loadCategories() {
+    try {
+      // Mostrar indicador de carga
+      categoriesContainer.innerHTML = `
+        <div class="flex flex-col items-center justify-center p-8">
+          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500 mb-2"></div>
+          <span class="text-gray-500">Cargando categorías...</span>
+        </div>
+      `;
+      
+      // Obtener categorías
+      const contentManager = new ContentManager();
+      const categories = await contentManager.getCategories();
+      
+      // Renderizar categorías
+      if (categories.length === 0) {
+        categoriesContainer.innerHTML = `<div class="empty-state">No hay categorías. Crea una nueva para comenzar.</div>`;
+        return;
+      }
+      
+      // Crear tabla de categorías
+      const categoriesTable = `
+        <table class="w-full">
+          <thead>
+            <tr class="border-b">
+              <th class="text-left pb-2">Nombre</th>
+              <th class="text-left pb-2">Slug</th>
+              <th class="text-left pb-2">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${categories.map(category => `
+              <tr class="border-b" data-slug="${category.slug}">
+                <td class="py-2">${category.name}</td>
+                <td class="py-2">${category.slug}</td>
+                <td class="py-2">
+                  <button type="button" class="text-blue-500 hover:underline mr-2 edit-category-btn" data-slug="${category.slug}">Editar</button>
+                  <button type="button" class="text-red-500 hover:underline delete-category-btn" data-slug="${category.slug}">Eliminar</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      
+      categoriesContainer.innerHTML = categoriesTable;
+      
+      // Configurar eventos para los botones de editar y eliminar
+      categoriesContainer.querySelectorAll('.edit-category-btn').forEach(button => {
+        button.addEventListener('click', () => {
+          const slug = button.dataset.slug;
+          notifications.info(`Función de editar categoría "${slug}" en desarrollo`);
+          // TODO: Implementar edición de categorías
+        });
+      });
+      
+      categoriesContainer.querySelectorAll('.delete-category-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+          const slug = button.dataset.slug;
+          const confirmed = await notifications.confirm(`¿Estás seguro de que deseas eliminar la categoría "${slug}"? Esta acción no se puede deshacer.`);
+          if (!confirmed) return;
+          
+          notifications.info(`Función de eliminar categoría "${slug}" en desarrollo`);
+          // TODO: Implementar eliminación de categorías
+        });
+      });
+    } catch (error) {
+      console.error('Error al cargar categorías:', error);
+      categoriesContainer.innerHTML = `
+        <div class="error p-8 text-center">
+          <div class="text-red-500 mb-2">Error al cargar categorías</div>
+          <button class="btn-secondary">Reintentar</button>
+        </div>
+      `;
+      
+      notifications.error('Error al cargar las categorías. Por favor, intenta de nuevo.');
+      
+      // Configurar evento para reintentar
+      categoriesContainer.querySelector('button').addEventListener('click', () => {
+        loadCategories();
+      });
+    }
+  }
+  
+  // Cargar categorías
+  loadCategories();
+  
+  // Configurar eventos
+  container.querySelector('.new-category-btn').addEventListener('click', () => {
+    // Mostrar editor de categorías
+    categoriesList.classList.add('hidden');
+    categoryEditor.classList.remove('hidden');
+    
+    // Limpiar formulario
+    categoryForm.reset();
+  });
+  
+  container.querySelector('.back-to-list-btn').addEventListener('click', () => {
+    // Volver a la lista de categorías
+    categoryEditor.classList.add('hidden');
+    categoriesList.classList.remove('hidden');
+  });
+  
+  container.querySelector('.cancel-btn').addEventListener('click', () => {
+    // Volver a la lista de categorías
+    categoryEditor.classList.add('hidden');
+    categoriesList.classList.remove('hidden');
+  });
+  
+  // Evento para generar slug automáticamente a partir del nombre
+  container.querySelector('#category-name').addEventListener('input', (e) => {
+    const name = e.target.value;
+    const slugInput = container.querySelector('#category-slug');
+    
+    // Solo generar slug automáticamente si el campo está vacío o no ha sido modificado manualmente
+    if (!slugInput.dataset.modified) {
+      slugInput.value = name
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '') // Eliminar caracteres especiales
+        .replace(/\s+/g, '-') // Reemplazar espacios por guiones
+        .replace(/-+/g, '-') // Eliminar guiones duplicados
+        .trim(); // Eliminar espacios al inicio y al final
+    }
+  });
+  
+  // Marcar el campo de slug como modificado manualmente
+  container.querySelector('#category-slug').addEventListener('input', (e) => {
+    e.target.dataset.modified = 'true';
+  });
+  
+  // Evento para guardar la categoría
+  categoryForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Obtener datos del formulario
+    const categoryData = {
+      name: container.querySelector('#category-name').value,
+      slug: container.querySelector('#category-slug').value,
+      description: container.querySelector('#category-description').value
+    };
+    
+    // Validar datos
+    if (!categoryData.name || !categoryData.slug) {
+      notifications.error('El nombre y el slug son obligatorios');
+      return;
+    }
+    
+    // Validar formato del slug
+    const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+    if (!slugRegex.test(categoryData.slug)) {
+      notifications.error('El slug debe contener solo letras minúsculas, números y guiones');
+      return;
+    }
+    
+    // Mostrar notificación
+    notifications.info('Función de guardar categoría en desarrollo');
+    // TODO: Implementar guardado de categorías
+  });
+}
+
+// Renderizar configuración
+function renderSettings(container) {
+  container.innerHTML = `
+    <h2 class="text-2xl font-bold mb-6">Configuración</h2>
+    
+    <div class="card mb-6">
+      <h3 class="text-lg font-semibold mb-4">Información del sitio</h3>
+      
+      <form id="site-settings-form">
+        <div class="form-group">
+          <label for="site-title" class="form-label">Título del sitio</label>
+          <input type="text" id="site-title" class="form-input" value="Abya Yala - Colectivo Agrario">
+        </div>
+        
+        <div class="form-group">
+          <label for="site-description" class="form-label">Descripción del sitio</label>
+          <textarea id="site-description" class="form-input" rows="2">Plataforma de noticias del colectivo agrario Abya Yala. Información sobre agricultura, sostenibilidad, comunidad y más.</textarea>
+        </div>
+        
+        <div class="form-group">
+          <label for="site-keywords" class="form-label">Palabras clave (SEO)</label>
+          <input type="text" id="site-keywords" class="form-input" value="agricultura, sostenibilidad, comunidad, colectivo agrario, abya yala">
+          <small class="text-gray-500">Separadas por comas</small>
+        </div>
+        
+        <div class="flex justify-end mt-6">
+          <button type="submit" class="btn-primary">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+    
+    <div class="card">
+      <h3 class="text-lg font-semibold mb-4">Información de usuario</h3>
+      
+      <div class="mb-4">
+        <p><strong>Nombre:</strong> ${appState.user?.name || 'Administrador'}</p>
+        <p><strong>Correo electrónico:</strong> ${appState.user?.email || 'admin@abyayala.org'}</p>
+        <p><strong>Rol:</strong> ${appState.user?.role || 'Administrador'}</p>
+      </div>
+      
+      <p class="text-gray-600">Para cambiar la información de usuario o añadir nuevos usuarios, contacta con el administrador del sistema.</p>
+    </div>
+  `;
+  
+  // Configurar evento para el formulario de configuración
+  const siteSettingsForm = container.querySelector('#site-settings-form');
+  siteSettingsForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    notifications.success('Configuración guardada correctamente');
+  });
 }
 
 // Función auxiliar para obtener el nombre de la categoría
@@ -338,155 +659,4 @@ function generateRecentActivity(articles) {
       </li>
     `;
   }).join('');
-}
-
-// Renderizar gestor de artículos
-function renderArticlesManager(container) {
-  container.innerHTML = '<div id="articles-container"></div>';
-  const articlesContainer = container.querySelector('#articles-container');
-  new ArticleManager(articlesContainer);
-}
-
-// Renderizar biblioteca de medios
-function renderMediaLibrary(container) {
-  container.innerHTML = '<div id="media-container"></div>';
-  const mediaContainer = container.querySelector('#media-container');
-  new MediaLibrary(mediaContainer);
-}
-
-// Renderizar gestor de categorías
-function renderCategories(container) {
-  container.innerHTML = `
-    <h2 class="text-2xl font-bold mb-6">Categorías</h2>
-    
-    <div class="card mb-6">
-      <h3 class="text-lg font-semibold mb-4">Todas las categorías</h3>
-      
-      <table class="w-full">
-        <thead>
-          <tr class="border-b">
-            <th class="text-left pb-2">Nombre</th>
-            <th class="text-left pb-2">Slug</th>
-            <th class="text-left pb-2">Artículos</th>
-            <th class="text-left pb-2">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr class="border-b">
-            <td class="py-2">Agricultura</td>
-            <td class="py-2">agricultura</td>
-            <td class="py-2">4</td>
-            <td class="py-2">
-              <button type="button" class="text-blue-500 hover:underline mr-2">Editar</button>
-            </td>
-          </tr>
-          <tr class="border-b">
-            <td class="py-2">Comunidad</td>
-            <td class="py-2">comunidad</td>
-            <td class="py-2">3</td>
-            <td class="py-2">
-              <button type="button" class="text-blue-500 hover:underline mr-2">Editar</button>
-            </td>
-          </tr>
-          <tr class="border-b">
-            <td class="py-2">Sostenibilidad</td>
-            <td class="py-2">sostenibilidad</td>
-            <td class="py-2">2</td>
-            <td class="py-2">
-              <button type="button" class="text-blue-500 hover:underline mr-2">Editar</button>
-            </td>
-          </tr>
-          <tr class="border-b">
-            <td class="py-2">Política Agraria</td>
-            <td class="py-2">politica-agraria</td>
-            <td class="py-2">1</td>
-            <td class="py-2">
-              <button type="button" class="text-blue-500 hover:underline mr-2">Editar</button>
-            </td>
-          </tr>
-          <tr class="border-b">
-            <td class="py-2">Tecnología Rural</td>
-            <td class="py-2">tecnologia-rural</td>
-            <td class="py-2">1</td>
-            <td class="py-2">
-              <button type="button" class="text-blue-500 hover:underline mr-2">Editar</button>
-            </td>
-          </tr>
-          <tr class="border-b">
-            <td class="py-2">Cultura</td>
-            <td class="py-2">cultura</td>
-            <td class="py-2">0</td>
-            <td class="py-2">
-              <button type="button" class="text-blue-500 hover:underline mr-2">Editar</button>
-            </td>
-          </tr>
-          <tr>
-            <td class="py-2">Eventos</td>
-            <td class="py-2">eventos</td>
-            <td class="py-2">1</td>
-            <td class="py-2">
-              <button type="button" class="text-blue-500 hover:underline mr-2">Editar</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    
-    <div class="card">
-      <h3 class="text-lg font-semibold mb-4">Información</h3>
-      <p class="text-gray-600">Las categorías están predefinidas según las necesidades del colectivo Abya Yala. Si necesitas añadir una nueva categoría, contacta con el administrador del sistema.</p>
-    </div>
-  `;
-}
-
-// Renderizar configuración
-function renderSettings(container) {
-  container.innerHTML = `
-    <h2 class="text-2xl font-bold mb-6">Configuración</h2>
-    
-    <div class="card mb-6">
-      <h3 class="text-lg font-semibold mb-4">Información del sitio</h3>
-      
-      <form id="site-settings-form">
-        <div class="form-group">
-          <label for="site-title" class="form-label">Título del sitio</label>
-          <input type="text" id="site-title" class="form-input" value="Abya Yala - Colectivo Agrario">
-        </div>
-        
-        <div class="form-group">
-          <label for="site-description" class="form-label">Descripción del sitio</label>
-          <textarea id="site-description" class="form-input" rows="2">Plataforma de noticias del colectivo agrario Abya Yala. Información sobre agricultura, sostenibilidad, comunidad y más.</textarea>
-        </div>
-        
-        <div class="form-group">
-          <label for="site-keywords" class="form-label">Palabras clave (SEO)</label>
-          <input type="text" id="site-keywords" class="form-input" value="agricultura, sostenibilidad, comunidad, colectivo agrario, abya yala">
-          <small class="text-gray-500">Separadas por comas</small>
-        </div>
-        
-        <div class="flex justify-end mt-6">
-          <button type="submit" class="btn-primary">Guardar cambios</button>
-        </div>
-      </form>
-    </div>
-    
-    <div class="card">
-      <h3 class="text-lg font-semibold mb-4">Información de usuario</h3>
-      
-      <div class="mb-4">
-        <p><strong>Nombre:</strong> ${appState.user?.name || 'Administrador'}</p>
-        <p><strong>Correo electrónico:</strong> ${appState.user?.email || 'admin@abyayala.org'}</p>
-        <p><strong>Rol:</strong> ${appState.user?.role || 'Administrador'}</p>
-      </div>
-      
-      <p class="text-gray-600">Para cambiar la información de usuario o añadir nuevos usuarios, contacta con el administrador del sistema.</p>
-    </div>
-  `;
-  
-  // Configurar evento para el formulario de configuración
-  const siteSettingsForm = container.querySelector('#site-settings-form');
-  siteSettingsForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    alert('Configuración guardada correctamente');
-  });
 }

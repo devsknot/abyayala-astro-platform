@@ -3,6 +3,7 @@ import { ContentManager } from '../content-manager.js';
 import { ContentEditor } from './editor.js';
 import { MediaLibrary } from './media-library.js';
 import { MediaManager } from '../media-manager.js';
+import { notifications } from './notification.js';
 
 export class ArticleManager {
   constructor(container) {
@@ -259,7 +260,7 @@ export class ArticleManager {
         }
       } catch (error) {
         console.error('Error al subir imagen:', error);
-        alert('Error al subir la imagen. Por favor, intenta de nuevo.');
+        notifications.error('Error al subir la imagen. Por favor, intenta de nuevo.');
         this.resetFeaturedImagePreview();
       } finally {
         // Limpiar el input de archivo
@@ -337,14 +338,14 @@ export class ArticleManager {
         }
         
         // Mostrar mensaje de éxito
-        alert(this.currentArticle ? 'Artículo actualizado correctamente' : 'Artículo creado correctamente');
+        notifications.success(this.currentArticle ? 'Artículo actualizado correctamente' : 'Artículo creado correctamente');
         
         // Recargar artículos y volver a la lista
         await this.loadArticles();
         this.showArticlesList();
       } catch (error) {
         console.error('Error al guardar el artículo:', error);
-        alert('Error al guardar el artículo. Por favor, intenta de nuevo.');
+        notifications.error('Error al guardar el artículo. Por favor, intenta de nuevo.');
       } finally {
         // Restablecer el botón de guardar
         const saveButton = this.container.querySelector('.save-btn');
@@ -480,6 +481,7 @@ export class ArticleManager {
           console.warn('Error al formatear la fecha:', dateError);
           // Usar la fecha actual como fallback
           this.container.querySelector('#article-date').value = this.formatDateForInput(new Date().toISOString());
+          notifications.warning('La fecha del artículo no es válida. Se ha establecido la fecha actual.');
         }
       }
       
@@ -522,32 +524,40 @@ export class ArticleManager {
               <textarea class="form-input mt-2" rows="10" id="basic-editor">${article.content || ''}</textarea>
             </div>
           `;
+          notifications.warning('No se pudo cargar el editor avanzado. Se está usando un editor básico.');
         }
       }, 300);
     } catch (error) {
       console.error('Error al cargar el artículo:', error);
-      alert('Error al cargar el artículo. Por favor, intenta de nuevo.');
+      notifications.error('Error al cargar el artículo. Por favor, intenta de nuevo.');
       this.showArticlesList();
     }
   }
   
   async deleteArticle(slug) {
-    if (!confirm(`¿Estás seguro de que deseas eliminar el artículo "${slug}"? Esta acción no se puede deshacer.`)) {
+    const confirmed = await notifications.confirm(`¿Estás seguro de que deseas eliminar el artículo "${slug}"? Esta acción no se puede deshacer.`);
+    if (!confirmed) {
       return;
     }
     
     try {
+      // Mostrar notificación de carga
+      const loadingNotification = notifications.info('Eliminando artículo...', 0);
+      
       // Eliminar el artículo
       await this.contentManager.deleteArticle(slug);
       
+      // Cerrar notificación de carga
+      notifications.close(loadingNotification);
+      
       // Mostrar mensaje de éxito
-      alert('Artículo eliminado correctamente');
+      notifications.success('Artículo eliminado correctamente');
       
       // Recargar artículos
       await this.loadArticles();
     } catch (error) {
       console.error('Error al eliminar el artículo:', error);
-      alert('Error al eliminar el artículo. Por favor, intenta de nuevo.');
+      notifications.error('Error al eliminar el artículo. Por favor, intenta de nuevo.');
     }
   }
   
@@ -616,7 +626,7 @@ export class ArticleManager {
     const requiredFields = ['title', 'description', 'category', 'pubDate', 'slug'];
     for (const field of requiredFields) {
       if (!articleData[field]) {
-        alert(`El campo "${field}" es obligatorio`);
+        notifications.error(`El campo "${field}" es obligatorio`);
         return false;
       }
     }
@@ -624,7 +634,7 @@ export class ArticleManager {
     // Validar formato del slug
     const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
     if (!slugRegex.test(articleData.slug)) {
-      alert('El slug debe contener solo letras minúsculas, números y guiones');
+      notifications.error('El slug debe contener solo letras minúsculas, números y guiones');
       return false;
     }
     

@@ -1,5 +1,6 @@
 // Biblioteca de medios para el CMS
 import { MediaManager } from '../media-manager.js';
+import { notifications } from './notification.js';
 
 export class MediaLibrary {
   constructor(container, onSelect = null) {
@@ -56,11 +57,26 @@ export class MediaLibrary {
       try {
         // Mostrar indicador de carga
         this.container.querySelector('.media-actions').innerHTML += `
-          <span class="ml-2 text-sm text-gray-600">Subiendo...</span>
+          <span class="ml-2 text-sm text-gray-600 flex items-center">
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Subiendo...
+          </span>
         `;
+        
+        // Mostrar notificación de carga
+        const loadingNotification = notifications.info('Subiendo archivo...', 0);
         
         // Subir archivo
         const result = await this.mediaManager.uploadFile(file);
+        
+        // Cerrar notificación de carga
+        notifications.close(loadingNotification);
+        
+        // Mostrar notificación de éxito
+        notifications.success(`Archivo "${file.name}" subido correctamente`);
         
         // Recargar archivos
         await this.loadMediaFiles();
@@ -77,7 +93,15 @@ export class MediaLibrary {
         `;
       } catch (error) {
         console.error('Error al subir archivo:', error);
-        alert('Error al subir el archivo. Por favor, intenta de nuevo.');
+        notifications.error(`Error al subir el archivo "${file.name}". Por favor, intenta de nuevo.`);
+        
+        // Actualizar la interfaz
+        this.container.querySelector('.media-actions').innerHTML = `
+          <label for="file-upload" class="btn-primary cursor-pointer">
+            Subir archivo
+            <input id="file-upload" type="file" class="hidden" accept="image/*,application/pdf">
+          </label>
+        `;
       }
     });
     
@@ -111,7 +135,12 @@ export class MediaLibrary {
   async loadMediaFiles() {
     try {
       // Mostrar indicador de carga
-      this.mediaGrid.innerHTML = `<div class="loading">Cargando archivos...</div>`;
+      this.mediaGrid.innerHTML = `
+        <div class="flex flex-col items-center justify-center p-8">
+          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500 mb-2"></div>
+          <span class="text-gray-500">Cargando archivos...</span>
+        </div>
+      `;
       
       // Obtener archivos
       this.mediaFiles = await this.mediaManager.getMediaFiles();
@@ -120,7 +149,15 @@ export class MediaLibrary {
       this.renderMediaFiles();
     } catch (error) {
       console.error('Error al cargar archivos:', error);
-      this.mediaGrid.innerHTML = `<div class="error">Error al cargar archivos. <button class="text-blue-500 hover:underline">Reintentar</button></div>`;
+      this.mediaGrid.innerHTML = `
+        <div class="error p-8 text-center">
+          <div class="text-red-500 mb-2">Error al cargar archivos</div>
+          <button class="btn-secondary">Reintentar</button>
+        </div>
+      `;
+      
+      // Mostrar notificación de error
+      notifications.error('Error al cargar los archivos. Por favor, intenta de nuevo.');
       
       // Configurar evento para reintentar
       this.mediaGrid.querySelector('button').addEventListener('click', () => {
@@ -218,65 +255,100 @@ export class MediaLibrary {
     return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
   }
   
-  // Método para abrir la biblioteca de medios como un modal
+  // Método para eliminar un archivo
+  async deleteFile(fileId) {
+    try {
+      // Pedir confirmación
+      const confirmed = await notifications.confirm('¿Estás seguro de que deseas eliminar este archivo? Esta acción no se puede deshacer.');
+      if (!confirmed) return;
+      
+      // Mostrar notificación de carga
+      const loadingNotification = notifications.info('Eliminando archivo...', 0);
+      
+      // Eliminar el archivo
+      await this.mediaManager.deleteFile(fileId);
+      
+      // Cerrar notificación de carga
+      notifications.close(loadingNotification);
+      
+      // Mostrar notificación de éxito
+      notifications.success('Archivo eliminado correctamente');
+      
+      // Recargar archivos
+      await this.loadMediaFiles();
+      
+      return true;
+    } catch (error) {
+      console.error('Error al eliminar archivo:', error);
+      notifications.error('Error al eliminar el archivo. Por favor, intenta de nuevo.');
+      return false;
+    }
+  }
+  
+  // Método estático para abrir un modal con la biblioteca de medios
   static openModal(onSelect) {
     // Crear el modal
-    const modalContainer = document.createElement('div');
-    modalContainer.className = 'fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50';
-    modalContainer.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-hidden">
-        <div class="p-4 border-b flex justify-between items-center">
-          <h2 class="text-xl font-bold">Seleccionar archivo</h2>
-          <button type="button" class="close-modal text-gray-500 hover:text-gray-700">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50';
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
+        <div class="flex justify-between items-center p-4 border-b">
+          <h3 class="text-lg font-semibold">Seleccionar archivo</h3>
+          <button type="button" class="text-gray-500 hover:text-gray-700 close-modal-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
         </div>
-        <div class="media-container p-4 overflow-y-auto" style="max-height: calc(80vh - 130px);"></div>
-        <div class="p-4 border-t flex justify-end">
-          <button type="button" class="btn-primary select-button" disabled>Seleccionar</button>
+        <div class="flex-1 overflow-auto p-4">
+          <div class="media-container"></div>
         </div>
       </div>
     `;
     
-    // Añadir el modal al body
-    document.body.appendChild(modalContainer);
+    // Añadir al DOM
+    document.body.appendChild(modal);
     
-    // Crear la biblioteca de medios
-    const mediaContainer = modalContainer.querySelector('.media-container');
+    // Animar entrada
+    setTimeout(() => {
+      modal.querySelector('.bg-white').classList.remove('scale-95');
+    }, 10);
+    
+    // Crear instancia de la biblioteca de medios
+    const mediaContainer = modal.querySelector('.media-container');
     const mediaLibrary = new MediaLibrary(mediaContainer, (file) => {
-      // Habilitar el botón de selección
-      const selectButton = modalContainer.querySelector('.select-button');
-      selectButton.disabled = false;
-      
-      // Guardar el archivo seleccionado
-      modalContainer.selectedFile = file;
-    });
-    
-    // Configurar eventos del modal
-    modalContainer.querySelector('.close-modal').addEventListener('click', () => {
-      document.body.removeChild(modalContainer);
-    });
-    
-    modalContainer.querySelector('.select-button').addEventListener('click', () => {
-      if (modalContainer.selectedFile && onSelect) {
-        // Asegurarnos de que la URL de la imagen sea correcta antes de pasarla al callback
-        const mediaManager = new MediaManager();
-        if (modalContainer.selectedFile.path) {
-          // Generar la URL pública correcta para la imagen
-          // Usar file.id en lugar de file.path para evitar duplicación de dominio
-          modalContainer.selectedFile.publicUrl = modalContainer.selectedFile.id ? 
-            mediaManager.getPublicUrl(modalContainer.selectedFile.id) : 
-            modalContainer.selectedFile.path;
-        }
-        
-        onSelect(modalContainer.selectedFile);
+      // Llamar al callback de selección
+      if (onSelect) {
+        onSelect(file);
       }
-      document.body.removeChild(modalContainer);
+      
+      // Mostrar notificación de éxito
+      notifications.success(`Archivo "${file.filename || file.name}" seleccionado`);
+      
+      // Cerrar el modal
+      closeModal();
     });
     
-    return mediaLibrary;
+    // Configurar evento para cerrar el modal
+    const closeModal = () => {
+      // Animar salida
+      modal.querySelector('.bg-white').classList.add('scale-95');
+      modal.classList.add('opacity-0');
+      
+      // Eliminar después de la animación
+      setTimeout(() => {
+        document.body.removeChild(modal);
+      }, 300);
+    };
+    
+    modal.querySelector('.close-modal-btn').addEventListener('click', closeModal);
+    
+    // También permitir cerrar haciendo clic fuera del modal
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
   }
 }
