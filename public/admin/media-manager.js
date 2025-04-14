@@ -124,30 +124,14 @@ export class MediaManager {
     // Si no hay fileId, devolver una cadena vacía
     if (!fileId) return '';
     
-    console.log('getPublicUrl - fileId original:', fileId);
-    
-    // Si el fileId ya es una ruta completa (comienza con /)
-    if (fileId.startsWith('/')) {
-      // Extraer el ID del archivo sin la barra inicial
-      const id = fileId.substring(1);
-      console.log('getPublicUrl - ID extraído sin barra inicial:', id);
-      
-      // En desarrollo local, usar la ruta tal cual
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        console.log('getPublicUrl - Entorno local, devolviendo ruta original:', fileId);
-        return fileId;
-      }
-      
-      // En producción, usar el método getMediaUrl para manejar correctamente las rutas anidadas
-      const url = this.getMediaUrl(id);
-      console.log('getPublicUrl - URL final producción:', url);
-      return url;
+    // En desarrollo local, usar la ruta tal cual
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return fileId.startsWith('/') ? fileId : `/${fileId}`;
     }
     
-    // Si es un ID simple, usar el método getMediaUrl
-    const url = this.getMediaUrl(fileId);
-    console.log('getPublicUrl - URL final simple:', url);
-    return url;
+    // En producción, usar la URL directa sin conversión de formato
+    // Esto evita problemas con la conversión de barras a guiones bajos
+    return `/api/media/${fileId}`;
   }
   
   // Determinar si un archivo es una imagen
