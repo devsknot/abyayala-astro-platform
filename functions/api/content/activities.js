@@ -23,7 +23,7 @@ export async function onRequest(context) {
     if (path === '/api/content/activities' || path === '/api/content/activities/') {
       if (request.method === 'GET') {
         // Obtener actividades (no requiere autenticación)
-        return handleGetActivities(env, corsHeaders);
+        return handleGetActivities(request, env, corsHeaders);
       } else if (request.method === 'POST' && authenticated) {
         // Registrar nueva actividad (requiere autenticación)
         return handleCreateActivity(await request.json(), env, corsHeaders);
@@ -85,7 +85,7 @@ async function verifyAuthentication(request, env) {
 }
 
 // Obtener actividades recientes
-async function handleGetActivities(env, headers) {
+async function handleGetActivities(request, env, headers) {
   try {
     // Obtener parámetros de consulta
     const url = new URL(request.url);
