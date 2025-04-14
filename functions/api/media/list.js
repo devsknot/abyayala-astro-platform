@@ -47,11 +47,14 @@ async function handleListMedia(env) {
           // Extraer el nombre del archivo de la clave
           const name = object.key.split('/').pop();
           
+          // Convertir la ruta con barras a formato con guiones bajos para compatibilidad
+          const compatiblePath = object.key.replace(/\//g, '_');
+          
           return {
             id: object.key,
             name: name,
             path: `/${object.key}`,
-            url: `/api/media/${object.key}`,
+            url: `/api/media/${compatiblePath}`,
             size: object.size,
             type: getFileType(object.key),
             uploaded: object.uploaded
