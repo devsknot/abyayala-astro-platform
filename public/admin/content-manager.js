@@ -1,9 +1,20 @@
 // Gestor de contenido para el CMS
 export class ContentManager {
   constructor() {
+    // Usar URL base relativa para que funcione tanto en desarrollo como en producción
     this.apiBase = '/api/content';
     // Nunca usar datos de prueba, siempre conectar con la API real
     this.useFallbackData = false;
+    
+    // Detectar entorno y ajustar URL base si es necesario
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      // En desarrollo local, usar URL relativa
+      console.log('Modo desarrollo detectado - usando API local');
+    } else {
+      // En producción, usar URL completa
+      this.apiBase = 'https://colectivoabyayala.org/api/content';
+      console.log('Modo producción detectado - usando API remota:', this.apiBase);
+    }
   }
 
   // Método para obtener las cabeceras de autenticación
@@ -12,16 +23,43 @@ export class ContentManager {
       'Content-Type': 'application/json'
     };
     
-    // Si estamos en un entorno con Cloudflare Access
+    // Obtener datos de autenticación del localStorage (formato usado en app.js)
+    const authData = localStorage.getItem('abyayala_cms_auth');
+    
+    if (authData) {
+      try {
+        const auth = JSON.parse(authData);
+        
+        // Si hay un token en los datos de autenticación, usarlo
+        if (auth.token) {
+          headers['Authorization'] = `Bearer ${auth.token}`;
+        }
+        
+        // Si hay credenciales de Cloudflare Access, usarlas también
+        if (auth.cf_access_token) {
+          headers['CF-Access-Client-Id'] = auth.cf_access_client_id || '';
+          headers['CF-Access-Jwt-Assertion'] = auth.cf_access_token;
+        }
+      } catch (e) {
+        console.error('Error al parsear datos de autenticación:', e);
+      }
+    }
+    
+    // Verificar si hay tokens de Cloudflare Access directamente en localStorage (formato anterior)
     const cfAccessToken = localStorage.getItem('cf_access_token');
-    if (cfAccessToken) {
-      headers['CF-Access-Client-Id'] = localStorage.getItem('cf_access_client_id');
+    if (cfAccessToken && !headers['CF-Access-Jwt-Assertion']) {
+      headers['CF-Access-Client-Id'] = localStorage.getItem('cf_access_client_id') || '';
       headers['CF-Access-Jwt-Assertion'] = cfAccessToken;
-    } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      // En desarrollo local, usar cabeceras simuladas
+    }
+    
+    // En desarrollo local, usar cabeceras simuladas si no hay otras credenciales
+    if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && 
+        !headers['Authorization'] && !headers['CF-Access-Jwt-Assertion']) {
       headers['CF-Access-Client-Id'] = 'development-client-id';
       headers['CF-Access-Jwt-Assertion'] = 'development-token';
     }
+    
+    console.log('Headers de autenticación:', JSON.stringify(headers));
     
     return headers;
   }
@@ -141,10 +179,15 @@ export class ContentManager {
     try {
       console.log('ContentManager.bulkImportArticles - Iniciando importación masiva');
       console.log(`ContentManager.bulkImportArticles - Total de artículos: ${articlesData.articles.length}`);
+      console.log('ContentManager.bulkImportArticles - URL de API:', `${this.apiBase}/bulk-import`);
+      
+      // Obtener cabeceras de autenticación
+      const headers = this.getAuthHeaders();
+      console.log('ContentManager.bulkImportArticles - Cabeceras:', JSON.stringify(headers));
       
       const response = await fetch(`${this.apiBase}/bulk-import`, {
         method: 'POST',
-        headers: this.getAuthHeaders(),
+        headers: headers,
         body: JSON.stringify(articlesData)
       });
       
@@ -158,14 +201,13 @@ export class ContentManager {
       
       console.error(`Error en importación masiva: ${response.status}`);
       
-      // Intentar leer el mensaje de error
+      // Intentar obtener detalles del error
       try {
         const errorData = await response.json();
-        console.error('Detalles del error:', errorData);
-        return errorData;
+        console.log('Detalles del error:', errorData);
+        return { error: errorData.error || 'Error en la importación masiva', details: errorData };
       } catch (parseError) {
-        console.error('No se pudo parsear la respuesta de error');
-        return { error: 'Error en la importación masiva' };
+        return { error: 'Error en la importación masiva', status: response.status };
       }
     } catch (error) {
       console.error('Error al conectar con la API:', error);
