@@ -104,38 +104,9 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
           ))}
         </div>
       ) : (
-        <>
-          <div class="categories-grid">
-            <a href={`/category/agricultura`} class="category-card">
-              <h3>Agricultura</h3>
-              <p>Noticias sobre prácticas agrícolas, cultivos y temporadas</p>
-            </a>
-            <a href={`/category/comunidad`} class="category-card">
-              <h3>Comunidad</h3>
-              <p>Historias de miembros, cooperación y testimonios</p>
-            </a>
-            <a href={`/category/sostenibilidad`} class="category-card">
-              <h3>Sostenibilidad</h3>
-              <p>Prácticas ecológicas, conservación y biodiversidad</p>
-            </a>
-            <a href={`/category/politica-agraria`} class="category-card">
-              <h3>Política Agraria</h3>
-              <p>Legislación, derechos y movimientos sociales</p>
-            </a>
-            <a href={`/category/tecnologia-rural`} class="category-card">
-              <h3>Tecnología Rural</h3>
-              <p>Innovaciones, herramientas y digitalización</p>
-            </a>
-            <a href={`/category/cultura`} class="category-card">
-              <h3>Cultura</h3>
-              <p>Tradiciones, gastronomía y artesanía</p>
-            </a>
-            <a href={`/category/eventos`} class="category-card">
-              <h3>Eventos</h3>
-              <p>Ferias, encuentros y capacitaciones</p>
-            </a>
-          </div>
-        </>
+        <div class="no-content-message">
+          <p>No hay categorías disponibles en este momento. Por favor, vuelva a intentarlo más tarde.</p>
+        </div>
       )}
     </div>
   </section>
