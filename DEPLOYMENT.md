@@ -40,7 +40,7 @@ Para proteger el panel de administración:
    - **Configure rules**: Configura quién puede acceder (por email, grupo, etc.)
 5. Guarda la configuración
 
-### 3. Configurar Cloudflare R2 (opcional, para almacenamiento de medios)
+### 3. Configurar Cloudflare R2 (para almacenamiento de medios)
 
 1. Navega a **R2** > **Create bucket**
 2. Crea un bucket llamado `abyayala-media`
@@ -49,6 +49,35 @@ Para proteger el panel de administración:
    - `R2_ACCESS_KEY_ID`: Tu ID de acceso
    - `R2_SECRET_ACCESS_KEY`: Tu clave secreta
    - `R2_BUCKET_NAME`: `abyayala-media`
+
+#### Estructura de Archivos en R2
+
+Los archivos multimedia se organizan en el bucket R2 siguiendo esta estructura:
+```
+/YYYY/MM/nombre-archivo.jpg
+```
+
+Por ejemplo: `/2025/04/cafe-organico.jpg`
+
+Esta estructura permite una organización cronológica de los archivos y facilita la gestión de versiones.
+
+#### Integración con la Base de Datos
+
+Los archivos multimedia almacenados en R2 tienen sus metadatos guardados en la tabla `media` de la base de datos D1. Esto permite:
+
+1. Listar todos los archivos disponibles en el CMS
+2. Buscar archivos por nombre, tipo o fecha
+3. Relacionar imágenes con artículos a través del campo `featured_image`
+
+#### Acceso a los Archivos
+
+Los archivos almacenados en R2 son accesibles a través de la API:
+- Listado: `GET /api/media/list`
+- Obtener archivo: `GET /api/media/{fileId}`
+- Subir archivo: `POST /api/media/upload`
+- Eliminar archivo: `DELETE /api/media/{fileId}`
+
+El CMS incluye un modo fallback para desarrollo que simula la interacción con R2 cuando no se tiene acceso al bucket real.
 
 ## Configuración de Cloudflare D1 (Base de datos)
 
@@ -85,7 +114,7 @@ Para almacenar el contenido del CMS, utilizamos Cloudflare D1, una base de datos
      content TEXT,
      pub_date TEXT,
      category TEXT,
-     hero_image TEXT,
+     featured_image TEXT,
      created_at TEXT DEFAULT (datetime('now')),
      updated_at TEXT DEFAULT (datetime('now'))
    );
@@ -94,6 +123,15 @@ Para almacenar el contenido del CMS, utilizamos Cloudflare D1, una base de datos
      id TEXT PRIMARY KEY,
      name TEXT NOT NULL,
      description TEXT
+   );
+
+   CREATE TABLE media (
+     id TEXT PRIMARY KEY,
+     name TEXT NOT NULL,
+     path TEXT NOT NULL,
+     type TEXT NOT NULL,
+     size INTEGER NOT NULL,
+     uploaded TEXT NOT NULL
    );
 
    -- Insertar categorías predefinidas
