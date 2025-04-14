@@ -1,5 +1,4 @@
 // API para importación masiva de artículos
-import { getAuthStatus } from '../../utils/auth.js';
 import { corsHeaders } from '../../utils/cors.js';
 
 export async function onRequest(context) {
@@ -10,10 +9,10 @@ export async function onRequest(context) {
     });
   }
 
-  // Verificar autenticación
-  const authStatus = await getAuthStatus(context);
+  // Verificar autenticación directamente aquí, similar a articles.js
+  const authenticated = await verifyAuthentication(context.request, context.env);
   
-  if (!authStatus.authenticated) {
+  if (!authenticated) {
     return new Response(JSON.stringify({ error: 'No autorizado' }), {
       status: 401,
       headers: {
@@ -72,6 +71,38 @@ export async function onRequest(context) {
       }
     });
   }
+}
+
+// Verificar autenticación (misma lógica que en articles.js)
+async function verifyAuthentication(request, env) {
+  // En un entorno de desarrollo, permitir acceso sin autenticación
+  if (env.ENVIRONMENT === 'development') {
+    return true;
+  }
+  
+  // En producción, verificar cabeceras de Cloudflare Access
+  const jwt = request.headers.get('CF-Access-Jwt-Assertion');
+  const clientId = request.headers.get('CF-Access-Client-Id');
+  
+  // Para solicitudes desde el panel de administración en desarrollo
+  if (clientId === 'development-client-id') {
+    return true;
+  }
+  
+  // Verificar token de autorización Bearer
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return true;
+  }
+  
+  // Registrar información de depuración
+  console.log('Headers de autenticación recibidos:', {
+    'CF-Access-Client-Id': clientId ? 'presente' : 'ausente',
+    'CF-Access-Jwt-Assertion': jwt ? 'presente' : 'ausente',
+    'Authorization': authHeader ? 'presente' : 'ausente'
+  });
+  
+  return !!jwt; // Verificar que existe el token JWT
 }
 
 // Función para procesar los artículos
