@@ -1,7 +1,6 @@
 // API para importación masiva de artículos
-import { D1Database } from '@cloudflare/workers-types';
-import { getAuthStatus } from '../../utils/auth.js';
-import { corsHeaders } from '../../utils/cors.js';
+import { getAuthStatus } from '../../../utils/auth.js';
+import { corsHeaders } from '../../../utils/cors.js';
 
 export async function onRequest(context) {
   // Manejar solicitudes OPTIONS para CORS
