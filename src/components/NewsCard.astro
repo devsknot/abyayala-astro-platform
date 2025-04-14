@@ -5,14 +5,29 @@ import CategoryTag from './CategoryTag.astro';
 interface Props {
   title: string;
   description: string;
-  pubDate: Date | string | undefined;
+  pubDate?: Date | string;
+  date?: Date | string;
   category: string;
   image: string;
-  slug: string;
+  slug?: string;
+  url?: string;
   featured?: boolean;
 }
 
-const { title, description, pubDate, category, image, slug, featured = false } = Astro.props;
+const { 
+  title, 
+  description, 
+  pubDate, 
+  date, 
+  category, 
+  image, 
+  slug, 
+  url, 
+  featured = false 
+} = Astro.props;
+
+// Usar date si pubDate no está disponible
+const dateToUse = pubDate || date;
 
 // Función para manejar la fecha de forma segura
 const formatDateSafely = (date: Date | string | undefined) => {
@@ -33,8 +48,11 @@ const formatDateSafely = (date: Date | string | undefined) => {
   }
 };
 
-const isoDate = formatDateSafely(pubDate);
-const displayDate = pubDate ? formatDate(pubDate) : '';
+// Determinar la URL correcta para el enlace
+const href = url || (slug ? `/news/${slug}/` : '#');
+
+const isoDate = formatDateSafely(dateToUse);
+const displayDate = dateToUse ? formatDate(dateToUse) : '';
 ---
 
 <article 
@@ -44,7 +62,7 @@ const displayDate = pubDate ? formatDate(pubDate) : '';
   data-date={isoDate}
   data-category={category}
 >
-  <a href={`/news/${slug}/`} class="news-card-link">
+  <a href={href} class="news-card-link">
     <div class="image-container">
       <img src={image} alt={title} loading="lazy" />
       <CategoryTag category={category} />
@@ -204,77 +222,22 @@ const displayDate = pubDate ? formatDate(pubDate) : '';
   }
 
   @media (max-width: 992px) {
-    h3 {
-      font-size: 1.2rem;
-    }
-    
-    .featured h3 {
-      font-size: 1.3rem;
-    }
-    
-    p {
-      font-size: 0.9rem;
-      -webkit-line-clamp: 2;
-    }
-    
-    .featured p {
-      -webkit-line-clamp: 3;
-    }
-  }
-
-  @media (max-width: 768px) {
     .featured {
       grid-column: span 1;
     }
     
     .featured .image-container {
-      padding-bottom: 56.25%; /* Mismo aspect ratio que las no destacadas */
-    }
-    
-    .featured h3 {
-      font-size: 1.25rem;
-    }
-    
-    .content {
-      padding: 1.25rem 1rem;
+      padding-bottom: 56.25%;
     }
   }
 
-  @media (max-width: 576px) {
-    .news-card {
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
-    .news-card:hover {
-      transform: translateY(-3px);
-    }
-    
+  @media (max-width: 768px) {
     h3 {
-      font-size: 1.1rem;
-      margin-bottom: 0.5rem;
-    }
-    
-    p {
-      font-size: 0.85rem;
-      margin-bottom: 0.75rem;
+      font-size: 1.2rem;
     }
     
     .content {
       padding: 1rem;
-    }
-    
-    time {
-      font-size: 0.8rem;
-    }
-    
-    .read-more {
-      font-size: 0.85rem;
-    }
-  }
-
-  @media (max-width: 400px) {
-    .image-container {
-      padding-bottom: 60%; /* Ajuste para móviles pequeños */
     }
   }
 </style>

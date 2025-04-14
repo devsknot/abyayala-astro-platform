@@ -5,151 +5,72 @@ import ShareButtons from '../../components/ShareButtons.astro';
 import RelatedNews from '../../components/RelatedNews.astro';
 import CategoryTag from '../../components/CategoryTag.astro';
 import { SITE_URL } from '../../consts';
+import { getAllArticles, getArticleBySlug } from '../../utils/contentApi.js';
 
-// En un proyecto real, obtendríamos los datos de la noticia desde una colección de contenido
-// Aquí simulamos la obtención de datos para la demostración
+// Definir interfaces para los tipos de datos
+interface Article {
+  slug: string;
+  title: string;
+  description: string;
+  pubDate: string;
+  featured_image?: string;
+  category: string;
+  author?: string;
+  content: string;
+}
 
-export function getStaticPaths() {
-  // Aquí definimos las rutas estáticas para cada noticia
-  const allNews = [
-    {
-      title: "Cooperativa Abya Yala logra récord en producción de café orgánico",
-      description: "La cooperativa agraria Abya Yala ha alcanzado un nuevo récord en la producción de café orgánico, superando las expectativas del mercado nacional e internacional.",
-      pubDate: new Date('2025-03-15'),
-      category: "agricultura",
-      image: "/blog-placeholder-3.jpg",
-      slug: "record-cafe-organico",
-      author: "María Rodríguez",
-      content: `
-# Cooperativa Abya Yala logra récord en producción de café orgánico
-
-La cooperativa agraria Abya Yala ha alcanzado un nuevo récord en la producción de café orgánico durante la temporada 2024-2025, superando las expectativas del mercado nacional e internacional. Con más de 500 toneladas de café de alta calidad, la cooperativa se consolida como un referente en la producción sostenible.
-
-## Un esfuerzo colectivo
-
-Este logro es el resultado del trabajo constante de más de 200 familias productoras que conforman la cooperativa. "Hemos implementado técnicas agroecológicas que nos han permitido mejorar la calidad del grano sin comprometer el medio ambiente", explica Juan Mendoza, presidente de la cooperativa.
-
-La producción de este año representa un incremento del 30% respecto al año anterior, lo que ha permitido a los productores mejorar significativamente sus ingresos y condiciones de vida.
-
-## Reconocimiento internacional
-
-El café de Abya Yala ha recibido reconocimientos en ferias internacionales por su calidad excepcional y su compromiso con prácticas sostenibles. Compradores de Europa, Estados Unidos y Asia han mostrado gran interés en establecer relaciones comerciales a largo plazo con la cooperativa.
-
-## Impacto en la comunidad
-
-El éxito de la cooperativa ha tenido un impacto positivo en toda la comunidad. Se han creado nuevos puestos de trabajo, especialmente para jóvenes y mujeres, y se han implementado programas de desarrollo comunitario con los excedentes generados.
-
-"Este logro demuestra que es posible producir de manera sostenible y al mismo tiempo ser competitivos en el mercado global", afirma Mendoza. "Nuestro objetivo es seguir creciendo sin perder de vista nuestros principios de respeto a la tierra y justicia social".
-
-La cooperativa ya está trabajando en nuevos proyectos para expandir su producción y diversificar sus productos, siempre manteniendo su compromiso con la agricultura orgánica y el comercio justo.
-      `
-    },
-    {
-      title: "Nueva técnica de riego sostenible reduce el consumo de agua en un 40%",
-      description: "Agricultores del colectivo Abya Yala implementan innovadora técnica de riego que permite ahorrar agua y mejorar la calidad de los cultivos.",
-      pubDate: new Date('2025-03-20'),
-      category: "sostenibilidad",
-      image: "/blog-placeholder-4.jpg",
-      slug: "tecnica-riego-sostenible",
-      author: "Carlos Gutiérrez",
-      content: `
-# Nueva técnica de riego sostenible reduce el consumo de agua en un 40%
-
-Agricultores del colectivo Abya Yala han implementado una innovadora técnica de riego que permite ahorrar hasta un 40% de agua y mejorar la calidad de los cultivos. Esta iniciativa surge como respuesta a los desafíos que presenta el cambio climático y la creciente escasez de recursos hídricos en la región.
-
-## Innovación con raíces tradicionales
-
-La técnica combina conocimientos ancestrales con tecnología moderna, utilizando sistemas de goteo subterráneo y sensores de humedad que optimizan el uso del agua. "Hemos recuperado prácticas de nuestros abuelos y las hemos adaptado a las necesidades actuales", explica Elena Vargas, ingeniera agrónoma del colectivo.
-
-Los resultados han sido sorprendentes: además del ahorro significativo de agua, los cultivos han mostrado mayor resistencia a plagas y enfermedades, y la calidad de los productos ha mejorado notablemente.
-
-## Implementación y capacitación
-
-El colectivo Abya Yala ha organizado talleres de capacitación para que más agricultores puedan implementar esta técnica en sus parcelas. Hasta el momento, más de 50 familias han adoptado el sistema con excelentes resultados.
-
-"Al principio había cierta resistencia al cambio, pero cuando vieron los resultados, muchos más se sumaron a la iniciativa", comenta Pedro Sánchez, uno de los primeros agricultores en implementar la técnica.
-
-## Proyección a futuro
-
-El colectivo está trabajando en documentar y sistematizar esta experiencia para compartirla con otras comunidades agrícolas que enfrentan desafíos similares. Además, están desarrollando mejoras al sistema para adaptarlo a diferentes tipos de cultivos y condiciones climáticas.
-
-"Creemos que esta técnica puede contribuir significativamente a la seguridad alimentaria en un contexto de cambio climático", afirma Vargas. "Nuestro compromiso es seguir innovando para una agricultura más sostenible y resiliente".
-
-La iniciativa ha despertado el interés de organizaciones internacionales que trabajan en temas de desarrollo rural y adaptación al cambio climático, quienes ven en esta experiencia un modelo replicable en otras regiones.
-      `
-    },
-    {
-      title: "Feria de semillas ancestrales reúne a más de 500 agricultores",
-      description: "La tradicional feria de intercambio de semillas ancestrales organizada por Abya Yala contó con la participación de agricultores de toda la región.",
-      pubDate: new Date('2025-03-25'),
-      category: "eventos",
-      image: "/blog-placeholder-2.jpg",
-      slug: "feria-semillas-ancestrales",
-      author: "Laura Martínez",
-      content: `
-# Feria de semillas ancestrales reúne a más de 500 agricultores
-
-La tradicional feria de intercambio de semillas ancestrales organizada por el colectivo Abya Yala celebró su décima edición con la participación de más de 500 agricultores provenientes de toda la región. El evento, que tuvo lugar el pasado fin de semana, se ha convertido en un espacio fundamental para la preservación de la biodiversidad agrícola y el conocimiento tradicional.
-
-## Diversidad biológica y cultural
-
-Durante los tres días que duró la feria, los participantes intercambiaron más de 200 variedades de semillas nativas, incluyendo maíz, frijol, calabaza, quinua y amaranto, entre otras. Cada semilla viene acompañada de historias, técnicas de cultivo y usos culinarios que forman parte del patrimonio cultural de las comunidades.
-
-"Estas semillas son el resultado de siglos de selección y adaptación por parte de nuestros antepasados. Son nuestra herencia y nuestra responsabilidad es preservarlas para las futuras generaciones", explica Doña Josefina Huamán, guardiana de semillas con más de 50 años de experiencia.
-
-## Más que un intercambio
-
-La feria no se limitó al intercambio de semillas. También incluyó talleres sobre técnicas de conservación, muestras gastronómicas, exposiciones culturales y debates sobre políticas públicas relacionadas con la soberanía alimentaria y los derechos de los agricultores.
-
-"Este espacio nos permite fortalecer nuestras redes de colaboración y resistencia frente a las amenazas que representan los monocultivos y las semillas transgénicas", señala Roberto Mamani, coordinador del evento.
-
-## Impacto y proyección
-
-El éxito de la feria ha trascendido fronteras, atrayendo la atención de investigadores, activistas y organizaciones internacionales interesadas en la conservación de la agrobiodiversidad. Varias universidades han establecido convenios con el colectivo Abya Yala para documentar y estudiar las variedades de semillas conservadas por las comunidades.
-
-"Lo que comenzó como una pequeña reunión de agricultores locales se ha convertido en un movimiento regional por la defensa de las semillas nativas", comenta Mamani. "Cada año vemos más jóvenes interesados en aprender de los mayores y continuar con esta tradición".
-
-El colectivo Abya Yala ya está planificando la próxima edición de la feria, con el objetivo de ampliar la participación y fortalecer los lazos entre las comunidades agrícolas de la región.
-      `
-    }
-  ];
+export async function getStaticPaths() {
+  // Obtener todos los artículos de la API
+  const allArticles = await getAllArticles();
   
-  return allNews.map(news => ({
-    params: { slug: news.slug },
-    props: { news, allNews },
+  // Crear una ruta para cada artículo
+  return allArticles.map((article: Article) => ({
+    params: { slug: article.slug },
+    props: { slug: article.slug },
   }));
 }
 
-const { news, allNews } = Astro.props;
+const { slug } = Astro.props;
+
+// Obtener el artículo específico y todos los artículos para relacionados
+const article = await getArticleBySlug(slug) as Article;
+const allArticles = await getAllArticles() as Article[];
+
+// Si no se encuentra el artículo, mostrar un error
+if (!article) {
+  return new Response('Artículo no encontrado', {
+    status: 404,
+  });
+}
 
 // Construir la URL completa para compartir
-const currentUrl = `${SITE_URL}/news/${news.slug}/`;
+const currentUrl = `${SITE_URL}/news/${article.slug}/`;
 
-// Convertimos el contenido Markdown a HTML (en un proyecto real esto lo haría Astro automáticamente)
-const contentHtml = news.content;
+// Usar el contenido del artículo
+const contentHtml = article.content;
 ---
 
 <NewsLayout
-  title={news.title}
-  description={news.description}
-  pubDate={news.pubDate}
-  heroImage={news.image}
-  category={news.category}
-  author={news.author}
+  title={article.title}
+  description={article.description}
+  pubDate={new Date(article.pubDate)}
+  heroImage={article.featured_image || "/blog-placeholder-1.jpg"}
+  category={article.category}
+  author={article.author || "Colectivo Abya Yala"}
 >
   <div class="news-header">
-    <CategoryTag category={news.category} absolute={false} />
-    <h1>{news.title}</h1>
+    <CategoryTag category={article.category} absolute={false} />
+    <h1>{article.title}</h1>
     <div class="news-meta">
       <div class="author-date">
-        <span class="author">Por {news.author}</span>
+        <span class="author">Por {article.author || "Colectivo Abya Yala"}</span>
         <span class="date-separator">•</span>
-        <FormattedDate date={news.pubDate} />
+        <FormattedDate date={new Date(article.pubDate)} />
       </div>
       <ShareButtons 
-        title={news.title} 
+        title={article.title} 
         url={currentUrl} 
-        description={news.description} 
+        description={article.description} 
       />
     </div>
   </div>
@@ -159,16 +80,16 @@ const contentHtml = news.content;
   </div>
   
   <ShareButtons 
-    title={news.title} 
+    title={article.title} 
     url={currentUrl} 
-    description={news.description} 
+    description={article.description} 
     class="share-bottom"
   />
   
   <RelatedNews 
-    currentSlug={news.slug}
-    category={news.category}
-    allNews={allNews}
+    currentSlug={article.slug}
+    category={article.category}
+    allNews={allArticles}
     count={3}
   />
 </NewsLayout>
@@ -199,16 +120,16 @@ const contentHtml = news.content;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--color-text-secondary, #555);
     font-size: 0.95rem;
-  }
-  
-  .author {
-    font-weight: 600;
+    color: var(--color-text-muted);
   }
   
   .date-separator {
-    color: var(--color-text-muted, #999);
+    color: var(--color-text-muted);
+  }
+  
+  .author {
+    font-weight: 500;
   }
   
   .news-content {
@@ -217,10 +138,31 @@ const contentHtml = news.content;
     line-height: 1.7;
   }
   
+  .news-content :global(h1),
+  .news-content :global(h2),
+  .news-content :global(h3),
+  .news-content :global(h4) {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+  
+  .news-content :global(h1) {
+    font-size: 2rem;
+  }
+  
   .news-content :global(h2) {
-    font-size: 1.8rem;
-    margin: 2rem 0 1rem;
-    color: var(--color-text-primary);
+    font-size: 1.75rem;
+  }
+  
+  .news-content :global(h3) {
+    font-size: 1.5rem;
+  }
+  
+  .news-content :global(img) {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 1.5rem 0;
   }
   
   .news-content :global(p) {
@@ -230,13 +172,23 @@ const contentHtml = news.content;
   .news-content :global(blockquote) {
     border-left: 4px solid var(--color-primary);
     padding-left: 1rem;
-    margin-left: 0;
-    color: var(--color-text-secondary);
     font-style: italic;
+    margin: 1.5rem 0;
+  }
+  
+  .news-content :global(ul),
+  .news-content :global(ol) {
+    margin: 1rem 0 1.5rem 1.5rem;
+  }
+  
+  .news-content :global(li) {
+    margin-bottom: 0.5rem;
   }
   
   .share-bottom {
-    margin-top: 3rem;
+    margin: 3rem 0;
+    display: flex;
+    justify-content: center;
   }
   
   @media (max-width: 768px) {
@@ -247,6 +199,10 @@ const contentHtml = news.content;
     .news-meta {
       flex-direction: column;
       align-items: flex-start;
+    }
+    
+    .news-content {
+      font-size: 1rem;
     }
   }
 </style>

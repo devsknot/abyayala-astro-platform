@@ -4,11 +4,13 @@ import NewsCard from './NewsCard.astro';
 interface NewsItem {
     title: string;
     slug: string;
-    pubDate: Date;
+    pubDate: string | Date;
     description: string;
-    image: string;
+    featured_image?: string;
+    image?: string; 
     category: string;
     featured?: boolean;
+    author?: string;
 }
 
 interface Props {
@@ -44,8 +46,8 @@ if (finalRelatedNews.length < count) {
                 <NewsCard 
                     title={news.title}
                     description={news.description}
-                    image={news.image}
-                    url={`/news/${news.slug}`}
+                    image={news.featured_image || news.image || "/blog-placeholder-1.jpg"}
+                    slug={news.slug}
                     category={news.category}
                     date={news.pubDate}
                 />

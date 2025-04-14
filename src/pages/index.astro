@@ -3,88 +3,122 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import NewsCard from '../components/NewsCard.astro';
 import CategoryTag from '../components/CategoryTag.astro';
 import { SITE_TITLE, SITE_DESCRIPTION, CATEGORIES } from '../consts';
+import { getAllArticles } from '../utils/contentApi.js';
 
-// En un proyecto real, estas noticias vendrían de una colección de contenido
-const featuredNews = [
-  {
-    title: "Cooperativa Abya Yala logra récord en producción de café orgánico",
-    description: "La cooperativa agraria Abya Yala ha alcanzado un nuevo récord en la producción de café orgánico, superando las expectativas del mercado nacional e internacional.",
-    pubDate: new Date('2025-03-15'),
-    category: "agricultura",
-    image: "/blog-placeholder-3.jpg",
-    slug: "record-cafe-organico",
-    featured: true
-  },
-  {
-    title: "Nueva técnica de riego sostenible reduce el consumo de agua en un 40%",
-    description: "Agricultores del colectivo Abya Yala implementan innovadora técnica de riego que permite ahorrar agua y mejorar la calidad de los cultivos.",
-    pubDate: new Date('2025-03-20'),
-    category: "sostenibilidad",
-    image: "/blog-placeholder-4.jpg",
-    slug: "tecnica-riego-sostenible",
-    featured: false
-  },
-  {
-    title: "Feria de semillas ancestrales reúne a más de 500 agricultores",
-    description: "La tradicional feria de intercambio de semillas ancestrales organizada por Abya Yala contó con la participación de agricultores de toda la región.",
-    pubDate: new Date('2025-03-25'),
-    category: "eventos",
-    image: "/blog-placeholder-2.jpg",
-    slug: "feria-semillas-ancestrales",
-    featured: false
-  }
-];
+// Obtener artículos de la API
+const allArticles = await getAllArticles();
 
-const recentNews = [
-  {
-    title: "Mujeres rurales lideran proyecto de soberanía alimentaria",
-    description: "Un grupo de mujeres del colectivo Abya Yala ha puesto en marcha un ambicioso proyecto para garantizar la soberanía alimentaria en su comunidad.",
-    pubDate: new Date('2025-03-28'),
-    category: "comunidad",
-    image: "/blog-placeholder-1.jpg",
-    slug: "mujeres-soberania-alimentaria"
-  },
-  {
-    title: "Nuevo decreto agrario: Análisis de su impacto en pequeños productores",
-    description: "Especialistas del colectivo Abya Yala analizan las implicaciones del reciente decreto agrario para los pequeños productores y comunidades rurales.",
-    pubDate: new Date('2025-03-26'),
-    category: "politica-agraria",
-    image: "/blog-placeholder-5.jpg",
-    slug: "analisis-decreto-agrario"
-  },
-  {
-    title: "Taller de agroecología atrae a jóvenes interesados en el campo",
-    description: "El reciente taller de agroecología organizado por Abya Yala ha despertado el interés de jóvenes que buscan alternativas sostenibles en el sector agrícola.",
-    pubDate: new Date('2025-03-22'),
-    category: "eventos",
-    image: "/blog-placeholder-3.jpg",
-    slug: "taller-agroecologia-jovenes"
-  },
-  {
-    title: "Drones y agricultura de precisión: La revolución llega al campo",
-    description: "El colectivo Abya Yala incorpora tecnología de drones para optimizar la producción agrícola y reducir el impacto ambiental de sus actividades.",
-    pubDate: new Date('2025-03-18'),
-    category: "tecnologia-rural",
-    image: "/blog-placeholder-4.jpg",
-    slug: "drones-agricultura-precision"
-  },
-  {
-    title: "Rescate de recetas tradicionales promueve la gastronomía local",
-    description: "Una iniciativa del colectivo Abya Yala busca preservar el patrimonio culinario de la región a través del rescate de recetas tradicionales.",
-    pubDate: new Date('2025-03-12'),
-    category: "cultura",
-    image: "/blog-placeholder-2.jpg",
-    slug: "rescate-recetas-tradicionales"
-  },
-  {
-    title: "Estudio revela beneficios de la agricultura regenerativa",
-    description: "Una investigación realizada por miembros del colectivo Abya Yala demuestra los múltiples beneficios de la agricultura regenerativa para el suelo y el medio ambiente.",
-    pubDate: new Date('2025-03-10'),
-    category: "sostenibilidad",
-    image: "/blog-placeholder-1.jpg",
-    slug: "beneficios-agricultura-regenerativa"
-  }
-];
+// Ordenar por fecha de publicación (más reciente primero)
+const sortedArticles = allArticles.sort(
+  (a, b) => new Date(b.pubDate).valueOf() - new Date(a.pubDate).valueOf()
+);
+
+// Obtener artículos destacados (los 3 más recientes)
+const featuredNews = sortedArticles.slice(0, 3).map(article => ({
+  title: article.title,
+  description: article.description,
+  pubDate: new Date(article.pubDate),
+  category: article.category,
+  image: article.featured_image || "/blog-placeholder-3.jpg", // Usar imagen destacada o placeholder
+  slug: article.slug,
+  featured: sortedArticles.indexOf(article) === 0 // El primer artículo es el destacado principal
+}));
+
+// Obtener artículos recientes (los siguientes 6 después de los destacados)
+const recentNews = sortedArticles.slice(3, 9).map(article => ({
+  title: article.title,
+  description: article.description,
+  pubDate: new Date(article.pubDate),
+  category: article.category,
+  image: article.featured_image || "/blog-placeholder-1.jpg", // Usar imagen destacada o placeholder
+  slug: article.slug
+}));
+
+// Usar datos hardcodeados como fallback si no hay suficientes artículos
+if (featuredNews.length === 0) {
+  featuredNews.push(
+    {
+      title: "Cooperativa Abya Yala logra récord en producción de café orgánico",
+      description: "La cooperativa agraria Abya Yala ha alcanzado un nuevo récord en la producción de café orgánico, superando las expectativas del mercado nacional e internacional.",
+      pubDate: new Date('2025-03-15'),
+      category: "agricultura",
+      image: "/blog-placeholder-3.jpg",
+      slug: "record-cafe-organico",
+      featured: true
+    },
+    {
+      title: "Nueva técnica de riego sostenible reduce el consumo de agua en un 40%",
+      description: "Agricultores del colectivo Abya Yala implementan innovadora técnica de riego que permite ahorrar agua y mejorar la calidad de los cultivos.",
+      pubDate: new Date('2025-03-20'),
+      category: "sostenibilidad",
+      image: "/blog-placeholder-4.jpg",
+      slug: "tecnica-riego-sostenible",
+      featured: false
+    },
+    {
+      title: "Feria de semillas ancestrales reúne a más de 500 agricultores",
+      description: "La tradicional feria de intercambio de semillas ancestrales organizada por Abya Yala contó con la participación de agricultores de toda la región.",
+      pubDate: new Date('2025-03-25'),
+      category: "eventos",
+      image: "/blog-placeholder-2.jpg",
+      slug: "feria-semillas-ancestrales",
+      featured: false
+    }
+  );
+}
+
+if (recentNews.length === 0) {
+  recentNews.push(
+    {
+      title: "Mujeres rurales lideran proyecto de soberanía alimentaria",
+      description: "Un grupo de mujeres del colectivo Abya Yala ha puesto en marcha un ambicioso proyecto para garantizar la soberanía alimentaria en su comunidad.",
+      pubDate: new Date('2025-03-28'),
+      category: "comunidad",
+      image: "/blog-placeholder-1.jpg",
+      slug: "mujeres-soberania-alimentaria"
+    },
+    {
+      title: "Nuevo decreto agrario: Análisis de su impacto en pequeños productores",
+      description: "Especialistas del colectivo Abya Yala analizan las implicaciones del reciente decreto agrario para los pequeños productores y comunidades rurales.",
+      pubDate: new Date('2025-03-26'),
+      category: "politica-agraria",
+      image: "/blog-placeholder-5.jpg",
+      slug: "analisis-decreto-agrario"
+    },
+    {
+      title: "Taller de agroecología atrae a jóvenes interesados en el campo",
+      description: "El reciente taller de agroecología organizado por Abya Yala ha despertado el interés de jóvenes que buscan alternativas sostenibles en el sector agrícola.",
+      pubDate: new Date('2025-03-22'),
+      category: "eventos",
+      image: "/blog-placeholder-3.jpg",
+      slug: "taller-agroecologia-jovenes"
+    },
+    {
+      title: "Drones y agricultura de precisión: La revolución llega al campo",
+      description: "El colectivo Abya Yala incorpora tecnología de drones para optimizar la producción agrícola y reducir el impacto ambiental de sus actividades.",
+      pubDate: new Date('2025-03-18'),
+      category: "tecnologia-rural",
+      image: "/blog-placeholder-4.jpg",
+      slug: "drones-agricultura-precision"
+    },
+    {
+      title: "Rescate de recetas tradicionales promueve la gastronomía local",
+      description: "Una iniciativa del colectivo Abya Yala busca preservar el patrimonio culinario de la región a través del rescate de recetas tradicionales.",
+      pubDate: new Date('2025-03-12'),
+      category: "cultura",
+      image: "/blog-placeholder-2.jpg",
+      slug: "rescate-recetas-tradicionales"
+    },
+    {
+      title: "Estudio revela beneficios de la agricultura regenerativa",
+      description: "Una investigación realizada por miembros del colectivo Abya Yala demuestra los múltiples beneficios de la agricultura regenerativa para el suelo y el medio ambiente.",
+      pubDate: new Date('2025-03-10'),
+      category: "sostenibilidad",
+      image: "/blog-placeholder-1.jpg",
+      slug: "beneficios-agricultura-regenerativa"
+    }
+  );
+}
 
 ---
 

@@ -4,11 +4,15 @@ import { SITE_TITLE } from '../../consts';
 import FormattedDate from '../../components/FormattedDate.astro';
 import CategoryTag from '../../components/CategoryTag.astro';
 import DatePicker from '../../components/DatePicker.astro';
+import { getAllArticles } from '../../utils/contentApi.js';
 
-// Obtener todas las noticias
-const allNews = await Astro.glob('../../content/blog/*.md');
+// Obtener todas las noticias desde la API
+const allArticles = await getAllArticles();
+
 // Ordenar por fecha de publicación (más reciente primero)
-const sortedNews = allNews.sort((a, b) => new Date(b.frontmatter.pubDate).valueOf() - new Date(a.frontmatter.pubDate).valueOf());
+const sortedNews = allArticles.sort(
+  (a, b) => new Date(b.pubDate).valueOf() - new Date(a.pubDate).valueOf()
+);
 
 const pageTitle = `Todas las Noticias | ${SITE_TITLE}`;
 const pageDescription = 'Explora todas las noticias publicadas por el colectivo agrario Abya Yala. Mantente informado sobre agricultura, sostenibilidad, comunidad y más.';
@@ -63,28 +67,35 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
       </div>
 
       <div class="news-grid">
-        {sortedNews.map(news => (
-          <article class="news-item" data-category={news.frontmatter.category} data-date={news.frontmatter.pubDate}>
+        {sortedNews.map(article => (
+          <article class="news-item" data-category={article.category} data-date={article.pubDate}>
             <div class="news-image">
-              {news.frontmatter.heroImage && (
+              {article.featured_image && (
                 <img 
-                  src={news.frontmatter.heroImage} 
-                  alt={news.frontmatter.title} 
+                  src={article.featured_image} 
+                  alt={article.title} 
+                  loading="lazy"
+                />
+              )}
+              {!article.featured_image && (
+                <img 
+                  src="/blog-placeholder-1.jpg" 
+                  alt={article.title} 
                   loading="lazy"
                 />
               )}
             </div>
             <div class="news-content">
               <div class="news-meta">
-                <CategoryTag category={news.frontmatter.category} absolute={false} />
-                <FormattedDate date={news.frontmatter.pubDate} format="relative" showIcon={true} class="date-relative" />
+                <CategoryTag category={article.category} absolute={false} />
+                <FormattedDate date={new Date(article.pubDate)} format="relative" showIcon={true} class="date-relative" />
               </div>
               <h2 class="news-title">
-                <a href={`/news/${news.frontmatter.slug}`}>{news.frontmatter.title}</a>
+                <a href={`/news/${article.slug}`}>{article.title}</a>
               </h2>
-              <p class="news-excerpt">{news.frontmatter.description}</p>
+              <p class="news-excerpt">{article.description}</p>
               <div class="news-footer">
-                <a href={`/news/${news.frontmatter.slug}`} class="read-more">Leer artículo completo</a>
+                <a href={`/news/${article.slug}`} class="read-more">Leer artículo completo</a>
               </div>
             </div>
           </article>
