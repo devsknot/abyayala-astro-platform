@@ -70,18 +70,33 @@ export async function getAllCategories() {
   console.log('API_BASE_URL:', API_BASE_URL);
   
   try {
-    // Intentar primero con la URL configurada
+    // Según la configuración de rutas, la ruta correcta es /api/content/categories
     const url = `${API_BASE_URL}/api/content/categories`;
     console.log('Intentando obtener categorías desde:', url);
     
-    let response = await fetch(url);
+    let response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      // Asegurarse de que se incluyan las credenciales (cookies, etc.)
+      credentials: 'include'
+    });
     console.log('Respuesta de la API:', response.status, response.statusText);
     
     // Si falla, intentar con la URL de producción directamente
     if (!response.ok && API_BASE_URL !== 'https://colectivoabyayala.com') {
       const productionUrl = 'https://colectivoabyayala.com/api/content/categories';
       console.log('Intentando con URL de producción directamente:', productionUrl);
-      response = await fetch(productionUrl);
+      response = await fetch(productionUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
       console.log('Respuesta de la API de producción:', response.status, response.statusText);
     }
     
