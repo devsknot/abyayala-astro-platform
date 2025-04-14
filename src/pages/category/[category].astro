@@ -8,6 +8,53 @@ export async function getStaticPaths() {
   // Obtener todas las categorías de la API
   const categories = await getAllCategories();
   
+  // Si no hay categorías disponibles, usar categorías predefinidas
+  if (!categories || categories.length === 0) {
+    const fallbackCategories = [
+      {
+        slug: 'agricultura',
+        name: 'Agricultura',
+        description: 'Noticias sobre prácticas agrícolas, cultivos y temporadas'
+      },
+      {
+        slug: 'comunidad',
+        name: 'Comunidad',
+        description: 'Historias de miembros, cooperación y testimonios'
+      },
+      {
+        slug: 'sostenibilidad',
+        name: 'Sostenibilidad',
+        description: 'Prácticas ecológicas, conservación y biodiversidad'
+      },
+      {
+        slug: 'politica-agraria',
+        name: 'Política Agraria',
+        description: 'Legislación, derechos y movimientos sociales'
+      },
+      {
+        slug: 'tecnologia-rural',
+        name: 'Tecnología Rural',
+        description: 'Innovaciones, herramientas y digitalización'
+      },
+      {
+        slug: 'cultura',
+        name: 'Cultura',
+        description: 'Tradiciones, gastronomía y artesanía'
+      },
+      {
+        slug: 'eventos',
+        name: 'Eventos',
+        description: 'Ferias, encuentros y capacitaciones'
+      }
+    ];
+    
+    // Crear rutas para cada categoría de respaldo
+    return fallbackCategories.map(category => ({
+      params: { category: category.slug },
+      props: { category },
+    }));
+  }
+  
   // Crear rutas para cada categoría
   return categories.map(category => ({
     params: { category: category.slug },
