@@ -164,6 +164,7 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
         pub_date = ?,
         category = ?,
         featured_image = ?,
+        author_id = ?,
         updated_at = datetime('now')
       WHERE slug = ?
     `).bind(
@@ -173,6 +174,7 @@ async function handleUpdateArticle(slug, articleData, env, headers) {
       pubDate,
       articleData.category || existingArticle.category,
       articleData.featured_image || existingArticle.featured_image,
+      articleData.author_id || existingArticle.author_id,
       slug
     ).run();
     
