@@ -4,6 +4,8 @@ export class MediaManager {
     this.apiBase = '/api/media';
     // Nunca usar datos de prueba, siempre conectar con la API real
     this.useFallbackData = false;
+    // URL base para acceso público directo al bucket R2
+    this.r2PublicUrl = 'https://media.colectivoabyayala.org';
   }
 
   // Método para obtener las cabeceras de autenticación
@@ -132,10 +134,8 @@ export class MediaManager {
       return `/${cleanFileId}`;
     }
     
-    // En producción, usar la API de medios con formato de guiones bajos
-    // Convertir barras a guiones bajos para compatibilidad con Cloudflare Pages Functions
-    const compatiblePath = cleanFileId.replace(/\//g, '_');
-    return `/api/media/${compatiblePath}`;
+    // En producción, usar el dominio personalizado de R2
+    return `${this.r2PublicUrl}/${cleanFileId}`;
   }
   
   // Determinar si un archivo es una imagen

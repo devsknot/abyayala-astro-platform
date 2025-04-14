@@ -47,14 +47,14 @@ async function handleListMedia(env) {
           // Extraer el nombre del archivo de la clave
           const name = object.key.split('/').pop();
           
-          // Convertir la ruta con barras a formato con guiones bajos para compatibilidad
-          const compatiblePath = object.key.replace(/\//g, '_');
+          // Generar URL pública directa al bucket R2 con dominio personalizado
+          const publicUrl = `https://media.colectivoabyayala.org/${object.key}`;
           
           return {
             id: object.key,
             name: name,
             path: `/${object.key}`,
-            url: `/api/media/${compatiblePath}`,
+            url: publicUrl,
             size: object.size,
             type: getFileType(object.key),
             uploaded: object.uploaded
