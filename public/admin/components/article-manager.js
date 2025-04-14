@@ -163,8 +163,11 @@ export class ArticleManager {
     // Evento para seleccionar imagen destacada
     this.container.querySelector('.select-image-btn').addEventListener('click', () => {
       MediaLibrary.openModal((file) => {
+        // Usar la URL pública si está disponible, de lo contrario usar la ruta
+        const imagePath = file.publicUrl || file.path;
+        
         // Actualizar la vista previa
-        this.updateFeaturedImagePreview(file.path);
+        this.updateFeaturedImagePreview(imagePath);
         
         // Guardar la ruta de la imagen
         this.featuredImageInput.value = file.path;
@@ -179,6 +182,28 @@ export class ArticleManager {
       if (isHidden) {
         // Si vamos a mostrar la galería, cargar las imágenes
         await this.loadGalleryImages();
+        
+        // Añadir evento de clic a las imágenes de la galería
+        this.galleryGrid.addEventListener('click', (e) => {
+          const galleryItem = e.target.closest('.gallery-item');
+          if (!galleryItem) return;
+          
+          // Obtener la ruta de la imagen
+          const imagePath = galleryItem.dataset.path;
+          
+          // Crear una instancia del gestor de medios para obtener la URL correcta
+          const mediaManager = new MediaManager();
+          const imageUrl = mediaManager.getPublicUrl(imagePath);
+          
+          // Actualizar la vista previa
+          this.updateFeaturedImagePreview(imageUrl);
+          
+          // Guardar la ruta de la imagen
+          this.featuredImageInput.value = imagePath;
+          
+          // Cerrar la galería
+          this.toggleImageGallery();
+        });
       }
       
       this.toggleImageGallery();
@@ -525,8 +550,12 @@ export class ArticleManager {
   }
   
   updateFeaturedImagePreview(imagePath) {
+    // Crear una instancia del gestor de medios para obtener la URL correcta
+    const mediaManager = new MediaManager();
+    const imageUrl = mediaManager.getPublicUrl(imagePath);
+    
     this.featuredImagePreview.innerHTML = `
-      <img src="${imagePath}" alt="Imagen destacada" class="max-h-full max-w-full object-contain">
+      <img src="${imageUrl}" alt="Imagen destacada" class="max-h-full max-w-full object-contain">
     `;
   }
   
@@ -658,14 +687,18 @@ export class ArticleManager {
       }
       
       // Crear elementos para cada imagen
-      this.galleryGrid.innerHTML = imageFiles.map(file => `
+      this.galleryGrid.innerHTML = imageFiles.map(file => {
+        // Usar el MediaManager para generar la URL correcta de la imagen
+        const imageUrl = mediaManager.getPublicUrl(file.path);
+        
+        return `
         <div class="gallery-item cursor-pointer border rounded-lg overflow-hidden hover:border-blue-500 transition-colors" data-path="${file.path}">
           <div class="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
-            <img src="${file.path}" alt="${file.name}" class="w-full h-full object-cover">
+            <img src="${imageUrl}" alt="${file.name}" class="w-full h-full object-cover">
           </div>
           <div class="p-1 text-xs truncate text-center">${file.name}</div>
         </div>
-      `).join('');
+      `}).join('');
     } catch (error) {
       console.error('Error al cargar imágenes:', error);
       this.galleryGrid.innerHTML = `<div class="col-span-4 text-center py-4 text-red-500">Error al cargar imágenes</div>`;

@@ -258,6 +258,13 @@ export class MediaLibrary {
     
     modalContainer.querySelector('.select-button').addEventListener('click', () => {
       if (modalContainer.selectedFile && onSelect) {
+        // Asegurarnos de que la URL de la imagen sea correcta antes de pasarla al callback
+        const mediaManager = new MediaManager();
+        if (modalContainer.selectedFile.path) {
+          // Generar la URL pública correcta para la imagen
+          modalContainer.selectedFile.publicUrl = mediaManager.getPublicUrl(modalContainer.selectedFile.path);
+        }
+        
         onSelect(modalContainer.selectedFile);
       }
       document.body.removeChild(modalContainer);
