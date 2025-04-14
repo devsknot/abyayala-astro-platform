@@ -138,13 +138,39 @@ export class MediaManager {
 
   // Generar URL de miniatura
   generateThumbnailUrl(path) {
-    // En una implementación real, podríamos usar un servicio de transformación de imágenes
-    // Por ahora, simplemente devolvemos la ruta original
+    // En un entorno de producción, esto podría apuntar a Cloudflare Images o un servicio similar
+    // para generar miniaturas optimizadas
+    
+    // Si estamos en desarrollo local, usar la ruta tal cual
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return path;
+    }
+    
+    // En producción, construir la URL completa al bucket R2
+    // Nota: Esto asume que las imágenes son accesibles públicamente a través de un dominio configurado
+    // Si se usa la API de medios para servir las imágenes, usar la ruta de la API en su lugar
+    if (path.startsWith('/')) {
+      // Usar la ruta de la API para acceder a las imágenes
+      return `/api/media${path}`;
+    }
+    
     return path;
   }
   
   // Obtener URL pública para un archivo
   getPublicUrl(fileId) {
+    // Si el fileId ya es una ruta completa (comienza con /)
+    if (fileId.startsWith('/')) {
+      // En desarrollo local, usar la ruta tal cual
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return fileId;
+      }
+      
+      // En producción, usar la ruta de la API
+      return `/api/media${fileId}`;
+    }
+    
+    // Si es un ID simple, construir la ruta de la API
     return `${this.apiBase}/${fileId}`;
   }
   
@@ -174,50 +200,50 @@ export class MediaManager {
       {
         id: 'img1',
         name: 'cafe-organico.jpg',
-        path: '/uploads/2025/04/cafe-organico.jpg',
+        path: '/2025/04/cafe-organico.jpg',
         type: 'image/jpeg',
         size: 245000,
-        uploaded: '2025-04-02T10:30:00.000Z'
+        uploaded: '2025-04-05T10:30:00.000Z'
       },
       {
         id: 'img2',
         name: 'riego-sostenible.jpg',
-        path: '/uploads/2025/03/riego-sostenible.jpg',
+        path: '/2025/04/riego-sostenible.jpg',
         type: 'image/jpeg',
         size: 320000,
-        uploaded: '2025-03-20T14:15:00.000Z'
+        uploaded: '2025-04-01T14:15:00.000Z'
       },
       {
         id: 'img3',
         name: 'feria-semillas.jpg',
-        path: '/uploads/2025/03/feria-semillas.jpg',
+        path: '/2025/04/feria-semillas.jpg',
         type: 'image/jpeg',
         size: 180000,
-        uploaded: '2025-03-25T09:45:00.000Z'
+        uploaded: '2025-04-10T09:45:00.000Z'
       },
       {
         id: 'img4',
         name: 'cooperativa-reunion.jpg',
-        path: '/uploads/2025/02/cooperativa-reunion.jpg',
+        path: '/2025/04/cooperativa-reunion.jpg',
         type: 'image/jpeg',
         size: 210000,
-        uploaded: '2025-02-15T16:20:00.000Z'
+        uploaded: '2025-04-15T16:20:00.000Z'
       },
       {
         id: 'img5',
         name: 'cultivo-organico.jpg',
-        path: '/uploads/2025/02/cultivo-organico.jpg',
+        path: '/2025/04/cultivo-organico.jpg',
         type: 'image/jpeg',
         size: 275000,
-        uploaded: '2025-02-10T11:05:00.000Z'
+        uploaded: '2025-04-10T11:05:00.000Z'
       },
       {
         id: 'img6',
         name: 'semillas-nativas.jpg',
-        path: '/uploads/2025/01/semillas-nativas.jpg',
+        path: '/2025/04/semillas-nativas.jpg',
         type: 'image/jpeg',
         size: 195000,
-        uploaded: '2025-01-28T13:40:00.000Z'
+        uploaded: '2025-04-08T13:40:00.000Z'
       }
     ];
   }
@@ -238,7 +264,7 @@ export class MediaManager {
         
         // En una implementación real, aquí se subiría el archivo a un servidor
         // y se devolvería la URL real. Para la simulación, usamos un path ficticio.
-        const path = `/uploads/${year}/${month}/${name}`;
+        const path = `/${year}/${month}/${name}`;
         
         resolve({
           success: true,
@@ -249,10 +275,10 @@ export class MediaManager {
             type: file.type,
             size: file.size,
             uploaded: now.toISOString(),
-            url: objectUrl // Solo para la simulación
+            url: objectUrl
           }
         });
-      }, 1000); // Simular 1 segundo de carga
+      }, 1500); // Simular un retraso de 1.5 segundos
     });
   }
 }
