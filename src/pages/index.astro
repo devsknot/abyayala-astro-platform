@@ -9,7 +9,10 @@ import { getAllArticles, getAllCategories } from '../utils/contentApi.js';
 const allArticles = await getAllArticles();
 
 // Obtener categorías de la API
+console.log('Página index.astro: Obteniendo categorías...');
 const categories = await getAllCategories();
+console.log('Página index.astro: Categorías obtenidas:', categories);
+console.log('Página index.astro: Tipo de datos de categories:', typeof categories, Array.isArray(categories));
 
 // Ordenar por fecha de publicación (más reciente primero)
 const sortedArticles = allArticles.sort(
@@ -82,6 +85,15 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
   <section class="categories-section">
     <div class="container">
       <h2 class="section-title">Explora por Categorías</h2>
+      <div class="debug-info">
+        <p>Información de depuración (solo visible en desarrollo):</p>
+        <ul>
+          <li>Número de categorías: {categories.length}</li>
+          <li>Es array: {Array.isArray(categories) ? 'Sí' : 'No'}</li>
+          <li>Tipo de datos: {typeof categories}</li>
+        </ul>
+        <pre>{JSON.stringify(categories, null, 2)}</pre>
+      </div>
       {categories.length > 0 ? (
         <div class="categories-grid">
           {categories.map(category => (
@@ -264,6 +276,30 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
     font-size: 1.25rem;
     margin-bottom: 0.5rem;
     color: var(--color-primary);
+  }
+
+  /* Debug Info */
+  .debug-info {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    font-family: monospace;
+    font-size: 0.9rem;
+  }
+
+  .debug-info pre {
+    background-color: #e9ecef;
+    padding: 0.5rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    max-height: 200px;
+  }
+
+  .debug-info ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
   }
 
   /* Recent News Section */
