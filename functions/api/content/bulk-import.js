@@ -158,7 +158,7 @@ async function processArticles(db, articles) {
         let authorSlug = generateSlug(article.author);
         
         const existingAuthor = await db
-          .prepare('SELECT id, slug, name FROM authors WHERE slug = ? OR name = ?')
+          .prepare('SELECT id FROM authors WHERE slug = ? OR name = ?')
           .bind(authorSlug, article.author)
           .first();
         
@@ -166,8 +166,8 @@ async function processArticles(db, articles) {
           // Usar el autor existente
           authorId = existingAuthor.id;
           results.authors.linked.push({
-            name: existingAuthor.name,
-            slug: existingAuthor.slug
+            name: article.author,
+            slug: authorSlug
           });
         } else {
           // Crear nuevo autor
@@ -185,12 +185,7 @@ async function processArticles(db, articles) {
           
           if (authorResult.success) {
             // Obtener el ID del autor recién creado
-            const newAuthor = await db
-              .prepare('SELECT id, slug, name FROM authors WHERE slug = ?')
-              .bind(authorSlug)
-              .first();
-            
-            authorId = newAuthor.id;
+            authorId = authorResult.lastInsertRowid;
             results.authors.created.push({
               name: article.author,
               slug: authorSlug
@@ -204,8 +199,8 @@ async function processArticles(db, articles) {
         .prepare(`
           INSERT INTO articles (
             slug, title, description, content, pub_date, 
-            category, featured_image, author, tags, author_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            category, featured_image, tags, author_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `)
         .bind(
           article.slug,
@@ -215,7 +210,6 @@ async function processArticles(db, articles) {
           pubDate.toISOString(),
           article.category,
           article.featured_image || null,
-          article.author || 'Admin',
           JSON.stringify(article.tags || []),
           authorId
         )
@@ -224,7 +218,6 @@ async function processArticles(db, articles) {
       results.success.push({
         title: article.title,
         slug: article.slug,
-        author: article.author,
         authorId: authorId
       });
     } catch (error) {
