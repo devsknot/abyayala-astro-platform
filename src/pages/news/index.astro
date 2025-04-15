@@ -4,13 +4,20 @@ import { SITE_TITLE } from '../../consts';
 import FormattedDate from '../../components/FormattedDate.astro';
 import CategoryTag from '../../components/CategoryTag.astro';
 import DatePicker from '../../components/DatePicker.astro';
-import { getAllArticles } from '../../utils/contentApi.js';
+import { getAllArticles, getAllCategories } from '../../utils/contentApi.js';
 
 // Configuración para SSR
 export const prerender = false;
 
 // Obtener todas las noticias desde la API
+console.log('Obteniendo artículos para la página de noticias...');
 const allArticles = await getAllArticles();
+console.log(`Se obtuvieron ${allArticles.length} artículos para mostrar en la página de noticias`);
+
+// Obtener todas las categorías para el filtro
+console.log('Obteniendo categorías para el filtro de la página de noticias...');
+const categories = await getAllCategories();
+console.log(`Se obtuvieron ${categories.length} categorías para el filtro`);
 
 // Ordenar por fecha de publicación (más reciente primero)
 const sortedNews = allArticles.sort(
@@ -29,92 +36,75 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
         <p class="lead">Explora todas nuestras noticias, desde las más recientes hasta las más antiguas.</p>
       </div>
 
-      <div class="news-filters">
-        <div class="filters-row">
-          <div class="search-box">
-            <input type="text" id="news-search" placeholder="Buscar noticias..." />
-            <button type="button" id="search-btn">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div class="filters-section">
+        <div class="search-filter">
+          <label for="search-input">Buscar:</label>
+          <div class="search-input-wrapper">
+            <input type="text" id="search-input" placeholder="Buscar por título o contenido...">
+            <button type="button" class="search-button">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
             </button>
           </div>
-          <div class="category-filter">
-            <select id="category-filter">
-              <option value="all">Todas las categorías</option>
-              <option value="agricultura">Agricultura</option>
-              <option value="comunidad">Comunidad</option>
-              <option value="sostenibilidad">Sostenibilidad</option>
-              <option value="politica-agraria">Política Agraria</option>
-              <option value="tecnologia-rural">Tecnología Rural</option>
-              <option value="cultura">Cultura</option>
-              <option value="eventos">Eventos</option>
-            </select>
-          </div>
-          
-          <div class="date-filter-group">
-            <DatePicker id="date-from" label="Desde" placeholder="Fecha inicial" />
-            <DatePicker id="date-to" label="Hasta" placeholder="Fecha final" />
-          </div>
-          
-          <button type="button" id="clear-filters" class="clear-filters-btn">
-            Limpiar filtros
-          </button>
         </div>
+        
+        <div class="category-filter">
+          <label for="category-select">Categoría:</label>
+          <select id="category-select">
+            <option value="">Todas las categorías</option>
+            {categories.map(category => (
+              <option value={category.id}>{category.name}</option>
+            ))}
+          </select>
+        </div>
+        
+        <div class="date-filter">
+          <div class="date-from">
+            <label for="date-from">Desde:</label>
+            <DatePicker id="date-from" />
+          </div>
+          <div class="date-to">
+            <label for="date-to">Hasta:</label>
+            <DatePicker id="date-to" />
+          </div>
+        </div>
+        
+        <button type="button" class="clear-filters-btn">Limpiar filtros</button>
       </div>
       
-      <div class="results-info">
-        <p class="results-count">Mostrando <span id="visible-count">{sortedNews.length}</span> de {sortedNews.length} noticias</p>
-        <div class="active-filters" id="active-filters"></div>
-      </div>
-
+      <div class="active-filters" id="active-filters"></div>
+      
       <div class="news-grid">
-        {sortedNews.map(article => (
-          <article class="news-item" data-category={article.category} data-date={article.pubDate}>
-            <div class="news-image">
-              {article.featured_image && (
-                <img 
-                  src={article.featured_image} 
-                  alt={article.title} 
-                  loading="lazy"
-                />
-              )}
-              {!article.featured_image && (
-                <img 
-                  src="/blog-placeholder-1.jpg" 
-                  alt={article.title} 
-                  loading="lazy"
-                />
-              )}
-            </div>
-            <div class="news-content">
-              <div class="news-meta">
-                <CategoryTag category={article.category} absolute={false} />
-                <FormattedDate date={new Date(article.pubDate)} format="relative" showIcon={true} class="date-relative" />
-              </div>
-              <h2 class="news-title">
-                <a href={`/news/${article.slug}`}>{article.title}</a>
-              </h2>
-              <p class="news-excerpt">{article.description}</p>
-              <div class="news-footer">
-                <a href={`/news/${article.slug}`} class="read-more">Leer artículo completo</a>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-      
-      <div class="no-results" style="display: none;">
-        <div class="no-results-content">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            <line x1="8" y1="11" x2="14" y2="11"></line>
-          </svg>
-          <h3>No se encontraron resultados</h3>
-          <p>No hay noticias que coincidan con los criterios de búsqueda. Intenta con otros filtros.</p>
-        </div>
+        {sortedNews.length > 0 ? (
+          sortedNews.map(article => (
+            <article class="news-card" data-category={article.category} data-date={article.pubDate}>
+              <a href={`/news/${article.slug}`} class="news-card-link">
+                {article.featured_image && (
+                  <div class="news-image">
+                    <img src={article.featured_image} alt={article.title} loading="lazy" />
+                  </div>
+                )}
+                <div class="news-content">
+                  <CategoryTag category={article.category} />
+                  <h2 class="news-title">{article.title}</h2>
+                  <div class="news-meta">
+                    <FormattedDate date={new Date(article.pubDate)} />
+                    {article.author && <span class="news-author">Por: {article.author}</span>}
+                  </div>
+                  <p class="news-excerpt">{article.description}</p>
+                  <span class="read-more">Leer más</span>
+                </div>
+              </a>
+            </article>
+          ))
+        ) : (
+          <div class="no-results">
+            <p>No se encontraron noticias que coincidan con los criterios de búsqueda.</p>
+            <button type="button" class="clear-filters-btn">Limpiar filtros</button>
+          </div>
+        )}
       </div>
       
       <div class="pagination">
@@ -124,7 +114,7 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
           </svg>
           Anterior
         </button>
-        <div class="pagination-info">Página <span class="current-page">1</span> de <span class="total-pages">1</span></div>
+        <div class="pagination-info">Página <span id="current-page">1</span> de <span id="total-pages">1</span></div>
         <button type="button" class="pagination-next" disabled>
           Siguiente
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -161,7 +151,7 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     margin: 0 auto;
   }
   
-  .news-filters {
+  .filters-section {
     margin: 2rem 0;
     padding: 1.5rem;
     background-color: var(--color-card-bg);
@@ -169,20 +159,17 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   }
   
-  .filters-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    align-items: flex-end;
+  .search-filter {
+    margin-bottom: 1rem;
   }
   
-  .search-box {
+  .search-input-wrapper {
     position: relative;
-    flex: 1;
-    min-width: 200px;
+    display: flex;
+    align-items: center;
   }
   
-  .search-box input {
+  .search-input-wrapper input {
     width: 100%;
     padding: 0.75rem 1rem;
     padding-right: 3rem;
@@ -192,13 +179,13 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     transition: all 0.2s ease;
   }
   
-  .search-box input:focus {
+  .search-input-wrapper input:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 0, 102, 204), 0.15);
   }
   
-  .search-box button {
+  .search-button {
     position: absolute;
     right: 0.75rem;
     top: 50%;
@@ -210,13 +197,12 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     transition: color 0.2s ease;
   }
   
-  .search-box button:hover {
+  .search-button:hover {
     color: var(--color-primary);
   }
   
   .category-filter {
-    flex: 0 0 auto;
-    min-width: 180px;
+    margin-bottom: 1rem;
   }
   
   .category-filter select {
@@ -236,10 +222,13 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 0, 102, 204), 0.15);
   }
   
-  .date-filter-group {
+  .date-filter {
     display: flex;
-    gap: 0.5rem;
-    flex: 0 0 auto;
+    gap: 1rem;
+  }
+  
+  .date-from, .date-to {
+    flex: 1;
   }
   
   .clear-filters-btn {
@@ -253,53 +242,17 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
-    flex: 0 0 auto;
   }
   
   .clear-filters-btn:hover {
     background-color: var(--color-secondary-light-hover);
   }
   
-  .results-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--color-border);
-  }
-  
-  .results-count {
-    color: var(--color-text-muted);
-    font-size: 0.95rem;
-  }
-  
   .active-filters {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-  }
-  
-  .active-filter {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    background-color: var(--color-primary-light, #e6f0ff);
-    border-radius: 4px;
-    font-size: 0.85rem;
-    color: var(--color-primary);
-  }
-  
-  .active-filter button {
-    background: none;
-    border: none;
-    color: inherit;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    padding: 0;
-    margin-left: 0.25rem;
+    margin-bottom: 1.5rem;
   }
   
   .news-grid {
@@ -309,7 +262,7 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     margin-bottom: 3rem;
   }
   
-  .news-item {
+  .news-card {
     border-radius: 8px;
     background-color: var(--color-card-bg);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -319,7 +272,7 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     flex-direction: column;
   }
   
-  .news-item:hover {
+  .news-card:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transform: translateY(-3px);
   }
@@ -336,7 +289,7 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     transition: transform 0.3s ease;
   }
   
-  .news-item:hover .news-image img {
+  .news-card:hover .news-image img {
     transform: scale(1.05);
   }
   
@@ -472,22 +425,7 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
       font-size: 2rem;
     }
     
-    .filters-row {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    
-    .news-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-  
-  @media (max-width: 576px) {
-    .page-header h1 {
-      font-size: 1.8rem;
-    }
-    
-    .news-filters {
+    .filters-section {
       padding: 1rem;
     }
     
@@ -503,6 +441,16 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
       flex-wrap: wrap;
     }
   }
+  
+  @media (max-width: 576px) {
+    .page-header h1 {
+      font-size: 1.8rem;
+    }
+    
+    .news-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 
 <script>
@@ -514,12 +462,11 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     const dateToPicker = new DatePicker('date-to');
     
     // Elementos del DOM
-    const searchInput = document.getElementById('news-search') as HTMLInputElement;
-    const categoryFilter = document.getElementById('category-filter') as HTMLSelectElement;
+    const searchInput = document.getElementById('search-input') as HTMLInputElement;
+    const categoryFilter = document.getElementById('category-select') as HTMLSelectElement;
     const clearFiltersBtn = document.getElementById('clear-filters') as HTMLButtonElement;
-    const newsItems = document.querySelectorAll('.news-item');
+    const newsItems = document.querySelectorAll('.news-card');
     const noResultsElement = document.querySelector('.no-results') as HTMLElement;
-    const visibleCountElement = document.getElementById('visible-count');
     const activeFiltersElement = document.getElementById('active-filters');
     
     // Variables para paginación
@@ -558,7 +505,7 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
           category.includes(searchTerm);
         
         // Filtrar por categoría
-        const matchesCategory = selectedCategory === 'all' || 
+        const matchesCategory = selectedCategory === '' || 
           category === selectedCategory.toLowerCase();
         
         // Filtrar por rango de fechas
@@ -609,11 +556,6 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
         (filteredItems[i] as HTMLElement).style.display = '';
       }
       
-      // Actualizar contador de resultados
-      if (visibleCountElement) {
-        visibleCountElement.textContent = filteredItems.length.toString();
-      }
-      
       // Mostrar mensaje de no resultados si es necesario
       if (noResultsElement) {
         noResultsElement.style.display = filteredItems.length === 0 ? 'block' : 'none';
@@ -635,10 +577,10 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
       }
       
       // Añadir filtro de categoría
-      if (category && category !== 'all') {
+      if (category && category !== '') {
         const categoryText = categoryFilter.options[categoryFilter.selectedIndex].text;
         addActiveFilter('Categoría', categoryText, () => {
-          categoryFilter.value = 'all';
+          categoryFilter.value = '';
           applyFilters();
         });
       }
@@ -695,7 +637,7 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     // Función para limpiar todos los filtros
     function clearAllFilters() {
       searchInput.value = '';
-      categoryFilter.value = 'all';
+      categoryFilter.value = '';
       dateFromPicker.clearDate();
       dateToPicker.clearDate();
       currentPage = 1;
