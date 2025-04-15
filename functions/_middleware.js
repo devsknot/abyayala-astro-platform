@@ -8,6 +8,9 @@ export async function onRequest(context) {
   // Configurar CORS para solicitudes API
   if (url.pathname.startsWith('/api/')) {
     // Si es una solicitud OPTIONS (preflight), responder con las cabeceras CORS
+    if (request.method === 'GET') {
+      return await next();
+    }
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
