@@ -128,9 +128,12 @@ async function processArticles(db, articles) {
         continue;
       }
 
-      // Generar slug si no existe
+      // Generar slug si no existe o normalizarlo si ya existe
       if (!article.slug) {
         article.slug = generateSlug(article.title);
+      } else {
+        // Normalizar el slug existente para asegurar consistencia
+        article.slug = generateSlug(article.slug);
       }
 
       // Verificar si ya existe un artículo con el mismo slug
@@ -235,7 +238,12 @@ async function processArticles(db, articles) {
 
 // Función para generar slug a partir del título
 function generateSlug(title) {
-  return title
+  if (!title) return '';
+  
+  // Asegurar que title sea una cadena
+  const str = String(title);
+  
+  return str
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
