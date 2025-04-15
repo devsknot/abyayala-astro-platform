@@ -17,7 +17,3 @@ database_id = "a50d9255-3be0-47bd-800c-85fb362c197f"
 # Variables de entorno
 [vars]
 ENVIRONMENT = "production"
-
-# Functions
-[functions]
-directory = "./functions"
