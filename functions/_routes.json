@@ -1,7 +1,10 @@
 {
   "version": 1,
-  "include": [
-    "/api/*"
-  ],
-  "exclude": ["/api/_middleware.js"]
+  "include": ["/*"],
+  "exclude": [
+    "/_astro/*",
+    "/_image",
+    "/assets/*",
+    "/favicon.ico"
+  ]
 }
