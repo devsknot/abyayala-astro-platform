@@ -1,10 +1,14 @@
 {
   "version": 1,
-  "include": ["/*"],
-  "exclude": [
-    "/_astro/*",
-    "/_image",
-    "/assets/*",
-    "/favicon.ico"
-  ]
+  "include": [
+    "/*",
+    "/api/content/*",
+    "/api/content/articles/*",
+    "/api/content/categories/*",
+    "/api/content/authors/*",
+    "/api/content/activities/*",
+    "/api/content/bulk-import",
+    "/api/media/*"
+  ],
+  "exclude": []
 }
