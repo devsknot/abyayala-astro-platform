@@ -13,11 +13,38 @@ console.log('API_BASE_URL configurada con URL completa:', API_BASE_URL);
  */
 export async function getAllArticles() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/content/articles`);
+    console.log('Obteniendo todos los artículos desde:', `${API_BASE_URL}/api/content/articles`);
+    
+    const response = await fetch(`${API_BASE_URL}/api/content/articles`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      }
+    });
+    
+    console.log('Respuesta de la API de artículos:', response.status, response.statusText);
+    
     if (!response.ok) {
       throw new Error(`Error al obtener artículos: ${response.status}`);
     }
-    return await response.json();
+    
+    // Obtener el texto de la respuesta para depuración
+    const responseText = await response.text();
+    
+    // Intentar parsear el texto como JSON
+    let articles;
+    try {
+      articles = JSON.parse(responseText);
+      console.log(`Artículos obtenidos: ${articles.length}`);
+    } catch (parseError) {
+      console.error('Error al parsear JSON de artículos:', parseError);
+      console.log('Texto de respuesta:', responseText.substring(0, 200) + '...');
+      return [];
+    }
+    
+    return articles;
   } catch (error) {
     console.error('Error al obtener artículos:', error);
     return [];
@@ -52,8 +79,25 @@ export async function getArticleBySlug(slug) {
  */
 export async function getArticlesByCategory(category) {
   try {
+    console.log(`Filtrando artículos por categoría: ${category}`);
     const articles = await getAllArticles();
-    return articles.filter(article => article.category === category);
+    console.log(`Total de artículos obtenidos: ${articles.length}`);
+    
+    // Filtrar artículos por categoría, manejando posibles diferencias de formato
+    const filteredArticles = articles.filter(article => {
+      // Normalizar ambos valores para comparación
+      const articleCategory = String(article.category || '').trim().toLowerCase();
+      const targetCategory = String(category || '').trim().toLowerCase();
+      
+      const matches = articleCategory === targetCategory;
+      if (matches) {
+        console.log(`Artículo coincidente encontrado: ${article.title} (${article.slug})`);
+      }
+      return matches;
+    });
+    
+    console.log(`Artículos filtrados por categoría ${category}: ${filteredArticles.length}`);
+    return filteredArticles;
   } catch (error) {
     console.error(`Error al obtener artículos por categoría ${category}:`, error);
     return [];
