@@ -4,18 +4,20 @@ import NewsCard from '../../components/NewsCard.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
 import { getArticlesByCategory, getAllCategories } from '../../utils/contentApi.js';
 
-export async function getStaticPaths() {
-  // Obtener todas las categorías de la API
-  const categories = await getAllCategories();
-  
-  // Crear rutas para cada categoría
-  return categories.map(category => ({
-    params: { category: category.id },
-    props: { category },
-  }));
-}
+// Configuración para SSR
+export const prerender = false;
 
-const { category } = Astro.props;
+// Obtener el parámetro de categoría de la URL
+const { category: categoryId } = Astro.params;
+
+// Obtener información de la categoría
+const categories = await getAllCategories();
+const category = categories.find(cat => cat.id === categoryId);
+
+// Si la categoría no existe, redirigir a la página principal
+if (!category) {
+  return Astro.redirect('/');
+}
 
 // Obtener artículos de la API filtrados por categoría
 const newsItems = await getArticlesByCategory(category.id);

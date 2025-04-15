@@ -6,6 +6,9 @@ import CategoryTag from '../../components/CategoryTag.astro';
 import DatePicker from '../../components/DatePicker.astro';
 import { getAllArticles } from '../../utils/contentApi.js';
 
+// Configuración para SSR
+export const prerender = false;
+
 // Obtener todas las noticias desde la API
 const allArticles = await getAllArticles();
 

@@ -7,6 +7,9 @@ import CategoryTag from '../../components/CategoryTag.astro';
 import { SITE_URL } from '../../consts';
 import { getAllArticles, getArticleBySlug } from '../../utils/contentApi.js';
 
+// Configuración para SSR
+export const prerender = false;
+
 // Definir interfaces para los tipos de datos
 interface Article {
   slug: string;
@@ -19,41 +22,48 @@ interface Article {
   content: string;
 }
 
-export async function getStaticPaths() {
-  // Obtener todos los artículos de la API
-  const allArticles = await getAllArticles();
-  
-  // Crear una ruta para cada artículo
-  return allArticles.map((article: Article) => ({
-    params: { slug: article.slug },
-    props: { slug: article.slug },
-  }));
+// Obtener el slug del artículo de los parámetros de la URL
+const { slug } = Astro.params;
+
+// Verificar que el slug existe
+if (!slug) {
+  return Astro.redirect('/');
 }
 
-const { slug } = Astro.props;
+// Obtener el artículo específico por su slug
+const article = await getArticleBySlug(slug) as Article | null;
 
-// Obtener el artículo específico y todos los artículos para relacionados
-const article = await getArticleBySlug(slug) as Article;
+// Si el artículo no existe, redirigir a la página principal
+if (!article) {
+  return Astro.redirect('/');
+}
+
+// Obtener todos los artículos para mostrar artículos relacionados
 const allArticles = await getAllArticles() as Article[];
 
-// Si no se encuentra el artículo, mostrar un error
-if (!article) {
-  return new Response('Artículo no encontrado', {
-    status: 404,
-  });
-}
+// Filtrar artículos relacionados (misma categoría, excluyendo el actual)
+const relatedArticles = allArticles
+  .filter(a => a.category === article.category && a.slug !== article.slug)
+  .slice(0, 3);
+
+// URL completa del artículo para compartir
+const articleUrl = `${SITE_URL}/news/${article.slug}`;
+
+// Formatear la fecha de publicación
+const pubDate = new Date(article.pubDate);
 
 // Construir la URL completa para compartir
 const currentUrl = `${SITE_URL}/news/${article.slug}/`;
 
 // Usar el contenido del artículo
 const contentHtml = article.content;
+
 ---
 
 <NewsLayout
   title={article.title}
   description={article.description}
-  pubDate={new Date(article.pubDate)}
+  pubDate={pubDate}
   heroImage={article.featured_image || "/blog-placeholder-1.jpg"}
   category={article.category}
   author={article.author || "Colectivo Abya Yala"}
@@ -65,7 +75,7 @@ const contentHtml = article.content;
       <div class="author-date">
         <span class="author">Por {article.author || "Colectivo Abya Yala"}</span>
         <span class="date-separator">•</span>
-        <FormattedDate date={new Date(article.pubDate)} />
+        <FormattedDate date={pubDate} />
       </div>
       <ShareButtons 
         title={article.title} 
@@ -89,7 +99,7 @@ const contentHtml = article.content;
   <RelatedNews 
     currentSlug={article.slug}
     category={article.category}
-    allNews={allArticles}
+    allNews={relatedArticles}
     count={3}
   />
 </NewsLayout>

@@ -1,7 +1,14 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { SITE_TITLE, CATEGORIES } from '../consts';
+import { SITE_TITLE } from '../consts';
 import CategoryTag from '../components/CategoryTag.astro';
+import { getAllCategories } from '../utils/contentApi.js';
+
+// Configuración para SSR
+export const prerender = false;
+
+// Obtener todas las categorías desde la API
+const categories = await getAllCategories();
 
 const pageTitle = `Categorías | ${SITE_TITLE}`;
 const pageDescription = 'Explora todas las categorías de noticias de la plataforma Abya Yala. Encuentra información sobre agricultura, sostenibilidad, comunidad y más.';
@@ -16,7 +23,7 @@ const pageDescription = 'Explora todas las categorías de noticias de la platafo
       </div>
 
       <div class="categories-grid">
-        {CATEGORIES.map(category => (
+        {categories.map(category => (
           <a href={`/category/${category.id}`} class="category-card">
             <div class="category-header">
               <CategoryTag category={category.id} size="large" absolute={false} />

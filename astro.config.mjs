@@ -3,6 +3,7 @@ import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import tailwind from '@astrojs/tailwind';
+import cloudflare from '@astrojs/cloudflare';
 
 // https://astro.build/config
 export default defineConfig({
@@ -14,7 +15,8 @@ export default defineConfig({
 		// Asegurarse de que los archivos en public/ se copien a la carpeta de salida
 		assets: '_assets',
 	},
-	// Configuración para manejar rutas SPA como /admin
-	output: 'static',
+	// Configuración para renderizado en servidor con Cloudflare
+	output: 'server',
+	adapter: cloudflare(),
 	trailingSlash: 'ignore',
 });
