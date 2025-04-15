@@ -6,21 +6,15 @@ export class ContentManager {
     // Nunca usar datos de prueba, siempre conectar con la API real
     this.useFallbackData = false;
     
-    // Detectar entorno y ajustar URL base si es necesario
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      // En desarrollo local, usar URL relativa
-      console.log('Modo desarrollo detectado - usando API local');
-    } else {
-      // En producción, usar URL completa
-      this.apiBase = 'https://colectivoabyayala.org/api/content';
-      console.log('Modo producción detectado - usando API remota:', this.apiBase);
-    }
+    // Usar siempre rutas relativas para compatibilidad con SSR
+    console.log('Usando API con ruta relativa para compatibilidad con SSR:', this.apiBase);
   }
 
   // Método para obtener las cabeceras de autenticación
   getAuthHeaders() {
     const headers = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
     };
     
     // Obtener datos de autenticación del localStorage (formato usado en app.js)

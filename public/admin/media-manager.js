@@ -4,8 +4,10 @@ export class MediaManager {
     this.apiBase = '/api/media';
     // Nunca usar datos de prueba, siempre conectar con la API real
     this.useFallbackData = false;
-    // URL base para acceso público directo al bucket R2
-    this.r2PublicUrl = 'https://media.colectivoabyayala.org';
+    // Usar ruta relativa para compatibilidad con SSR
+    this.r2PublicUrl = '/media';
+    
+    console.log('MediaManager: Usando rutas relativas para compatibilidad con SSR');
   }
 
   // Método para obtener las cabeceras de autenticación
@@ -26,6 +28,7 @@ export class MediaManager {
     // Si no es FormData, añadir Content-Type
     if (!isFormData) {
       headers['Content-Type'] = 'application/json';
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
     }
     
     return headers;
