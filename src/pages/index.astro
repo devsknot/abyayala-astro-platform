@@ -9,45 +9,65 @@ import { getAllArticles, getAllCategories } from '../utils/contentApi.js';
 export const prerender = false;
 
 // Obtener artículos de la API
+console.log('Página index.astro: Obteniendo artículos...');
 const allArticles = await getAllArticles();
+console.log(`Página index.astro: Artículos obtenidos: ${allArticles.length}`);
+console.log('Página index.astro: Tipo de datos de allArticles:', typeof allArticles, Array.isArray(allArticles));
 
 // Obtener categorías de la API
 console.log('Página index.astro: Obteniendo categorías...');
 const categories = await getAllCategories();
-console.log('Página index.astro: Categorías obtenidas:', categories);
+console.log(`Página index.astro: Categorías obtenidas: ${categories.length}`);
 console.log('Página index.astro: Tipo de datos de categories:', typeof categories, Array.isArray(categories));
 
+// Verificar que allArticles sea un array y tenga elementos
+const articlesArray = Array.isArray(allArticles) ? allArticles : [];
+console.log(`Página index.astro: Array de artículos verificado con ${articlesArray.length} elementos`);
+
 // Ordenar por fecha de publicación (más reciente primero)
-const sortedArticles = allArticles.sort(
-  (a, b) => new Date(b.pubDate).valueOf() - new Date(a.pubDate).valueOf()
-);
+const sortedArticles = articlesArray.length > 0 
+  ? articlesArray.sort((a, b) => {
+      const dateA = new Date(a.pubDate || a.date || 0).valueOf();
+      const dateB = new Date(b.pubDate || b.date || 0).valueOf();
+      return dateB - dateA;
+    })
+  : [];
+console.log(`Página index.astro: Artículos ordenados: ${sortedArticles.length}`);
 
 // Obtener artículos destacados (los 3 más recientes)
-const featuredNews = sortedArticles.slice(0, 3).map(article => ({
-  title: article.title,
-  description: article.description,
-  pubDate: new Date(article.pubDate),
-  category: article.category,
-  image: article.featured_image || "/blog-placeholder-3.jpg", // Usar imagen destacada o placeholder
-  slug: article.slug,
-  featured: sortedArticles.indexOf(article) === 0 // El primer artículo es el destacado principal
-}));
+const featuredNews = sortedArticles.slice(0, 3).map(article => {
+  console.log('Página index.astro: Procesando artículo destacado:', article.title);
+  return {
+    title: article.title || 'Sin título',
+    description: article.description || 'Sin descripción',
+    pubDate: article.pubDate ? new Date(article.pubDate) : new Date(),
+    category: article.category || 'general',
+    image: article.featured_image || "/blog-placeholder-3.jpg",
+    slug: article.slug || '',
+    featured: sortedArticles.indexOf(article) === 0
+  };
+});
+console.log(`Página index.astro: Artículos destacados procesados: ${featuredNews.length}`);
 
 // Obtener artículos recientes (los siguientes 6 después de los destacados)
-const recentNews = sortedArticles.slice(3, 9).map(article => ({
-  title: article.title,
-  description: article.description,
-  pubDate: new Date(article.pubDate),
-  category: article.category,
-  image: article.featured_image || "/blog-placeholder-1.jpg", // Usar imagen destacada o placeholder
-  slug: article.slug
-}));
+const recentNews = sortedArticles.slice(3, 9).map(article => {
+  console.log('Página index.astro: Procesando artículo reciente:', article.title);
+  return {
+    title: article.title || 'Sin título',
+    description: article.description || 'Sin descripción',
+    pubDate: article.pubDate ? new Date(article.pubDate) : new Date(),
+    category: article.category || 'general',
+    image: article.featured_image || "/blog-placeholder-1.jpg",
+    slug: article.slug || ''
+  };
+});
+console.log(`Página index.astro: Artículos recientes procesados: ${recentNews.length}`);
 
 // Mensaje para mostrar si no hay artículos
 const noArticlesMessage = "No hay artículos disponibles en este momento. Por favor, vuelva a intentarlo más tarde.";
 ---
 
-<BaseLayout>
+<BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
   <!-- Hero Section - Oculto por solicitud del cliente
   <section class="hero">
     <div class="hero-overlay">
@@ -63,6 +83,20 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
   <section class="featured-news">
     <div class="container">
       <h2 class="section-title">Noticias Destacadas</h2>
+      
+      <!-- Información de depuración para artículos -->
+      <div class="debug-info">
+        <p>Información de depuración de artículos (solo visible en desarrollo):</p>
+        <ul>
+          <li>Número de artículos: {allArticles.length}</li>
+          <li>Es array: {Array.isArray(allArticles) ? 'Sí' : 'No'}</li>
+          <li>Tipo de datos: {typeof allArticles}</li>
+          <li>Artículos destacados: {featuredNews.length}</li>
+          <li>Artículos recientes: {recentNews.length}</li>
+        </ul>
+        <pre>{JSON.stringify(allArticles.slice(0, 1), null, 2)}</pre>
+      </div>
+      
       {featuredNews.length > 0 ? (
         <div class="featured-grid">
           {featuredNews.map(news => (
@@ -89,8 +123,10 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
   <section class="categories-section">
     <div class="container">
       <h2 class="section-title">Explora por Categorías</h2>
+      
+      <!-- Información de depuración para categorías -->
       <div class="debug-info">
-        <p>Información de depuración (solo visible en desarrollo):</p>
+        <p>Información de depuración de categorías (solo visible en desarrollo):</p>
         <ul>
           <li>Número de categorías: {categories.length}</li>
           <li>Es array: {Array.isArray(categories) ? 'Sí' : 'No'}</li>
@@ -98,10 +134,14 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
         </ul>
         <pre>{JSON.stringify(categories, null, 2)}</pre>
       </div>
+      
       {categories.length > 0 ? (
         <div class="categories-grid">
           {categories.map(category => (
             <a href={`/category/${category.id}`} class="category-card">
+              <div class="category-icon">
+                <CategoryTag category={category.id} size="large" />
+              </div>
               <h3>{category.name}</h3>
               <p>{category.description}</p>
             </a>
@@ -109,7 +149,7 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
         </div>
       ) : (
         <div class="no-content-message">
-          <p>No hay categorías disponibles en este momento. Por favor, vuelva a intentarlo más tarde.</p>
+          <p>No hay categorías disponibles en este momento.</p>
         </div>
       )}
     </div>
@@ -118,7 +158,11 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
   <!-- Recent News Section -->
   <section class="recent-news">
     <div class="container">
-      <h2 class="section-title">Noticias Recientes</h2>
+      <div class="section-header">
+        <h2 class="section-title">Noticias Recientes</h2>
+        <a href="/news" class="view-all">Ver todas</a>
+      </div>
+      
       {recentNews.length > 0 ? (
         <div class="news-grid">
           {recentNews.map(news => (
@@ -137,46 +181,6 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
           <p>{noArticlesMessage}</p>
         </div>
       )}
-      <div class="view-all">
-        <a href="/news" class="btn-primary">Ver todas las noticias</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- Impact Section -->
-  <section class="impact-section">
-    <div class="container">
-      <h2 class="section-title">Nuestro Impacto</h2>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-number">500+</div>
-          <div class="stat-label">Familias Agricultoras</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">15</div>
-          <div class="stat-label">Años de Experiencia</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">30+</div>
-          <div class="stat-label">Proyectos Comunitarios</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">1000+</div>
-          <div class="stat-label">Hectáreas Sostenibles</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Call to Action -->
-  <section class="cta-section">
-    <div class="container">
-      <h2>Únete a Nuestra Comunidad</h2>
-      <p>Recibe actualizaciones sobre nuestras actividades y noticias del sector agrario</p>
-      <form class="newsletter-form">
-        <input type="email" placeholder="Tu correo electrónico" required>
-        <button type="submit" class="btn-primary">Suscribirse</button>
-      </form>
     </div>
   </section>
 </BaseLayout>
@@ -187,13 +191,11 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
     position: relative;
     height: 80vh;
     min-height: 500px;
-    background-image: url('/hero-agriculture.jpg');
+    background-image: url('/hero-bg.jpg');
     background-size: cover;
     background-position: center;
     color: white;
-    display: flex;
-    align-items: center;
-    text-align: center;
+    margin-bottom: 3rem;
   }
 
   .hero-overlay {
@@ -202,7 +204,7 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7));
+    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7));
     display: flex;
     align-items: center;
   }
@@ -211,89 +213,152 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
     font-size: 3.5rem;
     font-weight: 700;
     margin-bottom: 1rem;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
   }
 
   .hero p {
     font-size: 1.5rem;
-    max-width: 800px;
-    margin: 0 auto;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    max-width: 600px;
   }
   */
 
-  /* Featured News Section */
-  .featured-news {
-    padding: 4rem 0;
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  section {
+    margin-bottom: 4rem;
   }
 
   .section-title {
     font-size: 2rem;
+    font-weight: 700;
     margin-bottom: 2rem;
     position: relative;
-    padding-bottom: 0.5rem;
+    display: inline-block;
   }
 
   .section-title::after {
     content: '';
     position: absolute;
-    bottom: 0;
+    bottom: -10px;
     left: 0;
-    width: 80px;
-    height: 3px;
-    background-color: var(--color-accent);
+    width: 60px;
+    height: 4px;
+    background-color: var(--color-primary);
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+
+  .view-all {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    transition: color 0.2s ease;
+  }
+
+  .view-all:hover {
+    color: var(--color-primary-dark);
+  }
+
+  .view-all::after {
+    content: '→';
+    margin-left: 0.5rem;
+    transition: transform 0.2s ease;
+  }
+
+  .view-all:hover::after {
+    transform: translateX(3px);
   }
 
   .featured-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
   }
 
-  /* Categories Section */
-  .categories-section {
-    padding: 4rem 0;
-    background-color: var(--color-bg-alt);
+  .featured-grid > :first-child {
+    grid-column: span 3;
   }
 
   .categories-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 1.5rem;
+    margin-bottom: 2rem;
   }
 
   .category-card {
-    background-color: var(--color-background);
+    background-color: var(--color-card-bg);
     border-radius: 8px;
     padding: 1.5rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
     text-decoration: none;
     color: var(--color-text);
+    display: flex;
+    flex-direction: column;
   }
 
   .category-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .category-icon {
+    margin-bottom: 1rem;
   }
 
   .category-card h3 {
     font-size: 1.25rem;
+    font-weight: 600;
     margin-bottom: 0.5rem;
-    color: var(--color-primary);
   }
 
-  /* Debug Info */
+  .category-card p {
+    font-size: 0.95rem;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+  }
+
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  .no-content-message {
+    background-color: var(--color-card-bg);
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  .no-content-message p {
+    color: var(--color-text-muted);
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+  }
+  
   .debug-info {
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
-    border-radius: 8px;
+    border-radius: 4px;
     padding: 1rem;
-    margin-bottom: 2rem;
-    font-family: monospace;
-    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    color: #495057;
   }
-
+  
   .debug-info pre {
     background-color: #e9ecef;
     padding: 0.5rem;
@@ -302,140 +367,17 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
     max-height: 200px;
   }
 
-  .debug-info ul {
-    margin: 0.5rem 0;
-    padding-left: 1.5rem;
-  }
-
-  /* Recent News Section */
-  .recent-news {
-    padding: 4rem 0;
-  }
-
-  .news-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  .view-all {
-    text-align: center;
-    margin-top: 2rem;
-  }
-
-  .btn-primary {
-    background-color: var(--color-primary);
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 4px;
-    text-decoration: none;
-    font-weight: 600;
-    display: inline-block;
-    transition: background-color 0.3s ease;
-  }
-
-  .btn-primary:hover {
-    background-color: var(--color-primary-dark);
-  }
-
-  /* Impact Section */
-  .impact-section {
-    padding: 4rem 0;
-    background-color: var(--color-bg-alt);
-  }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.5rem;
-  }
-
-  .stat-card {
-    background-color: var(--color-background);
-    border-radius: 8px;
-    padding: 2rem 1.5rem;
-    text-align: center;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  }
-
-  .stat-number {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: var(--color-primary);
-    margin-bottom: 0.5rem;
-  }
-
-  .stat-label {
-    font-size: 1.1rem;
-    color: var(--color-text-muted);
-  }
-
-  /* Call to Action Section */
-  .cta-section {
-    padding: 4rem 0;
-    background-color: var(--color-primary);
-    color: white;
-    text-align: center;
-  }
-
-  .cta-section h2 {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-  }
-
-  .cta-section p {
-    font-size: 1.2rem;
-    max-width: 700px;
-    margin: 0 auto 2rem;
-  }
-
-  .newsletter-form {
-    display: flex;
-    max-width: 500px;
-    margin: 0 auto;
-  }
-
-  .newsletter-form input {
-    flex: 1;
-    padding: 0.75rem 1rem;
-    border: none;
-    border-radius: 4px 0 0 4px;
-    font-size: 1rem;
-  }
-
-  .newsletter-form button {
-    border: none;
-    border-radius: 0 4px 4px 0;
-    cursor: pointer;
-  }
-
-  /* No Content Message */
-  .no-content-message {
-    background-color: var(--color-bg-alt);
-    padding: 2rem;
-    text-align: center;
-    border-radius: 8px;
-    margin: 1rem 0;
-  }
-
-  .no-content-message p {
-    font-size: 1.1rem;
-    color: var(--color-text-muted);
-  }
-
-  /* Responsive Styles */
   @media (max-width: 992px) {
     .featured-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .stats-grid {
       grid-template-columns: repeat(2, 1fr);
     }
 
-    .hero h1 {
-      font-size: 2.8rem;
+    .featured-grid > :first-child {
+      grid-column: span 2;
+    }
+
+    .news-grid {
+      grid-template-columns: repeat(2, 1fr);
     }
   }
 
@@ -444,45 +386,26 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
       grid-template-columns: repeat(2, 1fr);
     }
 
-    .newsletter-form {
-      flex-direction: column;
-    }
-
-    .newsletter-form input,
-    .newsletter-form button {
-      width: 100%;
-      border-radius: 4px;
-    }
-
-    .newsletter-form button {
-      margin-top: 1rem;
-    }
-
-    .hero {
-      height: 60vh;
-    }
-
-    .hero h1 {
-      font-size: 2.2rem;
-    }
-
-    .hero p {
-      font-size: 1.2rem;
+    .section-title {
+      font-size: 1.75rem;
     }
   }
 
   @media (max-width: 576px) {
-    .featured-grid,
+    .featured-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .featured-grid > :first-child {
+      grid-column: span 1;
+    }
+
     .news-grid {
       grid-template-columns: 1fr;
     }
 
     .section-title {
-      font-size: 1.75rem;
-    }
-
-    .hero {
-      height: 50vh;
+      font-size: 1.5rem;
     }
   }
 </style>
