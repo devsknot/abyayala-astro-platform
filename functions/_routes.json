@@ -1,14 +1,7 @@
 {
   "version": 1,
   "include": [
-    "/*",
-    "/api/content/*",
-    "/api/content/articles/*",
-    "/api/content/categories/*",
-    "/api/content/authors/*",
-    "/api/content/activities/*",
-    "/api/content/bulk-import",
-    "/api/media/*"
+    "/api/*"
   ],
-  "exclude": []
+  "exclude": ["/api/_middleware.js"]
 }
