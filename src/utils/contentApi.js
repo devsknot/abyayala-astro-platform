@@ -155,15 +155,7 @@ export async function getAllCategories() {
   } catch (error) {
     console.error('getAllCategories - Error general:', error);
     
-    // Categorías de respaldo en caso de error
-    const fallbackCategories = [
-      { id: 'general', name: 'General', description: 'Noticias generales del colectivo' },
-      { id: 'medio-ambiente', name: 'Medio Ambiente', description: 'Noticias sobre medio ambiente y sostenibilidad' },
-      { id: 'politica', name: 'Política', description: 'Noticias sobre política y asuntos públicos' },
-      { id: 'derechos-humanos', name: 'Derechos Humanos', description: 'Noticias sobre derechos humanos y justicia social' }
-    ];
-    
-    console.log('getAllCategories - Devolviendo categorías de respaldo:', fallbackCategories.length);
-    return fallbackCategories;
+    // En caso de error, devolver un array vacío en lugar de datos hardcodeados
+    return [];
   }
 }

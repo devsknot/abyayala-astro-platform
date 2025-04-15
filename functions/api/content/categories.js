@@ -110,16 +110,8 @@ async function handleGetCategories(env, headers) {
   } catch (error) {
     console.error('Error al obtener categorías:', error);
     
-    // Si hay un error con D1, usar datos de ejemplo como fallback
-    if (env.ENVIRONMENT === 'development' || !env.DB) {
-      const fallbackCategories = getFallbackCategories();
-      return new Response(JSON.stringify(fallbackCategories), { headers });
-    }
-    
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers
-    });
+    // En caso de error, devolver un array vacío
+    return new Response(JSON.stringify([]), { headers });
   }
 }
 
@@ -199,21 +191,7 @@ async function handleGetCategory(slug, env, headers) {
   } catch (error) {
     console.error('Error al obtener categoría:', error);
     
-    // Si hay un error con D1, usar datos de ejemplo como fallback
-    if (env.ENVIRONMENT === 'development' || !env.DB) {
-      const fallbackCategories = getFallbackCategories();
-      const category = fallbackCategories.find(c => c.slug === slug);
-      
-      if (category) {
-        return new Response(JSON.stringify(category), { headers });
-      }
-      
-      return new Response(JSON.stringify({ error: 'Categoría no encontrada' }), {
-        status: 404,
-        headers
-      });
-    }
-    
+    // Si hay un error con D1, devolver un error
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers
@@ -342,45 +320,4 @@ async function handleDeleteCategory(slug, env, headers) {
       headers
     });
   }
-}
-
-// Datos de ejemplo para cuando la API no está disponible
-function getFallbackCategories() {
-  return [
-    {
-      slug: 'agricultura',
-      name: 'Agricultura',
-      description: 'Noticias sobre prácticas agrícolas, cultivos y producción'
-    },
-    {
-      slug: 'comunidad',
-      name: 'Comunidad',
-      description: 'Información sobre actividades comunitarias y desarrollo local'
-    },
-    {
-      slug: 'sostenibilidad',
-      name: 'Sostenibilidad',
-      description: 'Prácticas sostenibles y conservación del medio ambiente'
-    },
-    {
-      slug: 'politica-agraria',
-      name: 'Política Agraria',
-      description: 'Análisis de políticas públicas relacionadas con el sector agrario'
-    },
-    {
-      slug: 'tecnologia-rural',
-      name: 'Tecnología Rural',
-      description: 'Innovaciones tecnológicas aplicadas al entorno rural'
-    },
-    {
-      slug: 'cultura',
-      name: 'Cultura',
-      description: 'Expresiones culturales y tradiciones del mundo rural'
-    },
-    {
-      slug: 'eventos',
-      name: 'Eventos',
-      description: 'Ferias, encuentros y actividades organizadas por el colectivo'
-    }
-  ];
 }

@@ -146,17 +146,9 @@ async function handleGetArticles(env, headers) {
   } catch (error) {
     console.error('Error al obtener artículos:', error);
     
-    // Si hay un error con D1, usar datos de ejemplo como fallback
-    if (env.ENVIRONMENT === 'development' || !env.DB) {
-      console.log('Usando datos de fallback para artículos');
-      const fallbackArticles = getFallbackArticles();
-      return new Response(JSON.stringify(fallbackArticles), { headers });
-    }
-    
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers
-    });
+    // En caso de error, devolver un array vacío en lugar de datos hardcodeados
+    console.log('Devolviendo array vacío debido al error');
+    return new Response(JSON.stringify([]), { headers });
   }
 }
 
@@ -453,42 +445,4 @@ async function handleDeleteArticle(slug, env, headers) {
       headers
     });
   }
-}
-
-// Datos de ejemplo para cuando la API no está disponible
-function getFallbackArticles() {
-  return [
-    {
-      slug: 'cooperativa-agricola-lanza-nueva-linea-de-cafe-organico',
-      title: 'Cooperativa agrícola lanza nueva línea de café orgánico',
-      description: 'La cooperativa Abya Yala presenta su nueva línea de café orgánico cultivado en altura y certificado por estándares internacionales.',
-      pubDate: '2025-04-02T00:00:00.000Z',
-      category: 'agricultura',
-      featured_image: '/2025/04/cafe-organico.jpg'
-    },
-    {
-      slug: 'innovacion-en-riego-sostenible-para-pequenos-productores',
-      title: 'Innovación en riego sostenible para pequeños productores',
-      description: 'Un grupo de agricultores implementa sistema de riego por goteo que reduce el consumo de agua en un 40%.',
-      pubDate: '2025-03-20T00:00:00.000Z',
-      category: 'tecnologia-rural',
-      featured_image: '/2025/04/riego-sostenible.jpg'
-    },
-    {
-      slug: 'feria-de-intercambio-de-semillas-promueve-biodiversidad',
-      title: 'Feria de intercambio de semillas promueve biodiversidad',
-      description: 'Más de 500 agricultores participaron en la primera feria de intercambio de semillas ancestrales.',
-      pubDate: '2025-03-25T00:00:00.000Z',
-      category: 'eventos',
-      featured_image: '/2025/04/feria-semillas.jpg'
-    },
-    {
-      slug: 'reunion-anual-de-cooperativas-define-agenda-2025',
-      title: 'Reunión anual de cooperativas define agenda 2025',
-      description: 'Representantes de 12 cooperativas agrarias se reunieron para definir la agenda de trabajo colaborativo para el próximo año.',
-      pubDate: '2025-04-10T00:00:00.000Z',
-      category: 'cooperativismo',
-      featured_image: '/2025/04/cooperativa-reunion.jpg'
-    }
-  ];
 }
