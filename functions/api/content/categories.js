@@ -1,5 +1,8 @@
 // Función para gestionar categorías a través de Cloudflare Functions
 export async function onRequest(context) {
+  // --- Add log here ---
+  console.log('[categories.js] onRequest invoked');
+  // --------------------
   const { request, env } = context;
   const url = new URL(request.url);
   const path = url.pathname;
