@@ -11,12 +11,12 @@ export const prerender = false;
 
 // Obtener todas las noticias desde la API
 console.log('Obteniendo artículos para la página de noticias...');
-const allArticles = await getAllArticles();
+const allArticles = await getAllArticles(Astro.url.origin);
 console.log(`Se obtuvieron ${allArticles.length} artículos para mostrar en la página de noticias`);
 
 // Obtener todas las categorías para el filtro
 console.log('Obteniendo categorías para el filtro de la página de noticias...');
-const categories = await getAllCategories();
+const categories = await getAllCategories(Astro.url.origin);
 console.log(`Se obtuvieron ${categories.length} categorías para el filtro`);
 
 // Ordenar por fecha de publicación (más reciente primero)

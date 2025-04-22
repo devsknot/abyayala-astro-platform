@@ -3,19 +3,22 @@
  * Proporciona métodos para interactuar con la API de artículos
  */
 
-// URL base de la API - usamos una ruta relativa para que funcione tanto en desarrollo como en producción
-const API_BASE_URL = '';
-console.log('API_BASE_URL configurada con ruta relativa para compatibilidad con SSR');
+// URL base de la API - ya no se usa, el origin se pasará como parámetro
+// const API_BASE_URL = ''; 
+// console.log('API_BASE_URL configurada con ruta relativa para compatibilidad con SSR');
 
 /**
  * Obtiene todos los artículos
+ * @param {string} [origin=''] - El origen de la URL para llamadas SSR.
  * @returns {Promise<Array>} Lista de artículos
  */
-export async function getAllArticles() {
+export async function getAllArticles(origin = '') {
+  const path = '/api/content/articles';
+  const fetchUrl = origin ? `${origin}${path}` : path;
   try {
-    console.log('Obteniendo todos los artículos desde:', `/api/content/articles`);
+    console.log(`Obteniendo todos los artículos desde: ${fetchUrl}`);
     
-    const response = await fetch(`/api/content/articles`, {
+    const response = await fetch(fetchUrl, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -54,11 +57,15 @@ export async function getAllArticles() {
 /**
  * Obtiene un artículo específico por su slug
  * @param {string} slug - Slug del artículo
+ * @param {string} [origin=''] - El origen de la URL para llamadas SSR.
  * @returns {Promise<Object|null>} Artículo o null si no se encuentra
  */
-export async function getArticleBySlug(slug) {
+export async function getArticleBySlug(slug, origin = '') {
+  const path = `/api/content/articles/${slug}`;
+  const fetchUrl = origin ? `${origin}${path}` : path;
   try {
-    const response = await fetch(`/api/content/articles/${slug}`, {
+    console.log(`Obteniendo artículo ${slug} desde: ${fetchUrl}`);
+    const response = await fetch(fetchUrl, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -82,14 +89,15 @@ export async function getArticleBySlug(slug) {
 /**
  * Obtiene artículos filtrados por categoría
  * @param {string} category - Categoría para filtrar (id de la categoría)
+ * @param {string} [origin=''] - El origen de la URL para llamadas SSR.
  * @returns {Promise<Array>} Lista de artículos filtrados
  */
-export async function getArticlesByCategory(category) {
+export async function getArticlesByCategory(category, origin = '') {
   try {
-    console.log(`Obteniendo artículos para la categoría: "${category}"`);
+    console.log(`Obteniendo artículos para la categoría: "${category}" (Origin: ${origin || 'N/A'})`);
     
-    // Obtener todos los artículos primero
-    const allArticles = await getAllArticles();
+    // Obtener todos los artículos primero, pasando el origin
+    const allArticles = await getAllArticles(origin);
     console.log(`Total de artículos obtenidos: ${allArticles.length}`);
     
     // Normalizar la categoría para la comparación (trim y lowercase)
@@ -114,16 +122,18 @@ export async function getArticlesByCategory(category) {
 
 /**
  * Obtiene todas las categorías
+ * @param {string} [origin=''] - El origen de la URL para llamadas SSR.
  * @returns {Promise<Array>} Lista de categorías
  */
-export async function getAllCategories() {
+export async function getAllCategories(origin = '') {
+  const path = `/api/content/categories`;
+  const fetchUrl = origin ? `${origin}${path}` : path;
   try {
     // Usar el mismo enfoque que el CMS para obtener categorías
-    const url = `/api/content/categories`;
-    console.log('getAllCategories - Intentando obtener categorías desde:', url);
+    console.log(`getAllCategories - Intentando obtener categorías desde: ${fetchUrl}`);
     
     // Usar los mismos headers que el CMS
-    const response = await fetch(url, {
+    const response = await fetch(fetchUrl, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',

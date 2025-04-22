@@ -10,13 +10,13 @@ export const prerender = false;
 
 // Obtener artículos de la API
 console.log('Página index.astro: Obteniendo artículos...');
-const allArticles = await getAllArticles();
+const allArticles = await getAllArticles(Astro.url.origin);
 console.log(`Página index.astro: Artículos obtenidos: ${allArticles.length}`);
 console.log('Página index.astro: Tipo de datos de allArticles:', typeof allArticles, Array.isArray(allArticles));
 
 // Obtener categorías de la API
 console.log('Página index.astro: Obteniendo categorías...');
-const categories = await getAllCategories();
+const categories = await getAllCategories(Astro.url.origin);
 console.log(`Página index.astro: Categorías obtenidas: ${categories.length}`);
 console.log('Página index.astro: Tipo de datos de categories:', typeof categories, Array.isArray(categories));
 

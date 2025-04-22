@@ -11,7 +11,7 @@ export const prerender = false;
 const { category: categoryId } = Astro.params;
 
 // Obtener información de la categoría
-const categories = await getAllCategories();
+const categories = await getAllCategories(Astro.url.origin);
 const category = categories.find(cat => cat.id === categoryId);
 
 // Si la categoría no existe, redirigir a la página principal
@@ -20,7 +20,7 @@ if (!category) {
 }
 
 // Obtener artículos de la API filtrados por categoría
-const newsItems = await getArticlesByCategory(category.id);
+const newsItems = await getArticlesByCategory(category.id, Astro.url.origin);
 
 // Ordenar por fecha de publicación (más reciente primero)
 newsItems.sort((a, b) => new Date(b.pubDate).valueOf() - new Date(a.pubDate).valueOf());

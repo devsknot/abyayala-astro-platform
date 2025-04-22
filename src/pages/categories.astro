@@ -8,7 +8,7 @@ import { getAllCategories } from '../utils/contentApi.js';
 export const prerender = false;
 
 // Obtener todas las categorías desde la API
-const categories = await getAllCategories();
+const categories = await getAllCategories(Astro.url.origin);
 
 const pageTitle = `Categorías | ${SITE_TITLE}`;
 const pageDescription = 'Explora todas las categorías de noticias de la plataforma Abya Yala. Encuentra información sobre agricultura, sostenibilidad, comunidad y más.';

@@ -31,7 +31,7 @@ if (!slug) {
 }
 
 // Obtener el artículo específico por su slug
-const article = await getArticleBySlug(slug) as Article | null;
+const article = await getArticleBySlug(slug, Astro.url.origin) as Article | null;
 
 // Si el artículo no existe, redirigir a la página principal
 if (!article) {
@@ -39,7 +39,7 @@ if (!article) {
 }
 
 // Obtener todos los artículos para mostrar artículos relacionados
-const allArticles = await getAllArticles() as Article[];
+const allArticles = await getAllArticles(Astro.url.origin) as Article[];
 
 // Filtrar artículos relacionados (misma categoría, excluyendo el actual)
 const relatedArticles = allArticles
