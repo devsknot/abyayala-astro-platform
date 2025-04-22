@@ -10,7 +10,8 @@
     "astro": "astro",
     "init-db": "node scripts/init-database.js",
     "copy-functions": "node scripts/copy-functions.js",
-    "deploy": "npm run build && npx wrangler pages deploy dist"
+    "predeploy": "rm -rf node_modules && npm ci --omit=dev",
+    "deploy": "npm run build && npx wrangler pages deploy dist --project-name abyayala-astro-platform --branch main --env production"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^12.4.1",

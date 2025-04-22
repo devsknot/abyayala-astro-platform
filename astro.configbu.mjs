@@ -7,7 +7,7 @@ import cloudflare from '@astrojs/cloudflare';
 
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://abyayala.org',
+	site: 'https://colectivoabyayala.org',
 	integrations: [mdx(), sitemap(), tailwind()],
 	outDir: './dist',
 	publicDir: './public',
