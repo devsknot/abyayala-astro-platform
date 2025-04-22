@@ -1,6 +1,5 @@
 name = "abyayala-astro-platform"
 compatibility_date = "2025-03-31"
-pages_build_output_dir = "dist"
 
 # Configuración de R2
 [[r2_buckets]]
