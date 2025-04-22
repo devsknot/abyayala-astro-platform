@@ -1,12 +1,22 @@
 {
   "version": 1,
   "include": [
-    "/api/content/*",
-    "/api/content/articles/*",
-    "/api/content/authors/*",
-    "/api/content/activities/*",
-    "/api/content/bulk-import",
-    "/api/media/*"
+    "/api/content/test", 
+    "/api/auth/login",
+    "/api/auth/verify",
+    "/api/auth/user",
+    "/admin/*"
   ],
-  "exclude": []
+  "exclude": [
+    "/api/content/test.js", 
+    "/api/content/categories.js",
+    "/api/content/articles.js",
+    "/api/content/authors.js",
+    "/api/media.js", 
+    "/api/auth/login.js",
+    "/api/auth/verify.js",
+    "/api/auth/user.js",
+    "/api/content/activities.js",
+    "/api/content/bulk-import.js"
+  ]
 }
