@@ -24,7 +24,8 @@ export async function onRequest(context) {
   
   try {
     console.log(`Solicitud recibida: ${request.method} /api/content/articles/category/${categoryId}`);
-    
+    console.log('Contexto:', JSON.stringify({ method: request.method, categoryId, headers: headers }));
+
     if (request.method === 'GET') {
       return handleGetArticlesByCategory(categoryId, env, headers);
     }
@@ -46,7 +47,7 @@ export async function onRequest(context) {
 // Obtener artículos por categoría
 async function handleGetArticlesByCategory(categoryId, env, headers) {
   try {
-    console.log(`Obteniendo artículos para la categoría: ${categoryId}`);
+    console.log(`[DEBUG] Obteniendo artículos para la categoría: ${categoryId}`);
     
     // Usar D1 para obtener artículos filtrados por categoría
     // Consulta simplificada que sabemos que funciona
@@ -54,7 +55,8 @@ async function handleGetArticlesByCategory(categoryId, env, headers) {
       SELECT * FROM articles WHERE category = ? ORDER BY pub_date DESC
     `).bind(categoryId).all();
     
-    console.log(`Recuperados ${results ? results.length : 0} artículos para la categoría ${categoryId}`);
+    console.log(`[DEBUG] Resultados SQL para categoría '${categoryId}':`, JSON.stringify(results));
+    console.log(`[DEBUG] Recuperados ${results ? results.length : 0} artículos para la categoría ${categoryId}`);
     
     // Transformar los nombres de los campos para que coincidan con lo que espera el frontend
     const transformedResults = results ? results.map(article => {
