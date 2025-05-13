@@ -23,7 +23,7 @@ export async function onRequest(context) {
   }
   
   try {
-    console.log(`Solicitud recibida: ${request.method} /api/content/articles/category/${categoryId}`);
+    console.log(`Solicitud recibida: ${request.method} /api/content/categories/${categoryId}/articles`);
     console.log('Contexto:', JSON.stringify({ method: request.method, categoryId, headers: headers }));
 
     if (request.method === 'GET') {
