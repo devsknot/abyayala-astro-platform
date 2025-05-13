@@ -9,20 +9,13 @@ import { getAllArticles, getAllCategories } from '../utils/contentApi.js';
 export const prerender = false;
 
 // Obtener artículos de la API
-console.log('Página index.astro: Obteniendo artículos...');
 const allArticles = await getAllArticles(Astro.url.origin);
-console.log(`Página index.astro: Artículos obtenidos: ${allArticles.length}`);
-console.log('Página index.astro: Tipo de datos de allArticles:', typeof allArticles, Array.isArray(allArticles));
 
 // Obtener categorías de la API
-console.log('Página index.astro: Obteniendo categorías...');
 const categories = await getAllCategories(Astro.url.origin);
-console.log(`Página index.astro: Categorías obtenidas: ${categories.length}`);
-console.log('Página index.astro: Tipo de datos de categories:', typeof categories, Array.isArray(categories));
 
 // Verificar que allArticles sea un array y tenga elementos
 const articlesArray = Array.isArray(allArticles) ? allArticles : [];
-console.log(`Página index.astro: Array de artículos verificado con ${articlesArray.length} elementos`);
 
 // Ordenar por fecha de publicación (más reciente primero)
 const sortedArticles = articlesArray.length > 0 
@@ -32,11 +25,9 @@ const sortedArticles = articlesArray.length > 0
       return dateB - dateA;
     })
   : [];
-console.log(`Página index.astro: Artículos ordenados: ${sortedArticles.length}`);
 
 // Obtener artículos destacados (los 3 más recientes)
 const featuredNews = sortedArticles.slice(0, 3).map(article => {
-  console.log('Página index.astro: Procesando artículo destacado:', article.title);
   return {
     title: article.title || 'Sin título',
     description: article.description || 'Sin descripción',
@@ -47,11 +38,9 @@ const featuredNews = sortedArticles.slice(0, 3).map(article => {
     featured: sortedArticles.indexOf(article) === 0
   };
 });
-console.log(`Página index.astro: Artículos destacados procesados: ${featuredNews.length}`);
 
 // Obtener artículos recientes (los siguientes 6 después de los destacados)
 const recentNews = sortedArticles.slice(3, 9).map(article => {
-  console.log('Página index.astro: Procesando artículo reciente:', article.title);
   return {
     title: article.title || 'Sin título',
     description: article.description || 'Sin descripción',
@@ -61,7 +50,6 @@ const recentNews = sortedArticles.slice(3, 9).map(article => {
     slug: article.slug || ''
   };
 });
-console.log(`Página index.astro: Artículos recientes procesados: ${recentNews.length}`);
 
 // Mensaje para mostrar si no hay artículos
 const noArticlesMessage = "No hay artículos disponibles en este momento. Por favor, vuelva a intentarlo más tarde.";
@@ -84,18 +72,7 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
     <div class="container">
       <h2 class="section-title">Noticias Destacadas</h2>
       
-      <!-- Información de depuración para artículos -->
-      <div class="debug-info">
-        <p>Información de depuración de artículos (solo visible en desarrollo):</p>
-        <ul>
-          <li>Número de artículos: {allArticles.length}</li>
-          <li>Es array: {Array.isArray(allArticles) ? 'Sí' : 'No'}</li>
-          <li>Tipo de datos: {typeof allArticles}</li>
-          <li>Artículos destacados: {featuredNews.length}</li>
-          <li>Artículos recientes: {recentNews.length}</li>
-        </ul>
-        <pre>{JSON.stringify(allArticles.slice(0, 1), null, 2)}</pre>
-      </div>
+      <!-- Contenido de noticias destacadas -->
       
       {featuredNews.length > 0 ? (
         <div class="featured-grid">
@@ -124,16 +101,7 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
     <div class="container">
       <h2 class="section-title">Explora por Categorías</h2>
       
-      <!-- Información de depuración para categorías -->
-      <div class="debug-info">
-        <p>Información de depuración de categorías (solo visible en desarrollo):</p>
-        <ul>
-          <li>Número de categorías: {categories.length}</li>
-          <li>Es array: {Array.isArray(categories) ? 'Sí' : 'No'}</li>
-          <li>Tipo de datos: {typeof categories}</li>
-        </ul>
-        <pre>{JSON.stringify(categories, null, 2)}</pre>
-      </div>
+      <!-- Listado de categorías -->
       
       {categories.length > 0 ? (
         <div class="categories-grid">
@@ -349,23 +317,7 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
     margin-bottom: 1rem;
   }
   
-  .debug-info {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    font-size: 0.85rem;
-    color: #495057;
-  }
-  
-  .debug-info pre {
-    background-color: #e9ecef;
-    padding: 0.5rem;
-    border-radius: 4px;
-    overflow-x: auto;
-    max-height: 200px;
-  }
+  /* Estilos de depuración eliminados */
 
   @media (max-width: 992px) {
     .featured-grid {
