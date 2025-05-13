@@ -44,6 +44,14 @@ export async function onRequest(context) {
       }
     }
     
+    // Comprobar si es una solicitud para artículos por categoría
+    const categoryMatch = path.match(/^\/api\/content\/articles\/category\/([^\/]+)$/);
+    if (categoryMatch && request.method === 'GET') {
+      const categoryId = categoryMatch[1];
+      console.log(`Solicitud para artículos de la categoría: ${categoryId}`);
+      return handleGetArticlesByCategory(categoryId, env, headers);
+    }
+    
     // Ruta para artículo específico /api/content/articles/{slug}
     const match = path.match(/^\/api\/content\/articles\/([^\/]+)$/);
     if (match) {
@@ -441,6 +449,59 @@ async function handleDeleteArticle(slug, env, headers) {
   } catch (error) {
     console.error('Error al eliminar artículo:', error);
     return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers
+    });
+  }
+}
+
+// Obtener artículos por categoría
+async function handleGetArticlesByCategory(categoryId, env, headers) {
+  try {
+    console.log(`Obteniendo artículos para la categoría: ${categoryId}`);
+    
+    // Usar D1 para obtener artículos filtrados por categoría
+    const { results } = await env.DB.prepare(`
+      SELECT a.*, 
+             aut.id as author_id, 
+             aut.name as author_name, 
+             aut.slug as author_slug, 
+             aut.avatar as author_avatar
+      FROM articles a
+      LEFT JOIN authors aut ON a.author_id = aut.id
+      WHERE a.category = ?
+      ORDER BY a.pub_date DESC
+    `).bind(categoryId).all();
+    
+    console.log(`Recuperados ${results.length} artículos para la categoría ${categoryId}`);
+    
+    // Transformar los nombres de los campos para que coincidan con lo que espera el frontend
+    const transformedResults = results.map(article => {
+      const transformed = {
+        slug: article.slug,
+        title: article.title,
+        description: article.description,
+        content: article.content,
+        pubDate: article.pub_date,
+        category: article.category,
+        featured_image: article.featured_image,
+        author: article.author,
+        tags: article.tags ? JSON.parse(article.tags) : [],
+        author_info: article.author_id ? {
+          id: article.author_id,
+          name: article.author_name,
+          slug: article.author_slug,
+          avatar: article.author_avatar
+        } : null
+      };
+      
+      return transformed;
+    });
+    
+    return new Response(JSON.stringify(transformedResults), { headers });
+  } catch (error) {
+    console.error(`Error al obtener artículos para la categoría ${categoryId}:`, error);
+    return new Response(JSON.stringify({ error: error.message || 'Error del servidor' }), {
       status: 500,
       headers
     });
