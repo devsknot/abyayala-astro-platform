@@ -10,14 +10,10 @@ import { getAllArticles, getAllCategories } from '../../utils/contentApi.js';
 export const prerender = false;
 
 // Obtener todas las noticias desde la API
-console.log('Obteniendo artículos para la página de noticias...');
 const allArticles = await getAllArticles(Astro.url.origin);
-console.log(`Se obtuvieron ${allArticles.length} artículos para mostrar en la página de noticias`);
 
 // Obtener todas las categorías para el filtro
-console.log('Obteniendo categorías para el filtro de la página de noticias...');
 const categories = await getAllCategories(Astro.url.origin);
-console.log(`Se obtuvieron ${categories.length} categorías para el filtro`);
 
 // Ordenar por fecha de publicación (más reciente primero)
 const sortedNews = allArticles.sort(
@@ -71,7 +67,7 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
           </div>
         </div>
         
-        <button type="button" class="clear-filters-btn">Limpiar filtros</button>
+        <button type="button" id="clear-filters" class="clear-filters-btn">Limpiar filtros</button>
       </div>
       
       <div class="active-filters" id="active-filters"></div>
@@ -83,7 +79,12 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
               <a href={`/news/${article.slug}`} class="news-card-link">
                 {article.featured_image && (
                   <div class="news-image">
-                    <img src={article.featured_image} alt={article.title} loading="lazy" />
+                    <img 
+                      src={article.featured_image} 
+                      alt={article.title} 
+                      loading="lazy" 
+                      onerror="this.onerror=null; this.src='/images/CAAY Logo sin fondo.png'; this.classList.add('fallback-image');"
+                    />
                   </div>
                 )}
                 <div class="news-content">
@@ -102,7 +103,7 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
         ) : (
           <div class="no-results">
             <p>No se encontraron noticias que coincidan con los criterios de búsqueda.</p>
-            <button type="button" class="clear-filters-btn">Limpiar filtros</button>
+            <button type="button" class="clear-filters-btn clear-filters">Limpiar filtros</button>
           </div>
         )}
       </div>
@@ -287,6 +288,13 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     height: 100%;
     object-fit: cover;
     transition: transform 0.3s ease;
+  }
+  
+  /* Estilos para la imagen de respaldo (logo) */
+  .fallback-image {
+    object-fit: contain !important;
+    background-color: #f8f9fa;
+    padding: 1rem;
   }
   
   .news-card:hover .news-image img {
@@ -659,17 +667,40 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
       });
     }
     
+    // Manejar el botón principal de limpiar filtros
     if (clearFiltersBtn) {
       clearFiltersBtn.addEventListener('click', clearAllFilters);
     }
     
-    // Eventos de fecha
-    document.getElementById('date-from')?.addEventListener('change', () => {
+    // Manejar todos los botones con clase clear-filters-btn
+    document.querySelectorAll('.clear-filters-btn').forEach(button => {
+      button.addEventListener('click', clearAllFilters);
+    });
+    
+    // Eventos de fecha - usando un enfoque más robusto
+    const dateFromInput = document.getElementById('date-from');
+    if (dateFromInput) {
+      dateFromInput.addEventListener('change', () => {
+        currentPage = 1;
+        applyFilters();
+      });
+    }
+    
+    const dateToInput = document.getElementById('date-to');
+    if (dateToInput) {
+      dateToInput.addEventListener('change', () => {
+        currentPage = 1;
+        applyFilters();
+      });
+    }
+    
+    // También escuchar eventos en los contenedores de fecha por si el componente DatePicker emite eventos personalizados
+    document.querySelector('.date-from')?.addEventListener('dateSelected', () => {
       currentPage = 1;
       applyFilters();
     });
     
-    document.getElementById('date-to')?.addEventListener('change', () => {
+    document.querySelector('.date-to')?.addEventListener('dateSelected', () => {
       currentPage = 1;
       applyFilters();
     });
