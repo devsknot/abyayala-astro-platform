@@ -56,6 +56,12 @@ export async function onRequest(context) {
       });
     }
     
+    // Excluir rutas de categoría para que el endpoint anidado las maneje
+    if (path.startsWith('/api/content/articles/category/')) {
+      // Deja que el sistema de archivos maneje esta ruta
+      return new Response(null, { status: 404 });
+    }
+
     // Ruta para artículo específico /api/content/articles/{slug}
     const match = path.match(/^\/api\/content\/articles\/([^\/]+)$/);
     if (match) {
