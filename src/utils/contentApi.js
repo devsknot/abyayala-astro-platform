@@ -96,46 +96,39 @@ export async function getArticlesByCategory(category, origin = '') {
   try {
     console.log(`Obteniendo artículos para la categoría: "${category}" (Origin: ${origin || 'N/A'})`);
     
-    // Usar el endpoint dedicado para obtener artículos por categoría
-    const path = `/api/content/articles/category/${category}`;
+    // Usar el nuevo endpoint dedicado para obtener artículos por categoría
+    const path = `/api/content/category/articles/${category}`;
     const fetchUrl = origin ? `${origin}${path}` : path;
     
     console.log(`Realizando solicitud a: ${fetchUrl}`);
     
-    const response = await fetch(fetchUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate'
-      }
-    });
-    
-    if (!response.ok) {
-      console.error(`Error al obtener artículos por categoría: ${response.status} ${response.statusText}`);
+    try {
+      const response = await fetch(fetchUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
       
-      // Si hay un error con el endpoint dedicado, usar el método de respaldo (filtrar todos los artículos)
-      console.log(`Usando método de respaldo para obtener artículos de la categoría "${category}"...`);
-      return getArticlesByCategoryFallback(category, origin);
+      if (!response.ok) {
+        throw new Error(`Error al obtener artículos por categoría: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log(`Recuperados ${data.length} artículos para la categoría ${category} desde el endpoint específico`);
+      return data;
+    } catch (error) {
+      console.warn(`Error al usar el endpoint específico de categoría: ${error.message}. Intentando método alternativo...`);
+      
+      // Si el endpoint específico falla, intentar el método anterior
+      const allArticles = await getAllArticles(origin);
+      const filteredArticles = allArticles.filter(article => article.category === category);
+      console.log(`Recuperados ${filteredArticles.length} artículos para la categoría ${category} mediante filtrado`);
+      return filteredArticles;
     }
-    
-    const articles = await response.json();
-    console.log(`Artículos obtenidos para la categoría "${category}": ${articles.length}`);
-    
-    // Mostrar información sobre los artículos encontrados (para depuración)
-    if (articles.length > 0) {
-      console.log(`Primer artículo encontrado: ${articles[0].title} (Categoría: ${articles[0].category})`);
-    } else {
-      console.log(`No se encontraron artículos para la categoría "${category}"`);
-    }
-    
-    return articles;
   } catch (error) {
-    console.error(`Error al obtener artículos para la categoría "${category}":`, error);
-    
-    // En caso de error, usar el método de respaldo
-    console.log(`Usando método de respaldo debido a un error...`);
-    return getArticlesByCategoryFallback(category, origin);
+    console.error(`Error al obtener artículos por categoría: ${error.message}`);
+    return [];
   }
 }
 

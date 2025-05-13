@@ -17,6 +17,7 @@
     "/api/auth/verify.js",
     "/api/auth/user.js",
     "/api/content/activities.js",
-    "/api/content/bulk-import.js"
+    "/api/content/bulk-import.js",
+    "/api/content/articles/category/[categoryId].js"
   ]
 }
