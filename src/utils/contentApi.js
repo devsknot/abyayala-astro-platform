@@ -94,14 +94,15 @@ export async function getArticleBySlug(slug, origin = '') {
  */
 export async function getArticlesByCategory(category, origin = '') {
   try {
-    console.log(`Obteniendo artículos para la categoría: "${category}" (Origin: ${origin || 'N/A'})`);
+    console.log(`[DEBUG] getArticlesByCategory - Iniciando búsqueda para categoría: "${category}" (Origin: ${origin || 'N/A'})`);
     
     // Usar la nueva API específica para categorías
     const path = `/api/content/articles/by-category/${category}`;
     const fetchUrl = origin ? `${origin}${path}` : path;
     
-    console.log(`Realizando solicitud a: ${fetchUrl}`);
+    console.log(`[DEBUG] getArticlesByCategory - URL completa: ${fetchUrl}`);
     
+    console.log(`[DEBUG] getArticlesByCategory - Realizando solicitud fetch...`);
     const response = await fetch(fetchUrl, {
       method: 'GET',
       headers: {
@@ -111,27 +112,39 @@ export async function getArticlesByCategory(category, origin = '') {
       }
     });
     
+    console.log(`[DEBUG] getArticlesByCategory - Respuesta recibida: ${response.status} ${response.statusText}`);
+    
     if (!response.ok) {
+      console.error(`[ERROR] getArticlesByCategory - Error HTTP: ${response.status} ${response.statusText}`);
       throw new Error(`Error al obtener artículos por categoría: ${response.status}`);
     }
     
     // Obtener el texto de la respuesta para depuración
+    console.log(`[DEBUG] getArticlesByCategory - Leyendo cuerpo de la respuesta...`);
     const responseText = await response.text();
+    console.log(`[DEBUG] getArticlesByCategory - Longitud del texto de respuesta: ${responseText.length} caracteres`);
     
     // Intentar parsear el texto como JSON
     let articles;
     try {
+      console.log(`[DEBUG] getArticlesByCategory - Parseando JSON...`);
       articles = JSON.parse(responseText);
-      console.log(`Artículos obtenidos para la categoría ${category}: ${articles.length}`);
+      console.log(`[DEBUG] getArticlesByCategory - Artículos obtenidos: ${articles.length}`);
+      
+      if (articles.length === 0) {
+        console.log(`[DEBUG] getArticlesByCategory - No se encontraron artículos para la categoría "${category}"`);
+      } else {
+        console.log(`[DEBUG] getArticlesByCategory - Primer artículo: ${JSON.stringify(articles[0].title)}`);
+      }
     } catch (parseError) {
-      console.error('Error al parsear JSON de artículos por categoría:', parseError);
-      console.log('Texto de respuesta:', responseText.substring(0, 200) + '...');
+      console.error(`[ERROR] getArticlesByCategory - Error al parsear JSON:`, parseError);
+      console.log(`[ERROR] getArticlesByCategory - Texto de respuesta (primeros 200 caracteres):`, responseText.substring(0, 200) + '...');
       return [];
     }
     
     return articles;
   } catch (error) {
-    console.error(`Error al obtener artículos para la categoría "${category}":`, error);
+    console.error(`[ERROR] getArticlesByCategory - Error general:`, error);
     return [];
   }
 }

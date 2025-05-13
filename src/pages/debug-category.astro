@@ -1,0 +1,325 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+// Configuración para SSR
+export const prerender = false;
+
+// Obtener todas las categorías para mostrar en la interfaz
+const apiUrl = `${Astro.url.origin}/api/content/debug/category-test`;
+let debugData = null;
+let error = null;
+
+try {
+  console.log(`Realizando solicitud a: ${apiUrl}`);
+  const response = await fetch(apiUrl);
+  
+  if (!response.ok) {
+    error = `Error HTTP: ${response.status} ${response.statusText}`;
+  } else {
+    debugData = await response.json();
+  }
+} catch (e) {
+  error = e.message || "Error desconocido";
+}
+---
+
+<BaseLayout title="Depuración de Categorías" description="Herramienta de depuración para categorías">
+  <div class="debug-container">
+    <h1>Depuración de Categorías</h1>
+    
+    <div class="debug-section">
+      <h2>Estado de la API</h2>
+      {error ? (
+        <div class="error-message">
+          <p>Error: {error}</p>
+        </div>
+      ) : (
+        <div class="success-message">
+          <p>API funcionando correctamente</p>
+          <p>Timestamp: {debugData?.timestamp}</p>
+        </div>
+      )}
+    </div>
+    
+    {debugData && (
+      <>
+        <div class="debug-section">
+          <h2>Categorías Disponibles ({debugData.categories.length})</h2>
+          <div class="data-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {debugData.categories.map(cat => (
+                  <tr>
+                    <td>{cat.id}</td>
+                    <td>{cat.name}</td>
+                    <td>
+                      <a href={`/category/${cat.id}`} target="_blank" class="action-link">Ver página</a>
+                      <button class="test-btn" data-category={cat.id}>Probar API</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="debug-section">
+          <h2>Conteo de Artículos por Categoría</h2>
+          <div class="data-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Categoría</th>
+                  <th>Cantidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                {debugData.categoryCounts.map(count => (
+                  <tr>
+                    <td>{count.category}</td>
+                    <td>{count.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="debug-section">
+          <h2>Ejemplos de Artículos (Agricultura)</h2>
+          <p>Total de artículos en categoría "agricultura": {debugData.agriculturaCount}</p>
+          
+          {debugData.agriculturaExamples.length > 0 ? (
+            <div class="data-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Slug</th>
+                    <th>Título</th>
+                    <th>Categoría</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debugData.agriculturaExamples.map(article => (
+                    <tr>
+                      <td>{article.id}</td>
+                      <td>{article.slug}</td>
+                      <td>{article.title}</td>
+                      <td>{article.category}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p>No se encontraron ejemplos.</p>
+          )}
+        </div>
+        
+        <div class="debug-section">
+          <h2>Prueba de API</h2>
+          <div class="api-test">
+            <div class="input-group">
+              <label for="category-input">ID de Categoría:</label>
+              <input type="text" id="category-input" placeholder="Ej: agricultura" />
+              <button id="test-api-btn">Probar</button>
+            </div>
+            
+            <div class="result-container">
+              <h3>Resultado:</h3>
+              <pre id="api-result">Esperando prueba...</pre>
+            </div>
+          </div>
+        </div>
+      </>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  .debug-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  h1 {
+    color: #333;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+  
+  .debug-section {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  h2 {
+    color: #0066cc;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+  }
+  
+  .error-message {
+    background-color: #ffe6e6;
+    color: #cc0000;
+    padding: 1rem;
+    border-radius: 4px;
+    border-left: 4px solid #cc0000;
+  }
+  
+  .success-message {
+    background-color: #e6ffe6;
+    color: #006600;
+    padding: 1rem;
+    border-radius: 4px;
+    border-left: 4px solid #006600;
+  }
+  
+  .data-table {
+    overflow-x: auto;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+  
+  th, td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+  }
+  
+  tr:hover {
+    background-color: #f5f5f5;
+  }
+  
+  .action-link {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background-color: #0066cc;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    margin-right: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .test-btn {
+    padding: 0.25rem 0.5rem;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+  }
+  
+  .api-test {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  input {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    flex-grow: 1;
+  }
+  
+  #test-api-btn {
+    padding: 0.5rem 1rem;
+    background-color: #0066cc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .result-container {
+    background-color: #f2f2f2;
+    padding: 1rem;
+    border-radius: 4px;
+  }
+  
+  pre {
+    background-color: #333;
+    color: #f8f8f8;
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const testApiBtn = document.getElementById('test-api-btn');
+    const categoryInput = document.getElementById('category-input');
+    const apiResult = document.getElementById('api-result');
+    const categoryTestBtns = document.querySelectorAll('.test-btn');
+    
+    // Función para probar la API con una categoría específica
+    async function testCategoryApi(categoryId) {
+      try {
+        apiResult.textContent = 'Cargando...';
+        
+        const response = await fetch(`/api/content/articles/by-category/${categoryId}`);
+        const data = await response.json();
+        
+        apiResult.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        apiResult.textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // Evento para el botón principal de prueba
+    if (testApiBtn) {
+      testApiBtn.addEventListener('click', () => {
+        const categoryId = categoryInput.value.trim();
+        if (categoryId) {
+          testCategoryApi(categoryId);
+        } else {
+          apiResult.textContent = 'Error: Ingrese un ID de categoría válido';
+        }
+      });
+    }
+    
+    // Eventos para los botones de prueba en la tabla
+    categoryTestBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const categoryId = btn.dataset.category;
+        if (categoryId) {
+          categoryInput.value = categoryId;
+          testCategoryApi(categoryId);
+        }
+      });
+    });
+  });
+</script>

@@ -6,7 +6,8 @@
     "/api/auth/verify",
     "/api/auth/user",
     "/admin/*",
-    "/api/content/articles/by-category/*"
+    "/api/content/articles/by-category/*",
+    "/api/content/debug/*"
   ],
   "exclude": [
     "/api/content/test.js", 
@@ -19,6 +20,7 @@
     "/api/auth/user.js",
     "/api/content/activities.js",
     "/api/content/bulk-import.js",
-    "/api/content/articles/by-category/[category].js"
+    "/api/content/articles/by-category/[category].js",
+    "/api/content/debug/category-test.js"
   ]
 }

@@ -7,12 +7,29 @@ import { getArticlesByCategory, getAllCategories } from '../../utils/contentApi.
 // Configuración para SSR
 export const prerender = false;
 
+console.log(`[CATEGORY-PAGE] Iniciando renderizado de página de categoría`);
+
 // Obtener el parámetro de categoría de la URL
 const { category: categoryId } = Astro.params;
+console.log(`[CATEGORY-PAGE] Parámetro de categoría recibido: "${categoryId}"`);
 
 // Obtener información de la categoría
+console.log(`[CATEGORY-PAGE] Obteniendo todas las categorías...`);
 const categories = await getAllCategories(Astro.url.origin);
+console.log(`[CATEGORY-PAGE] Categorías obtenidas: ${categories.length}`);
+
+// Buscar la categoría específica
+console.log(`[CATEGORY-PAGE] Buscando categoría con ID: "${categoryId}"`);
 const category = categories.find(cat => cat.id === categoryId);
+
+if (category) {
+  console.log(`[CATEGORY-PAGE] Categoría encontrada: ${JSON.stringify({
+    id: category.id,
+    name: category.name
+  })}`);
+} else {
+  console.log(`[CATEGORY-PAGE] Categoría no encontrada, redirigiendo a la página principal`);
+}
 
 // Si la categoría no existe, redirigir a la página principal
 if (!category) {
@@ -20,9 +37,19 @@ if (!category) {
 }
 
 // Obtener artículos de la API filtrados por categoría
+console.log(`[CATEGORY-PAGE] Obteniendo artículos para la categoría: "${category.id}"`);
 const newsItems = await getArticlesByCategory(category.id, Astro.url.origin);
+console.log(`[CATEGORY-PAGE] Artículos obtenidos: ${newsItems.length}`);
+
+if (newsItems.length > 0) {
+  console.log(`[CATEGORY-PAGE] Primer artículo: ${JSON.stringify({
+    title: newsItems[0].title,
+    category: newsItems[0].category
+  })}`);
+}
 
 // Ordenar por fecha de publicación (más reciente primero)
+console.log(`[CATEGORY-PAGE] Ordenando artículos por fecha...`);
 newsItems.sort((a, b) => new Date(b.pubDate).valueOf() - new Date(a.pubDate).valueOf());
 
 // Mensaje para mostrar si no hay artículos
