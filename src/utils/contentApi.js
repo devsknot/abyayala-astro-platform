@@ -96,44 +96,84 @@ export async function getArticlesByCategory(category, origin = '') {
   try {
     console.log(`Obteniendo artículos para la categoría: "${category}" (Origin: ${origin || 'N/A'})`);
     
-    // Obtener todos los artículos primero
-    const allArticles = await getAllArticles(origin);
-    console.log(`Total de artículos obtenidos: ${allArticles.length}`);
+    // Usar el endpoint dedicado para obtener artículos por categoría
+    const path = `/api/content/articles/category/${category}`;
+    const fetchUrl = origin ? `${origin}${path}` : path;
     
-    // Normalizar la categoría para la comparación (trim y lowercase)
+    console.log(`Realizando solicitud a: ${fetchUrl}`);
+    
+    const response = await fetch(fetchUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      }
+    });
+    
+    if (!response.ok) {
+      console.error(`Error al obtener artículos por categoría: ${response.status} ${response.statusText}`);
+      
+      // Si hay un error con el endpoint dedicado, usar el método de respaldo (filtrar todos los artículos)
+      console.log(`Usando método de respaldo para obtener artículos de la categoría "${category}"...`);
+      return getArticlesByCategoryFallback(category, origin);
+    }
+    
+    const articles = await response.json();
+    console.log(`Artículos obtenidos para la categoría "${category}": ${articles.length}`);
+    
+    // Mostrar información sobre los artículos encontrados (para depuración)
+    if (articles.length > 0) {
+      console.log(`Primer artículo encontrado: ${articles[0].title} (Categoría: ${articles[0].category})`);
+    } else {
+      console.log(`No se encontraron artículos para la categoría "${category}"`);
+    }
+    
+    return articles;
+  } catch (error) {
+    console.error(`Error al obtener artículos para la categoría "${category}":`, error);
+    
+    // En caso de error, usar el método de respaldo
+    console.log(`Usando método de respaldo debido a un error...`);
+    return getArticlesByCategoryFallback(category, origin);
+  }
+}
+
+/**
+ * Método de respaldo para obtener artículos por categoría cuando el endpoint dedicado falla
+ * @param {string} category - Categoría para filtrar
+ * @param {string} [origin=''] - El origen de la URL
+ * @returns {Promise<Array>} Lista de artículos filtrados
+ */
+async function getArticlesByCategoryFallback(category, origin = '') {
+  try {
+    console.log(`[RESPALDO] Obteniendo todos los artículos para filtrar por categoría "${category}"...`);
+    
+    // Obtener todos los artículos
+    const allArticles = await getAllArticles(origin);
+    console.log(`[RESPALDO] Total de artículos obtenidos: ${allArticles.length}`);
+    
+    // Normalizar la categoría para la comparación
     const normalizedCategory = String(category).trim().toLowerCase();
-    console.log(`Categoría normalizada para filtrado: "${normalizedCategory}"`);
     
     // Filtrar los artículos por la categoría especificada
     const filteredArticles = allArticles.filter(article => {
-      // Verificar si el artículo tiene una categoría
-      if (!article.category) {
-        return false;
-      }
-      
-      // Normalizar la categoría del artículo
+      if (!article.category) return false;
       const articleCategory = String(article.category).trim().toLowerCase();
-      
-      // Verificar si la categoría coincide exactamente
       return articleCategory === normalizedCategory;
     });
     
-    console.log(`Artículos filtrados para la categoría "${category}": ${filteredArticles.length}`);
+    console.log(`[RESPALDO] Artículos filtrados para la categoría "${category}": ${filteredArticles.length}`);
     
-    // Mostrar información sobre los artículos encontrados (para depuración)
-    if (filteredArticles.length > 0) {
-      console.log(`Primer artículo encontrado: ${filteredArticles[0].title} (Categoría: ${filteredArticles[0].category})`);
-    } else {
-      console.log(`No se encontraron artículos para la categoría "${category}"`);
-      
-      // Mostrar todas las categorías disponibles en los artículos
+    if (filteredArticles.length === 0) {
+      // Mostrar todas las categorías disponibles en los artículos para ayudar a depurar
       const availableCategories = [...new Set(allArticles.map(a => a.category).filter(Boolean))];
-      console.log(`Categorías disponibles en los artículos: ${JSON.stringify(availableCategories)}`);
+      console.log(`[RESPALDO] Categorías disponibles en los artículos: ${JSON.stringify(availableCategories)}`);
     }
     
     return filteredArticles;
   } catch (error) {
-    console.error(`Error al obtener artículos para la categoría "${category}":`, error);
+    console.error(`[RESPALDO] Error al filtrar artículos por categoría:`, error);
     return [];
   }
 }
