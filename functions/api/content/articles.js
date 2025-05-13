@@ -46,10 +46,30 @@ export async function onRequest(context) {
     
     // La ruta para artículos por categoría ahora se maneja en un archivo separado
     
+    // Verificar si la ruta es para la API de categorías
+    if (path.includes('/api/content/articles/category/')) {
+      console.log(`Ruta de categoría detectada: ${path}. Esta ruta se maneja en un archivo separado.`);
+      // No hacemos nada aquí, esta ruta se maneja en el archivo [categoryId].js
+      return new Response(JSON.stringify({ error: 'Esta ruta debe ser manejada por el archivo de categorías' }), {
+        status: 404,
+        headers
+      });
+    }
+    
     // Ruta para artículo específico /api/content/articles/{slug}
     const match = path.match(/^\/api\/content\/articles\/([^\/]+)$/);
     if (match) {
       const slug = match[1];
+      
+      // Verificar que el slug no sea "category" o comience con "category/"
+      if (slug === 'category' || slug.startsWith('category/')) {
+        console.log(`Solicitud para ruta de categoría detectada: ${slug}. Esta ruta se maneja en un archivo separado.`);
+        return new Response(JSON.stringify({ error: 'Esta ruta debe ser manejada por el archivo de categorías' }), {
+          status: 404,
+          headers
+        });
+      }
+      
       console.log(`Solicitud para artículo específico: ${slug}`);
       
       if (request.method === 'GET') {
