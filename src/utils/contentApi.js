@@ -107,9 +107,18 @@ export async function getArticlesByCategory(category, origin = '') {
     // Filtrar los artículos por la categoría especificada
     const filteredArticles = allArticles.filter(article => {
       // Asegurarse de que article.category sea una cadena y normalizarla
+      if (!article.category) return false;
+      
       const articleCategory = String(article.category).trim().toLowerCase();
-      console.log(`Comparando categoría del artículo "${articleCategory}" con "${normalizedCategory}"`);
-      return articleCategory === normalizedCategory;
+      
+      // Comparación exacta con el ID de la categoría
+      const exactMatch = articleCategory === normalizedCategory;
+      
+      if (exactMatch) {
+        console.log(`Artículo encontrado para categoría "${normalizedCategory}": ${article.title}`);
+      }
+      
+      return exactMatch;
     });
     
     console.log(`Artículos filtrados para la categoría "${category}": ${filteredArticles.length}`);
