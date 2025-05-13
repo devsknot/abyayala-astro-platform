@@ -94,57 +94,46 @@ export async function getArticleBySlug(slug, origin = '') {
  */
 export async function getArticlesByCategory(category, origin = '') {
   try {
-    console.log(`[DEBUG] getArticlesByCategory - Iniciando búsqueda para categoría: "${category}" (Origin: ${origin || 'N/A'})`);
+    console.log(`Obteniendo artículos para la categoría: "${category}" (Origin: ${origin || 'N/A'})`);
     
-    // Usar la nueva API específica para categorías
-    const path = `/api/content/articles/by-category/${category}`;
-    const fetchUrl = origin ? `${origin}${path}` : path;
+    // Obtener todos los artículos primero
+    const allArticles = await getAllArticles(origin);
+    console.log(`Total de artículos obtenidos: ${allArticles.length}`);
     
-    console.log(`[DEBUG] getArticlesByCategory - URL completa: ${fetchUrl}`);
+    // Normalizar la categoría para la comparación (trim y lowercase)
+    const normalizedCategory = String(category).trim().toLowerCase();
+    console.log(`Categoría normalizada para filtrado: "${normalizedCategory}"`);
     
-    console.log(`[DEBUG] getArticlesByCategory - Realizando solicitud fetch...`);
-    const response = await fetch(fetchUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate'
+    // Filtrar los artículos por la categoría especificada
+    const filteredArticles = allArticles.filter(article => {
+      // Verificar si el artículo tiene una categoría
+      if (!article.category) {
+        return false;
       }
+      
+      // Normalizar la categoría del artículo
+      const articleCategory = String(article.category).trim().toLowerCase();
+      
+      // Verificar si la categoría coincide exactamente
+      return articleCategory === normalizedCategory;
     });
     
-    console.log(`[DEBUG] getArticlesByCategory - Respuesta recibida: ${response.status} ${response.statusText}`);
+    console.log(`Artículos filtrados para la categoría "${category}": ${filteredArticles.length}`);
     
-    if (!response.ok) {
-      console.error(`[ERROR] getArticlesByCategory - Error HTTP: ${response.status} ${response.statusText}`);
-      throw new Error(`Error al obtener artículos por categoría: ${response.status}`);
-    }
-    
-    // Obtener el texto de la respuesta para depuración
-    console.log(`[DEBUG] getArticlesByCategory - Leyendo cuerpo de la respuesta...`);
-    const responseText = await response.text();
-    console.log(`[DEBUG] getArticlesByCategory - Longitud del texto de respuesta: ${responseText.length} caracteres`);
-    
-    // Intentar parsear el texto como JSON
-    let articles;
-    try {
-      console.log(`[DEBUG] getArticlesByCategory - Parseando JSON...`);
-      articles = JSON.parse(responseText);
-      console.log(`[DEBUG] getArticlesByCategory - Artículos obtenidos: ${articles.length}`);
+    // Mostrar información sobre los artículos encontrados (para depuración)
+    if (filteredArticles.length > 0) {
+      console.log(`Primer artículo encontrado: ${filteredArticles[0].title} (Categoría: ${filteredArticles[0].category})`);
+    } else {
+      console.log(`No se encontraron artículos para la categoría "${category}"`);
       
-      if (articles.length === 0) {
-        console.log(`[DEBUG] getArticlesByCategory - No se encontraron artículos para la categoría "${category}"`);
-      } else {
-        console.log(`[DEBUG] getArticlesByCategory - Primer artículo: ${JSON.stringify(articles[0].title)}`);
-      }
-    } catch (parseError) {
-      console.error(`[ERROR] getArticlesByCategory - Error al parsear JSON:`, parseError);
-      console.log(`[ERROR] getArticlesByCategory - Texto de respuesta (primeros 200 caracteres):`, responseText.substring(0, 200) + '...');
-      return [];
+      // Mostrar todas las categorías disponibles en los artículos
+      const availableCategories = [...new Set(allArticles.map(a => a.category).filter(Boolean))];
+      console.log(`Categorías disponibles en los artículos: ${JSON.stringify(availableCategories)}`);
     }
     
-    return articles;
+    return filteredArticles;
   } catch (error) {
-    console.error(`[ERROR] getArticlesByCategory - Error general:`, error);
+    console.error(`Error al obtener artículos para la categoría "${category}":`, error);
     return [];
   }
 }
