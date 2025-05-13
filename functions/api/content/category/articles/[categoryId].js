@@ -1,4 +1,4 @@
-// Función para gestionar artículos por categoría a través de Cloudflare Functions
+
 export async function onRequest(context) {
   const { request, env, params } = context;
   const categoryId = params.categoryId;
