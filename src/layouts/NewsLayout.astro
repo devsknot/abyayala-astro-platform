@@ -23,7 +23,11 @@ const { title, description, pubDate, updatedDate, heroImage, category, author } 
   <article class="news-article">
     <div class="hero-container">
       <div class="hero-image">
-        <img src={heroImage} alt={title} />
+        <img 
+          src={heroImage} 
+          alt={title} 
+          onerror="this.onerror=null; this.src='/images/CAAY Logo sin fondo.png'; this.classList.add('fallback-hero-image');"
+        />
       </div>
       <div class="hero-overlay">
         <div class="container">
@@ -56,7 +60,11 @@ const { title, description, pubDate, updatedDate, heroImage, category, author } 
             <h3>Sobre el autor</h3>
             <div class="author-info">
               <div class="author-avatar">
-                <img src="/author-placeholder.jpg" alt={author} />
+                <img 
+                  src="/author-placeholder.jpg" 
+                  alt={author} 
+                  onerror="this.onerror=null; this.src='/images/CAAY Logo sin fondo.png'; this.classList.add('fallback-author-image');"
+                />
               </div>
               <div class="author-name">{author}</div>
               <p class="author-bio">Periodista especializado en temas agrarios y de sostenibilidad. Colaborador del colectivo Abya Yala desde 2020.</p>
@@ -115,6 +123,13 @@ const { title, description, pubDate, updatedDate, heroImage, category, author } 
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+  
+  /* Estilos para la imagen de respaldo (logo) */
+  .fallback-hero-image {
+    object-fit: contain !important;
+    background-color: #f8f9fa;
+    padding: 2rem;
   }
   
   .hero-overlay {
@@ -228,6 +243,14 @@ const { title, description, pubDate, updatedDate, heroImage, category, author } 
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: 50%;
+  }
+  
+  /* Estilos para la imagen de autor de respaldo */
+  .fallback-author-image {
+    object-fit: contain !important;
+    background-color: #f8f9fa;
+    padding: 0.5rem;
   }
   
   .author-name {

@@ -64,7 +64,12 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
 >
   <a href={href} class="news-card-link">
     <div class="image-container">
-      <img src={image} alt={title} loading="lazy" />
+      <img 
+        src={image} 
+        alt={title} 
+        loading="lazy" 
+        onerror="this.onerror=null; this.src='/images/CAAY Logo sin fondo.png'; this.classList.add('fallback-image');" 
+      />
       <CategoryTag category={category} />
     </div>
     <div class="content">
@@ -198,6 +203,13 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
 
   .featured .image-container {
     padding-bottom: 50%; /* Aspect ratio diferente para destacados */
+  }
+
+  /* Estilos para la imagen de respaldo (logo) */
+  .fallback-image {
+    object-fit: contain !important;
+    background-color: #f8f9fa;
+    padding: 1rem;
   }
 
   .featured h3 {
