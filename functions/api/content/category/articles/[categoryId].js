@@ -22,22 +22,70 @@ export async function onRequest(context) {
     });
   }
   
-  // Solo permitir solicitudes GET
-  if (request.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'Método no permitido' }), {
-      status: 405,
+  // Verificar autenticación (aunque para GET no es necesario, lo incluimos por consistencia)
+  const authenticated = await verifyAuthentication(request, env);
+  if (!authenticated && request.method !== 'GET') {
+    return new Response(JSON.stringify({ error: 'No autorizado' }), {
+      status: 401,
       headers
     });
   }
   
   try {
-    return await handleGetArticlesByCategory(categoryId, env, headers);
+    console.log(`Solicitud recibida: ${request.method} /api/content/category/articles/${categoryId}`);
+    
+    if (request.method === 'GET') {
+      return await handleGetArticlesByCategory(categoryId, env, headers);
+    }
+    
+    // Método no permitido
+    return new Response(JSON.stringify({ error: 'Método no permitido' }), {
+      status: 405,
+      headers
+    });
   } catch (error) {
-    console.error(`Error en la solicitud: ${error.message}`);
+    console.error('Error en la API:', error);
     return new Response(JSON.stringify({ error: error.message || 'Error del servidor' }), {
       status: 500,
       headers
     });
+  }
+}
+
+// Verificar autenticación
+async function verifyAuthentication(request, env) {
+  // En un entorno de desarrollo, permitir acceso sin autenticación
+  if (env.ENVIRONMENT === 'development') {
+    return true;
+  }
+  
+  // Obtener token de autorización
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return false;
+  }
+  
+  const token = authHeader.split(' ')[1];
+  
+  try {
+    // Verificar token con el servicio de autenticación
+    const verifyResponse = await fetch(`${env.AUTH_API_URL}/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ token })
+    });
+    
+    if (!verifyResponse.ok) {
+      return false;
+    }
+    
+    const { valid } = await verifyResponse.json();
+    return valid;
+  } catch (error) {
+    console.error('Error al verificar autenticación:', error);
+    return false;
   }
 }
 
