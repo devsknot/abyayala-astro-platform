@@ -49,16 +49,9 @@ async function handleGetArticlesByCategory(categoryId, env, headers) {
     console.log(`Obteniendo artículos para la categoría: ${categoryId}`);
     
     // Usar D1 para obtener artículos filtrados por categoría
+    // Consulta simplificada que sabemos que funciona
     const { results } = await env.DB.prepare(`
-      SELECT a.*, 
-             aut.id as author_id, 
-             aut.name as author_name, 
-             aut.slug as author_slug, 
-             aut.avatar as author_avatar
-      FROM articles a
-      LEFT JOIN authors aut ON a.author_id = aut.id
-      WHERE a.category = ?
-      ORDER BY a.pub_date DESC
+      SELECT * FROM articles WHERE category = ? ORDER BY pub_date DESC
     `).bind(categoryId).all();
     
     console.log(`Recuperados ${results ? results.length : 0} artículos para la categoría ${categoryId}`);
@@ -74,13 +67,8 @@ async function handleGetArticlesByCategory(categoryId, env, headers) {
         category: article.category,
         featured_image: article.featured_image,
         author: article.author,
-        tags: article.tags ? JSON.parse(article.tags) : [],
-        author_info: article.author_id ? {
-          id: article.author_id,
-          name: article.author_name,
-          slug: article.author_slug,
-          avatar: article.author_avatar
-        } : null
+        tags: article.tags ? JSON.parse(article.tags) : []
+        // Ya no incluimos author_info porque no estamos obteniendo esos datos en la consulta simplificada
       };
       
       return transformed;
