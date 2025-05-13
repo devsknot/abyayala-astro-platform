@@ -46,20 +46,12 @@ export async function onRequest(context) {
     
     // La ruta para artículos por categoría ahora se maneja en un archivo separado
     
-    // Verificar si la ruta es para la API de categorías
-    if (path.includes('/api/content/articles/category/')) {
-      console.log(`Ruta de categoría detectada: ${path}. Esta ruta se maneja en un archivo separado.`);
-      // No hacemos nada aquí, esta ruta se maneja en el archivo [categoryId].js
-      return new Response(JSON.stringify({ error: 'Esta ruta debe ser manejada por el archivo de categorías' }), {
-        status: 404,
-        headers
-      });
-    }
+
     
     // Excluir rutas de categoría para que el endpoint anidado las maneje
     if (path.startsWith('/api/content/articles/category/')) {
       // Deja que el sistema de archivos maneje esta ruta
-      return new Response(null, { status: 404 });
+      return;
     }
 
     // Ruta para artículo específico /api/content/articles/{slug}
