@@ -108,7 +108,7 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
           {categories.map(category => (
             <a href={`/category/${category.id}`} class="category-card">
               <div class="category-icon">
-                <CategoryTag category={category.id} size="large" />
+                <CategoryTag category={category.id} size="large" absolute={false} />
               </div>
               <h3>{category.name}</h3>
               <p>{category.description}</p>
