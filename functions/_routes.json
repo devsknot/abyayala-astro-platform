@@ -5,7 +5,8 @@
     "/api/auth/login",
     "/api/auth/verify",
     "/api/auth/user",
-    "/admin/*"
+    "/admin/*",
+    "/api/content/category/articles/*"
   ],
   "exclude": [
     "/api/content/test.js", 
