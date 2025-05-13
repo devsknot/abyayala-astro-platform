@@ -5,7 +5,8 @@
     "/api/auth/login",
     "/api/auth/verify",
     "/api/auth/user",
-    "/admin/*"
+    "/admin/*",
+    "/api/content/articles/by-category/*"
   ],
   "exclude": [
     "/api/content/test.js", 
@@ -17,6 +18,7 @@
     "/api/auth/verify.js",
     "/api/auth/user.js",
     "/api/content/activities.js",
-    "/api/content/bulk-import.js"
+    "/api/content/bulk-import.js",
+    "/api/content/articles/by-category/[category].js"
   ]
 }

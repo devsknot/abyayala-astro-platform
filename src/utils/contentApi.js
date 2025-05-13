@@ -96,33 +96,40 @@ export async function getArticlesByCategory(category, origin = '') {
   try {
     console.log(`Obteniendo artículos para la categoría: "${category}" (Origin: ${origin || 'N/A'})`);
     
-    // Obtener todos los artículos primero, pasando el origin
-    const allArticles = await getAllArticles(origin);
-    console.log(`Total de artículos obtenidos: ${allArticles.length}`);
+    // Usar la nueva API específica para categorías
+    const path = `/api/content/articles/by-category/${category}`;
+    const fetchUrl = origin ? `${origin}${path}` : path;
     
-    // Normalizar la categoría para la comparación (trim y lowercase)
-    const normalizedCategory = String(category).trim().toLowerCase();
-    console.log(`Categoría normalizada para filtrado: "${normalizedCategory}"`);
+    console.log(`Realizando solicitud a: ${fetchUrl}`);
     
-    // Filtrar los artículos por la categoría especificada
-    const filteredArticles = allArticles.filter(article => {
-      // Asegurarse de que article.category sea una cadena y normalizarla
-      if (!article.category) return false;
-      
-      const articleCategory = String(article.category).trim().toLowerCase();
-      
-      // Comparación exacta con el ID de la categoría
-      const exactMatch = articleCategory === normalizedCategory;
-      
-      if (exactMatch) {
-        console.log(`Artículo encontrado para categoría "${normalizedCategory}": ${article.title}`);
+    const response = await fetch(fetchUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
       }
-      
-      return exactMatch;
     });
     
-    console.log(`Artículos filtrados para la categoría "${category}": ${filteredArticles.length}`);
-    return filteredArticles;
+    if (!response.ok) {
+      throw new Error(`Error al obtener artículos por categoría: ${response.status}`);
+    }
+    
+    // Obtener el texto de la respuesta para depuración
+    const responseText = await response.text();
+    
+    // Intentar parsear el texto como JSON
+    let articles;
+    try {
+      articles = JSON.parse(responseText);
+      console.log(`Artículos obtenidos para la categoría ${category}: ${articles.length}`);
+    } catch (parseError) {
+      console.error('Error al parsear JSON de artículos por categoría:', parseError);
+      console.log('Texto de respuesta:', responseText.substring(0, 200) + '...');
+      return [];
+    }
+    
+    return articles;
   } catch (error) {
     console.error(`Error al obtener artículos para la categoría "${category}":`, error);
     return [];

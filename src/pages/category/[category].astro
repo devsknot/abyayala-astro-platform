@@ -105,6 +105,13 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
 </BaseLayout>
 
 <style>
+  /* Estilos para imágenes de respaldo */
+  :global(.fallback-image) {
+    object-fit: contain !important;
+    padding: 1rem;
+    background-color: #f8f8f8;
+  }
+  
   .container {
     width: 100%;
     max-width: 1200px;
