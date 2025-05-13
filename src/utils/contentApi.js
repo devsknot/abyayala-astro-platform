@@ -96,36 +96,23 @@ export async function getArticlesByCategory(category, origin = '') {
   try {
     console.log(`Obteniendo artículos para la categoría: "${category}" (Origin: ${origin || 'N/A'})`);
     
-    // Usar el nuevo endpoint dedicado para obtener artículos por categoría
-    const path = `/api/content/category/articles/${category}`;
-    const fetchUrl = origin ? `${origin}${path}` : path;
+    // Usar el método que sabemos que funciona: obtener todos los artículos y filtrar
+    console.log(`Usando método de filtrado para obtener artículos de la categoría "${category}"...`);
     
-    console.log(`Realizando solicitud a: ${fetchUrl}`);
+    const allArticles = await getAllArticles(origin);
+    console.log(`Obtenidos ${allArticles.length} artículos en total, filtrando por categoría "${category}"...`);
     
-    try {
-      const response = await fetch(fetchUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error al obtener artículos por categoría: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log(`Recuperados ${data.length} artículos para la categoría ${category} desde el endpoint específico`);
-      return data;
-    } catch (error) {
-      console.warn(`Error al usar el endpoint específico de categoría: ${error.message}. Intentando método alternativo...`);
-      
-      // Si el endpoint específico falla, intentar el método anterior
-      const allArticles = await getAllArticles(origin);
-      const filteredArticles = allArticles.filter(article => article.category === category);
-      console.log(`Recuperados ${filteredArticles.length} artículos para la categoría ${category} mediante filtrado`);
-      return filteredArticles;
+    const filteredArticles = allArticles.filter(article => article.category === category);
+    console.log(`Recuperados ${filteredArticles.length} artículos para la categoría "${category}" mediante filtrado`);
+    
+    // Mostrar información sobre los artículos encontrados (para depuración)
+    if (filteredArticles.length > 0) {
+      console.log(`Primer artículo encontrado: ${filteredArticles[0].title} (Categoría: ${filteredArticles[0].category})`);
+    } else {
+      console.log(`No se encontraron artículos para la categoría "${category}"`);
     }
+    
+    return filteredArticles;
   } catch (error) {
     console.error(`Error al obtener artículos por categoría: ${error.message}`);
     return [];
