@@ -21,7 +21,7 @@ export default defineConfig({
   }),
   build: {
     assets: '_assets',
-    format: 'directory' // Changed from 'file' to 'directory'
+    format: 'file' // Changed from 'directory' to 'file'
   },
   server: {
     port: 3000,
