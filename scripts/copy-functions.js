@@ -71,6 +71,7 @@ try {
       // Routes handled by Cloudflare Functions
       "/api/*",
       "/admin/*",
+      "/hello", // Add '/hello' to the exclude array
 
       // Astro's primary static asset folder
       "/_assets/*",
