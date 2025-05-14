@@ -15,9 +15,9 @@ export default defineConfig({
       enabled: true,
       persistPaths: ['./.wrangler']
     },
-    routes: {
-      exclude: ['/api/*']
-    }
+    // routes: { 
+    //   exclude: ['/api/*']
+    // }
   }),
   build: {
     assets: '_assets',
