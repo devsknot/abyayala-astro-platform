@@ -23,15 +23,6 @@ function copyDir(src, dest) {
       const srcPath = path.join(src, entry.name);
       const destPath = path.join(dest, entry.name);
 
-      // Si el archivo es _routes.json o _middleware.js en el directorio raíz de functions, no lo copies.
-      if (entry.isFile() && 
-         ( (entry.name === '_routes.json' && src === functionsDir) || 
-           (entry.name === '_middleware.js' && src === functionsDir) ) 
-         ) {
-        console.log(`Omitiendo copia de: ${srcPath}`);
-        continue;
-      }
-
       try {
         if (entry.isDirectory()) {
           // Copiar subdirectorios recursivamente
@@ -72,7 +63,23 @@ try {
     exclude: [
       // Routes handled by Cloudflare Functions
       "/api/*",
-      "/hello"
+      "/hello",
+      // Common static assets / Astro specific
+      "/_astro/*",      // Astro's build assets
+      "/assets/*",      // Typical user assets folder
+      "/images/*",      // Typical user images folder
+      "/fonts/*",       // Typical user fonts folder
+      "/favicon.ico",
+      "/*.png",
+      "/*.jpg",
+      "/*.jpeg",
+      "/*.svg",
+      "/*.gif",
+      "/*.webp",
+      "/*.txt",         // e.g., robots.txt
+      "/*.xml",         // e.g., sitemap.xml
+      "/*.json",        // e.g., manifest.json
+      // "/admin/*" // Descomentar si tienes un /admin estático o manejado por functions
     ]
   };
 
