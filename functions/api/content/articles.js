@@ -106,30 +106,16 @@ async function handleGetArticles(env, headers) {
     
     console.log(`[articles.js] Recuperados ${results.length} artículos de la base de datos`);
     
-    // Transformar los resultados para incluir un array de categorías compatible con el frontend
+    // Transformar los resultados para utilizar solo el campo category de la base de datos
     const transformedResults = results.map(article => {
-      // Crear un array con la categoría principal si existe
+      // Obtener la categoría original de la base de datos
       const categoryFromDB = article.category || '';
-      let categories = [];
       
-      if (categoryFromDB && categoryFromDB !== '') {
-        categories.push(categoryFromDB);
-      }
-      
-      // Procesar tags para extraer categorías adicionales
+      // Procesar tags para obtener etiquetas
       let parsedTags = [];
       try {
         // Los tags están almacenados como JSON string en la DB
         parsedTags = article.tags ? JSON.parse(article.tags) : [];
-        
-        // Extraer categorías de tags con prefijo "cat:"
-        const catTags = parsedTags.filter(tag => tag && typeof tag === 'string' && tag.startsWith('cat:'));
-        catTags.forEach(tag => {
-          const catName = tag.substring(4).trim();
-          if (catName && !categories.includes(catName)) {
-            categories.push(catName);
-          }
-        });
       } catch (e) {
         console.error(`[articles.js] Error procesando tags para artículo ${article.id} (${article.slug}):`, e.message);
         console.error(`[articles.js] Tag value:`, article.tags);
@@ -139,13 +125,12 @@ async function handleGetArticles(env, headers) {
       if (results.indexOf(article) < 5) {
         console.log('========================================');
         console.log(`Artículo: ${article.title} (${article.id})`);
-        console.log(`Categoría original: [${categoryFromDB}]`);
+        console.log(`Categoría: [${categoryFromDB}]`);
         console.log(`Tags: ${JSON.stringify(parsedTags)}`);
-        console.log(`Categorías procesadas: ${JSON.stringify(categories)}`);
         console.log('========================================');
       }
       
-      // Devolver objeto con el array de categorías y la estructura compatible con el frontend
+      // Devolver objeto con la estructura simplificada (solo category, sin categories)
       return {
         id: article.id,
         slug: article.slug,
@@ -154,8 +139,7 @@ async function handleGetArticles(env, headers) {
         content: article.content,
         pubDate: article.pub_date,
         featured_image: article.featured_image,
-        category: categoryFromDB,          // Mantener la categoría original
-        categories: categories,            // Agregar array de categorías 
+        category: categoryFromDB,          // Solo mantener la categoría original
         tags: parsedTags,
         author_info: article.author_id ? {
           id: article.author_id,
