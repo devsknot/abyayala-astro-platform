@@ -6,8 +6,8 @@
     "/api/auth/verify",
     "/api/auth/user",
     "/admin/*",
-    "/api/ping-shallower",
-    "/api/content/debug/ping"
+    "/api/ping-shallower.js",
+    "/api/content/debug/ping.js"
   ],
   "exclude": [
   ]
