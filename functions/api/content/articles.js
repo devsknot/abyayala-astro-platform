@@ -125,7 +125,9 @@ async function handleGetArticles(env, headers) {
     
     // Usar D1 para obtener todos los artículos con información de autor
     const { results } = await env.DB.prepare(`
-      SELECT a.*, 
+      SELECT a.id, a.slug, a.title, a.description, a.content, a.pub_date, 
+             a.featured_image, a.author_id, a.author, a.tags, 
+             a.category, -- Seleccionar explícitamente el campo category
              aut.id as author_id, 
              aut.name as author_name, 
              aut.slug as author_slug, 
@@ -150,19 +152,24 @@ async function handleGetArticles(env, headers) {
       });
     }
     
+    // Obtener los primeros 5 artículos con categoría 'agricultura' para depuración
+    const agriculturaArticlesInDB = results.filter(a => a.category === 'agricultura').slice(0, 5);
+    if (agriculturaArticlesInDB.length > 0) {
+      console.log('Ejemplos de artículos con categoría agricultura en la base de datos:');
+      agriculturaArticlesInDB.forEach((article, index) => {
+        console.log(`${index + 1}. ${article.title} (category: ${article.category})`);
+      });
+    }
+
     // Transformar los nombres de los campos para que coincidan con lo que espera el frontend
     const transformedResults = results.map(article => {
-      // Asegurarnos de que el campo category esté presente y sea un string
-      // Usar directamente el valor de la base de datos
-      const categoryValue = article.category || '';
-      
-      // Crear un array para categories
-      const categoriesArray = categoryValue ? [categoryValue] : [];
+      // Forzar el campo category directamente desde la base de datos
+      const categoryFromDB = article.category || '';
       
       // Imprimir para depuración
-      if (categoryValue === 'agricultura') {
-        console.log(`Encontrado artículo con categoría 'agricultura': ${article.title}`);
-        console.log(`Valor original de category: ${article.category}`);
+      if (categoryFromDB === 'agricultura') {
+        console.log(`Transformando artículo con categoría 'agricultura': ${article.title}`);
+        console.log(`Valor original de category en DB: ${categoryFromDB}`);
       }
       
       // Construir el objeto transformado con ambos campos
@@ -172,8 +179,8 @@ async function handleGetArticles(env, headers) {
         description: article.description,
         content: article.content,
         pubDate: article.pub_date, // Transformar pub_date a pubDate
-        category: categoryValue, // Mantener el campo original para compatibilidad
-        categories: categoriesArray, // Agregar campo categories como array
+        category: categoryFromDB, // Forzar el campo category
+        categories: categoryFromDB ? [categoryFromDB] : [], // Forzar el campo categories como array
         featured_image: article.featured_image, // Usar solo featured_image
         author: article.author, // Campo de texto original
         tags: article.tags ? JSON.parse(article.tags) : [],
@@ -186,7 +193,7 @@ async function handleGetArticles(env, headers) {
       };
       
       // Agregar un log para depuración
-      if (categoryValue === 'agricultura') {
+      if (categoryFromDB === 'agricultura') {
         console.log(`Artículo con categoría agricultura transformado: ${article.title}`);
         console.log(`Datos del artículo: category=${transformed.category}, categories=${JSON.stringify(transformed.categories)}`);
       }
@@ -197,6 +204,28 @@ async function handleGetArticles(env, headers) {
     // Verificar cuántos artículos transformados tienen la categoría 'agricultura'
     const transformedAgriculturaCount = transformedResults.filter(a => a.category === 'agricultura').length;
     console.log(`Artículos transformados con categoría 'agricultura': ${transformedAgriculturaCount}`);
+    
+    // Imprimir los primeros 3 artículos transformados para depuración
+    if (transformedResults.length > 0) {
+      console.log('Muestra de los primeros 3 artículos transformados:');
+      for (let i = 0; i < Math.min(3, transformedResults.length); i++) {
+        const article = transformedResults[i];
+        console.log(`Artículo ${i+1}:`, {
+          title: article.title,
+          category: article.category,
+          categories: article.categories,
+          keys: Object.keys(article)
+        });
+      }
+    }
+    
+    // Forzar el campo category en todos los artículos con categoría 'agricultura'
+    transformedResults.forEach(article => {
+      if (article.category === 'agricultura') {
+        // Asegurarse de que el campo categories contenga al menos la categoría principal
+        article.categories = ['agricultura'];
+      }
+    });
     
     console.log('Artículos transformados para el frontend');
     
