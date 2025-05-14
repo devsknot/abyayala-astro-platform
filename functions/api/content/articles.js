@@ -153,8 +153,19 @@ async function handleGetArticles(env, headers) {
     // Transformar los nombres de los campos para que coincidan con lo que espera el frontend
     const transformedResults = results.map(article => {
       // Asegurarnos de que el campo category esté presente y sea un string
+      // Usar directamente el valor de la base de datos
       const categoryValue = article.category || '';
       
+      // Crear un array para categories
+      const categoriesArray = categoryValue ? [categoryValue] : [];
+      
+      // Imprimir para depuración
+      if (categoryValue === 'agricultura') {
+        console.log(`Encontrado artículo con categoría 'agricultura': ${article.title}`);
+        console.log(`Valor original de category: ${article.category}`);
+      }
+      
+      // Construir el objeto transformado con ambos campos
       const transformed = {
         slug: article.slug,
         title: article.title,
@@ -162,7 +173,7 @@ async function handleGetArticles(env, headers) {
         content: article.content,
         pubDate: article.pub_date, // Transformar pub_date a pubDate
         category: categoryValue, // Mantener el campo original para compatibilidad
-        categories: categoryValue ? [categoryValue] : [], // Agregar campo categories como array
+        categories: categoriesArray, // Agregar campo categories como array
         featured_image: article.featured_image, // Usar solo featured_image
         author: article.author, // Campo de texto original
         tags: article.tags ? JSON.parse(article.tags) : [],
@@ -177,6 +188,7 @@ async function handleGetArticles(env, headers) {
       // Agregar un log para depuración
       if (categoryValue === 'agricultura') {
         console.log(`Artículo con categoría agricultura transformado: ${article.title}`);
+        console.log(`Datos del artículo: category=${transformed.category}, categories=${JSON.stringify(transformed.categories)}`);
       }
       
       return transformed;
