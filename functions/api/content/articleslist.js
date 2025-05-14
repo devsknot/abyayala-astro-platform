@@ -1,6 +1,11 @@
 // Endpoint API para lista de artículos (sin guión para evitar problemas de ruta)
 export async function onRequest(context) {
+  console.log('>>> ENTRANDO A ENDPOINT ARTICLESLIST (SIN GUION) <<<');
   const { request, env } = context;
+  
+  // Log para depuración
+  console.log('URL de petición:', request.url);
+  console.log('Método:', request.method);
   
   // Configurar cabeceras CORS
   const headers = {

@@ -84,6 +84,8 @@ async function purgeUrls(urls) {
 // URLs específicas de la API para purgar
 const apiUrls = [
   'https://colectivoabyayala.org/api/content/articles',
+  'https://colectivoabyayala.org/api/content/articleslist',
+  'https://colectivoabyayala.org/api/content/articles-list',
   'https://colectivoabyayala.org/api/content/categories',
   'https://colectivoabyayala.org/api/content/articles/category/agricultura',
   'https://colectivoabyayala.org/api/content/articles/category/tecnologia-rural',
