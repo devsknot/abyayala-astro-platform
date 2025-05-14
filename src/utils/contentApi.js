@@ -121,8 +121,8 @@ async function getArticlesByCategoryFallback(category, origin = '') {
         const article = allArticles[i];
         console.log(`[RESPALDO] Artículo ${i+1}:`, {
           title: article.title,
-          category: article.category,
-          categoryType: typeof article.category,
+          categories: article.categories,
+          categoriesType: typeof article.categories,
           keys: Object.keys(article)
         });
       }
@@ -132,12 +132,32 @@ async function getArticlesByCategoryFallback(category, origin = '') {
     const normalizedCategory = String(category).trim().toLowerCase();
     console.log(`[RESPALDO] Categoría normalizada para búsqueda: "${normalizedCategory}"`);
     
-    // Mostrar todas las categorías disponibles en los artículos para ayudar a depurar
-    const availableCategories = [...new Set(allArticles.map(a => a.category).filter(Boolean))];
-    console.log(`[RESPALDO] Categorías disponibles en los artículos: ${JSON.stringify(availableCategories)}`);
+    // Extraer y mostrar todas las categorías disponibles en los artículos
+    // Verificamos tanto el campo 'category' (singular) como 'categories' (plural)
+    const availableCategories = [];
+    allArticles.forEach(article => {
+      // Verificar campo 'categories' (puede ser un array o string)
+      if (article.categories) {
+        if (Array.isArray(article.categories)) {
+          article.categories.forEach(cat => {
+            if (cat) availableCategories.push(String(cat));
+          });
+        } else {
+          availableCategories.push(String(article.categories));
+        }
+      }
+      // También verificar el campo 'category' por compatibilidad
+      else if (article.category) {
+        availableCategories.push(String(article.category));
+      }
+    });
+    
+    // Eliminar duplicados
+    const uniqueCategories = [...new Set(availableCategories)];
+    console.log(`[RESPALDO] Categorías disponibles en los artículos: ${JSON.stringify(uniqueCategories)}`);
     
     // Mostrar las categorías normalizadas para comparación
-    const normalizedCategories = availableCategories.map(c => ({ 
+    const normalizedCategories = uniqueCategories.map(c => ({ 
       original: c, 
       normalized: String(c).trim().toLowerCase() 
     }));
@@ -146,28 +166,46 @@ async function getArticlesByCategoryFallback(category, origin = '') {
     // Contar cuántos artículos tienen cada categoría
     const categoryCounts = {};
     allArticles.forEach(article => {
-      if (article.category) {
-        const cat = String(article.category).trim().toLowerCase();
-        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      // Verificar campo 'categories' (puede ser un array o string)
+      if (article.categories) {
+        if (Array.isArray(article.categories)) {
+          article.categories.forEach(cat => {
+            if (cat) {
+              const normalizedCat = String(cat).trim().toLowerCase();
+              categoryCounts[normalizedCat] = (categoryCounts[normalizedCat] || 0) + 1;
+            }
+          });
+        } else {
+          const normalizedCat = String(article.categories).trim().toLowerCase();
+          categoryCounts[normalizedCat] = (categoryCounts[normalizedCat] || 0) + 1;
+        }
+      }
+      // También verificar el campo 'category' por compatibilidad
+      else if (article.category) {
+        const normalizedCat = String(article.category).trim().toLowerCase();
+        categoryCounts[normalizedCat] = (categoryCounts[normalizedCat] || 0) + 1;
       }
     });
     console.log(`[RESPALDO] Conteo de artículos por categoría: ${JSON.stringify(categoryCounts)}`);
     
-    // Filtrar los artículos por la categoría especificada (más flexible)
+    // Filtrar artículos por la categoría solicitada
     const filteredArticles = allArticles.filter(article => {
-      // Verificar si el artículo tiene un campo category
-      if (!article.category) {
-        return false;
+      // Verificar en el campo 'categories' (puede ser array o string)
+      if (article.categories) {
+        if (Array.isArray(article.categories)) {
+          return article.categories.some(cat => 
+            cat && String(cat).trim().toLowerCase() === normalizedCategory
+          );
+        } else {
+          return String(article.categories).trim().toLowerCase() === normalizedCategory;
+        }
+      }
+      // También verificar en el campo 'category' por compatibilidad
+      else if (article.category) {
+        return String(article.category).trim().toLowerCase() === normalizedCategory;
       }
       
-      const articleCategory = String(article.category).trim().toLowerCase();
-      const matches = articleCategory === normalizedCategory;
-      
-      if (matches) {
-        console.log(`[RESPALDO] Coincidencia encontrada: Artículo "${article.title}" con categoría "${article.category}"`);
-      }
-      
-      return matches;
+      return false;
     });
     
     console.log(`[RESPALDO] Artículos filtrados para la categoría "${category}": ${filteredArticles.length}`);
