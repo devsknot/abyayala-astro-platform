@@ -137,6 +137,19 @@ async function handleGetArticles(env, headers) {
     
     console.log(`Recuperados ${results.length} artículos de la base de datos`);
     
+    // Contar cuántos artículos tienen la categoría 'agricultura'
+    const agriculturaCount = results.filter(a => a.category === 'agricultura').length;
+    console.log(`Artículos con categoría 'agricultura' en la base de datos: ${agriculturaCount}`);
+    
+    // Mostrar los primeros 5 artículos con categoría 'agricultura'
+    const agriculturaArticles = results.filter(a => a.category === 'agricultura').slice(0, 5);
+    if (agriculturaArticles.length > 0) {
+      console.log('Ejemplos de artículos con categoría agricultura:');
+      agriculturaArticles.forEach((article, index) => {
+        console.log(`${index + 1}. ${article.title} (slug: ${article.slug})`);
+      });
+    }
+    
     // Transformar los nombres de los campos para que coincidan con lo que espera el frontend
     const transformedResults = results.map(article => {
       // Asegurarnos de que el campo category esté presente y sea un string
@@ -149,6 +162,7 @@ async function handleGetArticles(env, headers) {
         content: article.content,
         pubDate: article.pub_date, // Transformar pub_date a pubDate
         category: categoryValue, // Mantener el campo original para compatibilidad
+        categories: categoryValue ? [categoryValue] : [], // Agregar campo categories como array
         featured_image: article.featured_image, // Usar solo featured_image
         author: article.author, // Campo de texto original
         tags: article.tags ? JSON.parse(article.tags) : [],
@@ -162,11 +176,15 @@ async function handleGetArticles(env, headers) {
       
       // Agregar un log para depuración
       if (categoryValue === 'agricultura') {
-        console.log(`Artículo con categoría agricultura encontrado: ${article.title}`);
+        console.log(`Artículo con categoría agricultura transformado: ${article.title}`);
       }
       
       return transformed;
     });
+    
+    // Verificar cuántos artículos transformados tienen la categoría 'agricultura'
+    const transformedAgriculturaCount = transformedResults.filter(a => a.category === 'agricultura').length;
+    console.log(`Artículos transformados con categoría 'agricultura': ${transformedAgriculturaCount}`);
     
     console.log('Artículos transformados para el frontend');
     
