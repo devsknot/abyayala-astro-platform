@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build",
+    "build": "astro build && npm run copy-functions",
     "preview": "astro preview",
     "astro": "astro",
     "init-db": "node scripts/init-database.js",
