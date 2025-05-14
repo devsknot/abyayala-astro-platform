@@ -4,6 +4,14 @@
 export async function onRequest(context) {
   const { request, next, env } = context;
   const url = new URL(request.url);
+  const path = url.pathname;
+  
+  // Manejar específicamente la ruta de artículos por categoría
+  if (path.startsWith('/api/content/articles-by-category/')) {
+    console.log(`[MIDDLEWARE] Detectada ruta de artículos por categoría: ${path}`);
+    // Redirigir a la implementación en articles-by-category.js
+    return context.next();
+  }
   
   // Configurar CORS para solicitudes API
   if (url.pathname.startsWith('/api/')) {
