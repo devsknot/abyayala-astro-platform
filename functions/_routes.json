@@ -1,12 +1,7 @@
 {
   "version": 1,
   "include": [
-    "/api/*",
-    "/api/content/articles-list",
-    "/api/content/articleslist",
-    "/api/content/allnews",
-    "/hello",
-    "/newsapi"
+    "/api/*"
   ],
   "exclude": []
 }

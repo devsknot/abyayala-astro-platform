@@ -37,7 +37,7 @@ Siguiente
 }, "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/news/index.astro", void 0);
 
 const $$file = "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/news/index.astro";
-const $$url = "/news";
+const $$url = "/news.html";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,

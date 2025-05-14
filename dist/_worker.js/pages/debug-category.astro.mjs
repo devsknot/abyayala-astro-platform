@@ -28,7 +28,7 @@ const $$DebugCategory = createComponent(async ($$result, $$props, $$slots) => {
 }, "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/debug-category.astro", void 0);
 
 const $$file = "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/debug-category.astro";
-const $$url = "/debug-category";
+const $$url = "/debug-category.html";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,

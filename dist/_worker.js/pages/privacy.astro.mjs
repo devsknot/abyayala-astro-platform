@@ -13,7 +13,7 @@ const $$Privacy = createComponent(($$result, $$props, $$slots) => {
 }, "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/privacy.astro", void 0);
 
 const $$file = "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/privacy.astro";
-const $$url = "/privacy";
+const $$url = "/privacy.html";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,

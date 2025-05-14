@@ -27,7 +27,7 @@ Un mundo donde la agricultura sea una actividad digna, sostenible y valorada, qu
 }, "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/about.astro", void 0);
 
 const $$file = "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/about.astro";
-const $$url = "/about";
+const $$url = "/about.html";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,

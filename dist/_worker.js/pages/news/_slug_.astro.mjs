@@ -73,7 +73,7 @@ const $$slug = createComponent(async ($$result, $$props, $$slots) => {
 }, "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/news/[slug].astro", void 0);
 
 const $$file = "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/news/[slug].astro";
-const $$url = "/news/[slug]";
+const $$url = "/news/[slug].html";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,

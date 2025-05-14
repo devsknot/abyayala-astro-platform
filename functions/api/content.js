@@ -100,70 +100,79 @@ async function verifyAuthentication(request, env) {
   return !!jwt; // Verificar que existe el token JWT
 }
 
-// Obtener todos los artículos con sus categorías
+// Obtener todos los artículos con transformación de categorías basada en la estructura real de la DB
 async function handleGetArticles(env, headers) {
   try {
-    console.log('Obteniendo todos los artículos con categorías');
+    console.log('[articles] Iniciando consulta de artículos');
     
-    // Usar D1 para obtener todos los artículos con información de autor
-    const { results } = await env.DB.prepare(`
+    // Query para obtener artículos con la estructura real de la DB (featured_image y tags conocidos)
+    const query = `
       SELECT a.id, a.slug, a.title, a.description, a.content, a.pub_date, 
-             a.featured_image, a.author_id, a.author, a.tags, 
-             a.category,
-             aut.id as author_id, 
-             aut.name as author_name, 
-             aut.slug as author_slug, 
-             aut.avatar as author_avatar
+             a.featured_image, a.author_id, a.category, a.tags,
+             aut.id as author_id, aut.name as author_name, 
+             aut.slug as author_slug, aut.avatar as author_avatar
       FROM articles a
       LEFT JOIN authors aut ON a.author_id = aut.id
       ORDER BY a.pub_date DESC
-    `).all();
+    `;
     
-    console.log(`Recuperados ${results.length} artículos de la base de datos`);
+    console.log('[articles] Ejecutando query:', query);
     
-    // Transformar los resultados para incluir categorías como array
+    const { results } = await env.DB.prepare(query).all();
+    
+    console.log(`[articles] Recuperados ${results.length} artículos de la base de datos`);
+    
+    // Transformar los resultados para incluir un array de categorías compatible con el frontend
     const transformedResults = results.map(article => {
-      // Obtener categoría desde DB
+      // Crear un array con la categoría principal si existe
       const categoryFromDB = article.category || '';
       let categories = [];
       
-      // Agregar categoría si existe
       if (categoryFromDB && categoryFromDB !== '') {
         categories.push(categoryFromDB);
       }
       
-      // Procesar tags para encontrar categorías adicionales
+      // Procesar tags para extraer categorías adicionales
+      let parsedTags = [];
       try {
-        const tags = article.tags ? JSON.parse(article.tags) : [];
-        const catTags = tags.filter(tag => tag.startsWith('cat:'));
-        if (catTags.length > 0) {
-          catTags.forEach(tag => {
-            const catName = tag.substring(4).trim();
-            if (catName && !categories.includes(catName)) {
-              categories.push(catName);
-            }
-          });
-        }
+        // Los tags están almacenados como JSON string en la DB
+        parsedTags = article.tags ? JSON.parse(article.tags) : [];
         
-        // Log para depuración
-        console.log(`Artículo [${article.slug}]: categoría principal [${categoryFromDB}], categorías finales [${categories.join(', ')}]`);
-        
+        // Extraer categorías de tags con prefijo "cat:"
+        const catTags = parsedTags.filter(tag => tag && typeof tag === 'string' && tag.startsWith('cat:'));
+        catTags.forEach(tag => {
+          const catName = tag.substring(4).trim();
+          if (catName && !categories.includes(catName)) {
+            categories.push(catName);
+          }
+        });
       } catch (e) {
-        console.error(`Error procesando tags para artículo ${article.slug}: ${e.message}`);
+        console.error(`[articles] Error procesando tags para artículo ${article.id} (${article.slug}):`, e.message);
+        console.error(`[articles] Tag value:`, article.tags);
       }
       
-      // Crear objeto transformado
+      // Solo mostrar logs detallados para los primeros 5 artículos
+      if (results.indexOf(article) < 5) {
+        console.log('========================================');
+        console.log(`Artículo: ${article.title} (${article.id})`);
+        console.log(`Categoría original: [${categoryFromDB}]`);
+        console.log(`Tags: ${JSON.stringify(parsedTags)}`);
+        console.log(`Categorías procesadas: ${JSON.stringify(categories)}`);
+        console.log('========================================');
+      }
+      
+      // Devolver objeto con el array de categorías y la estructura compatible con el frontend
       return {
+        id: article.id,
         slug: article.slug,
         title: article.title,
         description: article.description,
         content: article.content,
         pubDate: article.pub_date,
-        category: categoryFromDB,
-        categories: categories, // Incluir array de categorías
         featured_image: article.featured_image,
-        author: article.author,
-        tags: article.tags ? JSON.parse(article.tags) : [],
+        category: categoryFromDB,          // Mantener la categoría original
+        categories: categories,            // Agregar array de categorías 
+        tags: parsedTags,
         author_info: article.author_id ? {
           id: article.author_id,
           name: article.author_name,
@@ -181,7 +190,7 @@ async function handleGetArticles(env, headers) {
     
     return new Response(JSON.stringify(transformedResults), { headers: responseHeaders });
   } catch (error) {
-    console.error('Error al obtener artículos:', error);
+    console.error('[articles] Error al obtener artículos:', error);
     
     // Si hay un error con D1, usar datos de ejemplo como fallback
     if (env.ENVIRONMENT === 'development' || !env.DB) {
@@ -189,7 +198,11 @@ async function handleGetArticles(env, headers) {
       return new Response(JSON.stringify(fallbackArticles), { headers });
     }
     
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      success: false,
+      message: 'Error al obtener los artículos'
+    }), {
       status: 500,
       headers
     });

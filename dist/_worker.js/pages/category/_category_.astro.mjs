@@ -48,7 +48,7 @@ ${cat.id === categoryId && renderTemplate`<span class="highlight" data-astro-cid
 }, "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/category/[category].astro", void 0);
 
 const $$file = "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/category/[category].astro";
-const $$url = "/category/[category]";
+const $$url = "/category/[category].html";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,

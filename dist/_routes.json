@@ -1,26 +1,5 @@
 {
   "version": 1,
-  "include": [
-    "/*"
-  ],
-  "exclude": [
-    "/api/*",
-    "/admin/*",
-    "/_assets/*",
-    "/blog-placeholder-1.jpg",
-    "/blog-placeholder-2.jpg",
-    "/blog-placeholder-3.jpg",
-    "/blog-placeholder-4.jpg",
-    "/blog-placeholder-5.jpg",
-    "/blog-placeholder-about.jpg",
-    "/favicon.ico",
-    "/favicon.png",
-    "/favicon.svg",
-    "/fonts/*",
-    "/images/*",
-    "/img/*",
-    "/sample-images/*",
-    "/sitemap-0.xml",
-    "/sitemap-index.xml"
-  ]
+  "include": ["/*"],
+  "exclude": []
 }

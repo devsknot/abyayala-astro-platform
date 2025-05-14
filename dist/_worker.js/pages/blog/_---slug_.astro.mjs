@@ -1,7 +1,7 @@
 globalThis.process ??= {}; globalThis.process.env ??= {};
 /* empty css                                    */
 import { e as createAstro, c as createComponent, r as renderComponent, d as renderHead, f as renderSlot, b as addAttribute, a as renderTemplate } from '../../chunks/astro/server_Dxfbqb1K.mjs';
-import { g as getCollection, r as renderEntry } from '../../chunks/_astro_content__J0yNQM7.mjs';
+import { g as getCollection, r as renderEntry } from '../../chunks/_astro_content_qN6ZoGmM.mjs';
 import { $ as $$BaseHead, a as $$Header, b as $$Footer } from '../../chunks/Footer_DTxTTm51.mjs';
 import { $ as $$FormattedDate } from '../../chunks/FormattedDate_BSmNapZ7.mjs';
 /* empty css                                     */
@@ -32,7 +32,7 @@ const $$ = createComponent(async ($$result, $$props, $$slots) => {
 }, "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/blog/[...slug].astro", void 0);
 
 const $$file = "C:/Users/PorTacho/Documents/Knot/Proyecto/Prototipados/abyayala-astro-platform/src/pages/blog/[...slug].astro";
-const $$url = "/blog/[...slug]";
+const $$url = "/blog/[...slug].html";
 
 const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
 	__proto__: null,

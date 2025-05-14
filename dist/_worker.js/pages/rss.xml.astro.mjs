@@ -1,6 +1,6 @@
 globalThis.process ??= {}; globalThis.process.env ??= {};
 import { y as yellow } from '../chunks/astro/server_Dxfbqb1K.mjs';
-import { g as getCollection } from '../chunks/_astro_content__J0yNQM7.mjs';
+import { g as getCollection } from '../chunks/_astro_content_qN6ZoGmM.mjs';
 import { a as SITE_DESCRIPTION, S as SITE_TITLE } from '../chunks/consts_BxY7SPQk.mjs';
 export { renderers } from '../renderers.mjs';
 
