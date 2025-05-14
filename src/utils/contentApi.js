@@ -121,8 +121,8 @@ async function getArticlesByCategoryFallback(category, origin = '') {
         const article = allArticles[i];
         console.log(`[RESPALDO] Artículo ${i+1}:`, {
           title: article.title,
-          categories: article.categories,
-          categoriesType: typeof article.categories,
+          category: article.category,
+          categoryType: typeof article.category,
           keys: Object.keys(article)
         });
       }
@@ -133,21 +133,9 @@ async function getArticlesByCategoryFallback(category, origin = '') {
     console.log(`[RESPALDO] Categoría normalizada para búsqueda: "${normalizedCategory}"`);
     
     // Extraer y mostrar todas las categorías disponibles en los artículos
-    // Verificamos tanto el campo 'category' (singular) como 'categories' (plural)
     const availableCategories = [];
     allArticles.forEach(article => {
-      // Verificar campo 'categories' (puede ser un array o string)
-      if (article.categories) {
-        if (Array.isArray(article.categories)) {
-          article.categories.forEach(cat => {
-            if (cat) availableCategories.push(String(cat));
-          });
-        } else {
-          availableCategories.push(String(article.categories));
-        }
-      }
-      // También verificar el campo 'category' por compatibilidad
-      else if (article.category) {
+      if (article.category) {
         availableCategories.push(String(article.category));
       }
     });
@@ -166,22 +154,7 @@ async function getArticlesByCategoryFallback(category, origin = '') {
     // Contar cuántos artículos tienen cada categoría
     const categoryCounts = {};
     allArticles.forEach(article => {
-      // Verificar campo 'categories' (puede ser un array o string)
-      if (article.categories) {
-        if (Array.isArray(article.categories)) {
-          article.categories.forEach(cat => {
-            if (cat) {
-              const normalizedCat = String(cat).trim().toLowerCase();
-              categoryCounts[normalizedCat] = (categoryCounts[normalizedCat] || 0) + 1;
-            }
-          });
-        } else {
-          const normalizedCat = String(article.categories).trim().toLowerCase();
-          categoryCounts[normalizedCat] = (categoryCounts[normalizedCat] || 0) + 1;
-        }
-      }
-      // También verificar el campo 'category' por compatibilidad
-      else if (article.category) {
+      if (article.category) {
         const normalizedCat = String(article.category).trim().toLowerCase();
         categoryCounts[normalizedCat] = (categoryCounts[normalizedCat] || 0) + 1;
       }
@@ -190,29 +163,22 @@ async function getArticlesByCategoryFallback(category, origin = '') {
     
     // Filtrar artículos por la categoría solicitada
     const filteredArticles = allArticles.filter(article => {
-      // Verificar en el campo 'categories' (puede ser array o string)
-      if (article.categories) {
-        if (Array.isArray(article.categories)) {
-          return article.categories.some(cat => 
-            cat && String(cat).trim().toLowerCase() === normalizedCategory
-          );
-        } else {
-          return String(article.categories).trim().toLowerCase() === normalizedCategory;
-        }
-      }
-      // También verificar en el campo 'category' por compatibilidad
-      else if (article.category) {
-        return String(article.category).trim().toLowerCase() === normalizedCategory;
+      if (!article.category) return false;
+      
+      const articleCategory = String(article.category).trim().toLowerCase();
+      const matches = articleCategory === normalizedCategory;
+      
+      if (matches) {
+        console.log(`[RESPALDO] Coincidencia encontrada: Artículo "${article.title}" con categoría "${article.category}"`);
       }
       
-      return false;
+      return matches;
     });
     
     console.log(`[RESPALDO] Artículos filtrados para la categoría "${category}": ${filteredArticles.length}`);
-    
     return filteredArticles;
   } catch (error) {
-    console.error(`[RESPALDO] Error al filtrar artículos por categoría:`, error);
+    console.error(`Error al obtener artículos por categoría (fallback): ${error.message}`);
     return [];
   }
 }

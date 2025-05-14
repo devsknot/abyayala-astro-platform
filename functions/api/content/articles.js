@@ -145,7 +145,7 @@ async function handleGetArticles(env, headers) {
         description: article.description,
         content: article.content,
         pubDate: article.pub_date, // Transformar pub_date a pubDate
-        category: article.category,
+        category: article.category, // Campo de categoría singular
         featured_image: article.featured_image, // Usar solo featured_image
         author: article.author, // Campo de texto original
         tags: article.tags ? JSON.parse(article.tags) : [],
