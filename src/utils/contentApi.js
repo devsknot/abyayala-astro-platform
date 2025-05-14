@@ -93,47 +93,11 @@ export async function getArticleBySlug(slug, origin = '') {
  * @returns {Promise<Array>} Lista de artículos filtrados
  */
 export async function getArticlesByCategory(category, origin = '') {
-  const path = `/api/content/articles-by-category/${category}`;
-  const fetchUrl = origin ? `${origin}${path}` : path;
-  try {
-    console.log(`Obteniendo artículos para la categoría: "${category}" (Origin: ${origin || 'N/A'})`);    
-    console.log(`Usando endpoint dedicado: ${fetchUrl}`);
-    
-    const response = await fetch(fetchUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate'
-      }
-    });
-    
-    console.log('Respuesta de la API de artículos por categoría:', response.status, response.statusText);
-    
-    if (!response.ok) {
-      throw new Error(`Error al obtener artículos por categoría: ${response.status}`);
-    }
-    
-    // Obtener el texto de la respuesta para depuración
-    const responseText = await response.text();
-    
-    // Intentar parsear el texto como JSON
-    let articles;
-    try {
-      articles = JSON.parse(responseText);
-      console.log(`Artículos obtenidos para categoría ${category}: ${articles.length}`);
-    } catch (parseError) {
-      console.error('Error al parsear JSON de artículos por categoría:', parseError);
-      console.log('Texto de respuesta:', responseText.substring(0, 200) + '...');
-      return [];
-    }
-    
-    return articles;
-  } catch (error) {
-    console.error(`Error al obtener artículos por categoría: ${error.message}`);
-    console.log('Intentando método de fallback (filtrado cliente)...');
-    return getArticlesByCategoryFallback(category, origin);
-  }
+  console.log(`Obteniendo artículos para la categoría: "${category}" (Origin: ${origin || 'N/A'})`);
+  console.log('Usando método de filtrado en el cliente');
+  
+  // Siempre usar el método de filtrado en el cliente
+  return getArticlesByCategoryFallback(category, origin);
 }
 
 /**
