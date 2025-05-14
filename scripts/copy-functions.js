@@ -72,28 +72,7 @@ try {
     exclude: [
       // Routes handled by Cloudflare Functions
       "/api/*",
-      "/admin/*",
-      "/hello", // Add '/hello' to the exclude array
-
-      // Astro's primary static asset folder
-      "/_assets/*",
-
-      // Other static files and folders at the root of 'dist'
-      "/blog-placeholder-1.jpg",
-      "/blog-placeholder-2.jpg",
-      "/blog-placeholder-3.jpg",
-      "/blog-placeholder-4.jpg",
-      "/blog-placeholder-5.jpg",
-      "/blog-placeholder-about.jpg",
-      "/favicon.ico",
-      "/favicon.png",
-      "/favicon.svg",
-      "/fonts/*",
-      "/images/*",
-      "/img/*",
-      "/sample-images/*",
-      "/sitemap-0.xml",
-      "/sitemap-index.xml"
+      "/hello"
     ]
   };
 
