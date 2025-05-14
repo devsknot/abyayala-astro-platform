@@ -117,8 +117,28 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
           ))}
         </div>
       ) : (
-        <div class="no-content-message">
+        <div class="no-articles">
           <p>{noArticlesMessage}</p>
+          
+          <!-- Información de depuración -->
+          <div class="debug-info">
+            <h3>Información de depuración (solo visible en desarrollo)</h3>
+            <p><strong>Categoría solicitada:</strong> {categoryId}</p>
+            <p><strong>Categoría encontrada:</strong> {category ? 'Sí' : 'No'}</p>
+            <p><strong>Nombre de categoría:</strong> {category?.name}</p>
+            <p><strong>ID de categoría:</strong> {category?.id}</p>
+            <p><strong>Total de categorías disponibles:</strong> {categories.length}</p>
+            
+            <h4>Todas las categorías disponibles:</h4>
+            <ul>
+              {categories.map(cat => (
+                <li>
+                  <strong>{cat.name}</strong> (ID: {cat.id})
+                  {cat.id === categoryId && <span class="highlight"> ← COINCIDENCIA</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
       
