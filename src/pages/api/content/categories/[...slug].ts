@@ -180,20 +180,37 @@ async function verifyAuthentication(request: Request, env: any) {
 
 // Get all categories
 async function handleGetCategories(db: any, headers: HeadersInit) {
+  console.log('[categories/...slug.ts] Retrieving all categories');
   try {
     const { results } = await db.prepare(`
       SELECT * FROM categories
       ORDER BY name ASC
     `).all();
-    return new Response(JSON.stringify(results || []), { headers });
+    
+    console.log(`[categories/...slug.ts] Retrieved ${results.length} categories`);
+    
+    // Mostrar detalles para las primeras categorías para depuración
+    if (results.length > 0) {
+      const previewCategory = results[0];
+      console.log(`[categories/...slug.ts] First category: ${previewCategory.name}, Slug: ${previewCategory.slug}`);
+    }
+    
+    return new Response(JSON.stringify({
+      success: true,
+      categories: results || []
+    }), { headers });
   } catch (error: any) {
-    console.error('Error fetching categories:', error);
-    return new Response(JSON.stringify({error: 'Failed to fetch categories'}), { status: 500, headers });
+    console.error('[categories/...slug.ts] Error fetching categories:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to fetch categories'
+    }), { status: 500, headers });
   }
 }
 
 // Get a specific category by slug
 async function handleGetCategory(slug: string, db: any, headers: HeadersInit) {
+  console.log(`[categories/...slug.ts] Retrieving category with slug: ${slug}`);
   try {
     const category = await db.prepare(`
       SELECT * FROM categories
@@ -201,23 +218,41 @@ async function handleGetCategory(slug: string, db: any, headers: HeadersInit) {
     `).bind(slug).first();
 
     if (!category) {
-      return new Response(JSON.stringify({ error: 'Category not found' }), {
+      console.warn(`[categories/...slug.ts] Category not found: ${slug}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Category not found'
+      }), {
         status: 404,
         headers
       });
     }
-    return new Response(JSON.stringify(category), { headers });
+    
+    console.log(`[categories/...slug.ts] Retrieved category: ${category.name} (${category.slug})`);
+    return new Response(JSON.stringify({
+      success: true,
+      category: category
+    }), { headers });
   } catch (error: any) {
-    console.error(`Error fetching category ${slug}:`, error);
-    return new Response(JSON.stringify({error: 'Failed to fetch category'}), { status: 500, headers });
+    console.error(`[categories/...slug.ts] Error fetching category ${slug}:`, error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to fetch category'
+    }), { status: 500, headers });
   }
 }
 
 // Create a new category
 async function handleCreateCategory(categoryData: any, db: any, headers: HeadersInit) {
+  console.log(`[categories/...slug.ts] Creating new category: ${categoryData.name || 'Unnamed'}, Slug: ${categoryData.slug || 'no-slug'}`);
+  
   // Basic validation
   if (!categoryData || !categoryData.slug || !categoryData.name) {
-    return new Response(JSON.stringify({ error: 'Slug and name are required' }), {
+    console.warn('[categories/...slug.ts] Missing required fields for category creation');
+    return new Response(JSON.stringify({
+      success: false, 
+      error: 'Slug and name are required'
+    }), {
       status: 400,
       headers
     });
@@ -230,14 +265,20 @@ async function handleCreateCategory(categoryData: any, db: any, headers: Headers
     `).bind(categoryData.slug).first();
 
     if (existingCategory) {
-      return new Response(JSON.stringify({ error: 'Category slug already exists' }), {
+      console.warn(`[categories/...slug.ts] Category slug already exists: ${categoryData.slug}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Category slug already exists'
+      }), {
         status: 409,
         headers
       });
     }
 
+    console.log(`[categories/...slug.ts] Inserting new category: ${categoryData.name} (${categoryData.slug})`);
+    
     // Insert new category
-    await db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO categories (slug, name, description)
       VALUES (?, ?, ?)
     `).bind(
@@ -251,6 +292,8 @@ async function handleCreateCategory(categoryData: any, db: any, headers: Headers
       SELECT * FROM categories WHERE slug = ?
     `).bind(categoryData.slug).first();
 
+    console.log(`[categories/...slug.ts] Category created successfully: ${categoryData.name}`);
+    
     return new Response(JSON.stringify({
       success: true,
       message: 'Category created successfully',
@@ -261,8 +304,11 @@ async function handleCreateCategory(categoryData: any, db: any, headers: Headers
     });
 
   } catch (error: any) {
-    console.error('Error creating category:', error);
-    return new Response(JSON.stringify({ error: 'Failed to create category' }), {
+    console.error('[categories/...slug.ts] Error creating category:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to create category'
+    }), {
       status: 500,
       headers
     });
@@ -271,58 +317,86 @@ async function handleCreateCategory(categoryData: any, db: any, headers: Headers
 
 // Update an existing category
 async function handleUpdateCategory(slug: string, categoryData: any, db: any, headers: HeadersInit) {
+  console.log(`[categories/...slug.ts] Updating category with slug: ${slug}`);
+  
   // Basic validation
-   if (!categoryData || (!categoryData.name && !categoryData.description && categoryData.slug === slug)) {
-      return new Response(JSON.stringify({ error: 'No update data provided or slug cannot be changed here' }), {
-        status: 400,
-        headers
-      });
-   }
-   // Prevent changing the slug via this method if attempted
-   if (categoryData.slug && categoryData.slug !== slug) {
-       return new Response(JSON.stringify({ error: 'Changing the slug is not supported via PUT. Delete and recreate if necessary.' }), {
-           status: 400,
-           headers
-       });
-   }
+  if (!categoryData || (!categoryData.name && !categoryData.description && categoryData.slug === slug)) {
+    console.warn(`[categories/...slug.ts] No update data provided for category: ${slug}`);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'No update data provided or slug cannot be changed here'
+    }), {
+      status: 400,
+      headers
+    });
+  }
+  
+  // Prevent changing the slug via this method if attempted
+  if (categoryData.slug && categoryData.slug !== slug) {
+    console.warn(`[categories/...slug.ts] Attempted to change slug from ${slug} to ${categoryData.slug}`);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Changing the slug is not supported via PUT. Delete and recreate if necessary.'
+    }), {
+      status: 400,
+      headers
+    });
+  }
 
   try {
     // Check if category exists
-    const categoryExists = await db.prepare(`SELECT slug FROM categories WHERE slug = ?`).bind(slug).first();
+    const categoryExists = await db.prepare(`SELECT slug, name FROM categories WHERE slug = ?`).bind(slug).first();
     if (!categoryExists) {
-      return new Response(JSON.stringify({ error: 'Category not found' }), {
+      console.warn(`[categories/...slug.ts] Category not found for update: ${slug}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Category not found'
+      }), {
         status: 404,
         headers
       });
     }
 
+    console.log(`[categories/...slug.ts] Found category to update: ${categoryExists.name} (${slug})`);
+    
     // Build update query dynamically (only update provided fields)
     let setClauses = [];
     let bindings = [];
     if (categoryData.name) {
       setClauses.push('name = ?');
       bindings.push(categoryData.name);
+      console.log(`[categories/...slug.ts] Updating name for category ${slug} to: ${categoryData.name}`);
     }
     if (categoryData.hasOwnProperty('description')) { // Allow setting empty description
       setClauses.push('description = ?');
       bindings.push(categoryData.description);
+      console.log(`[categories/...slug.ts] Updating description for category ${slug}`);
     }
 
     if (setClauses.length === 0) {
-         return new Response(JSON.stringify({ error: 'No valid fields provided for update' }), {
-             status: 400,
-             headers
-         });
+      console.warn(`[categories/...slug.ts] No valid fields provided for update of category ${slug}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'No valid fields provided for update'
+      }), {
+        status: 400,
+        headers
+      });
     }
 
+    // Add updated_at field
+    setClauses.push('updated_at = datetime("now")');
+    
     bindings.push(slug); // For the WHERE clause
     const query = `UPDATE categories SET ${setClauses.join(', ')} WHERE slug = ?`;
+    console.log(`[categories/...slug.ts] Running update query for category ${slug}`);
 
     await db.prepare(query).bind(...bindings).run();
 
     // Fetch the updated category
     const updatedCategory = await db.prepare(`SELECT * FROM categories WHERE slug = ?`).bind(slug).first();
 
+    console.log(`[categories/...slug.ts] Category updated successfully: ${updatedCategory.name} (${slug})`);
     return new Response(JSON.stringify({
       success: true,
       message: 'Category updated successfully',
@@ -330,8 +404,11 @@ async function handleUpdateCategory(slug: string, categoryData: any, db: any, he
     }), { headers });
 
   } catch (error: any) {
-    console.error(`Error updating category ${slug}:`, error);
-    return new Response(JSON.stringify({ error: 'Failed to update category' }), {
+    console.error(`[categories/...slug.ts] Error updating category ${slug}:`, error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to update category'
+    }), {
       status: 500,
       headers
     });
@@ -340,47 +417,73 @@ async function handleUpdateCategory(slug: string, categoryData: any, db: any, he
 
 // Delete a category
 async function handleDeleteCategory(slug: string, db: any, headers: HeadersInit) {
+  console.log(`[categories/...slug.ts] Deleting category with slug: ${slug}`);
+  
   try {
     // Check if category exists
-    const categoryExists = await db.prepare(`SELECT slug FROM categories WHERE slug = ?`).bind(slug).first();
+    const categoryExists = await db.prepare(`SELECT slug, name FROM categories WHERE slug = ?`).bind(slug).first();
     if (!categoryExists) {
-      return new Response(JSON.stringify({ error: 'Category not found' }), {
+      console.warn(`[categories/...slug.ts] Category not found for deletion: ${slug}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Category not found'
+      }), {
+        status: 404,
+        headers
+      });
+    }
+    
+    console.log(`[categories/...slug.ts] Found category to delete: ${categoryExists.name} (${slug})`);
+
+    // Check if category is in use by articles before deleting
+    // Cambiamos la consulta para que use category (singular) en lugar de categories (plural)
+    const articlesUsingCategory = await db.prepare(`
+        SELECT COUNT(*) as count FROM articles WHERE category = ?
+    `).bind(slug).first();
+
+    if (articlesUsingCategory && articlesUsingCategory.count > 0) {
+      console.warn(`[categories/...slug.ts] Cannot delete category '${slug}' as it is currently used by ${articlesUsingCategory.count} article(s)`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: `Cannot delete category '${slug}' as it is currently used by ${articlesUsingCategory.count} article(s).`
+      }), {
+        status: 409, // Conflict
+        headers
+      });
+    }
+
+    // Delete the category
+    const result = await db.prepare(`DELETE FROM categories WHERE slug = ?`).bind(slug).run();
+    console.log(`[categories/...slug.ts] Deletion query executed for category ${slug}. Changes: ${result.changes}`);
+
+    if (result.changes > 0) {
+      console.log(`[categories/...slug.ts] Category deleted successfully: ${categoryExists.name} (${slug})`);
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Category deleted successfully',
+        slug: slug
+      }), {
+        status: 200,
+        headers
+      });
+    } else {
+      // Should not happen if existence check passed, but as a fallback
+      console.warn(`[categories/...slug.ts] Unexpected: Category not found during deletion: ${slug}`);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Category not found or already deleted'
+      }), {
         status: 404,
         headers
       });
     }
 
-    // Optional: Check if category is in use by articles before deleting
-    const articlesUsingCategory = await db.prepare(`
-        SELECT COUNT(*) as count FROM articles WHERE categories LIKE ?
-    `).bind(`%"${slug}"%`).first();
-
-    if (articlesUsingCategory && (articlesUsingCategory as any).count > 0) {
-        return new Response(JSON.stringify({ error: `Cannot delete category '${slug}' as it is currently used by ${(articlesUsingCategory as any).count} article(s).` }), {
-            status: 409, // Conflict
-            headers
-        });
-    }
-
-    // Delete the category
-    const result = await db.prepare(`DELETE FROM categories WHERE slug = ?`).bind(slug).run();
-
-    if (result.changes > 0) {
-        return new Response(JSON.stringify({ success: true, message: 'Category deleted successfully' }), {
-            status: 200,
-            headers
-        });
-    } else {
-        // Should not happen if existence check passed, but as a fallback
-        return new Response(JSON.stringify({ error: 'Category not found or already deleted' }), {
-            status: 404,
-            headers
-        });
-    }
-
   } catch (error: any) {
-    console.error(`Error deleting category ${slug}:`, error);
-    return new Response(JSON.stringify({ error: 'Failed to delete category' }), {
+    console.error(`[categories/...slug.ts] Error deleting category ${slug}:`, error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to delete category'
+    }), {
       status: 500,
       headers
     });
