@@ -3,6 +3,7 @@
   "include": [
     "/api/*",
     "/api/content/articles-list",
+    "/api/content/articleslist",
     "/hello"
   ],
   "exclude": []
