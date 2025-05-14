@@ -123,6 +123,28 @@ async function handleGetArticles(env, headers) {
   try {
     console.log('Obteniendo todos los artículos');
     
+    // Primero verificar el schema de la tabla 'articles'
+    console.log('Verificando schema de la tabla articles...');
+    try {
+      const schema = await env.DB.prepare(`PRAGMA table_info(articles)`).all();
+      console.log('Schema de tabla articles:', schema.results);
+    } catch (e) {
+      console.error('Error al verificar schema:', e);
+    }
+    
+    // Examinar directamente las categorías en la base de datos
+    try {
+      const categoryCheck = await env.DB.prepare(`
+        SELECT id, slug, title, category 
+        FROM articles 
+        WHERE category IS NOT NULL AND category != '' 
+        LIMIT 5
+      `).all();
+      console.log('Artículos con categoría (sin filtrar):', categoryCheck.results);
+    } catch (e) {
+      console.error('Error al verificar categorías:', e);
+    }
+    
     // Usar D1 para obtener todos los artículos con información de autor
     const { results } = await env.DB.prepare(`
       SELECT a.id, a.slug, a.title, a.description, a.content, a.pub_date, 
@@ -161,18 +183,53 @@ async function handleGetArticles(env, headers) {
       });
     }
 
+    // Imprimir para depuración los primeros 5 resultados completos
+    if (results.length > 0) {
+      console.log('Primeros 5 resultados directamente de la DB:');
+      results.slice(0, 5).forEach((article, idx) => {
+        console.log(`Artículo ${idx+1}:`, {
+          id: article.id,
+          title: article.title,
+          category: article.category,
+          categoryType: typeof article.category,
+          allKeys: Object.keys(article)
+        });
+      });
+    }
+    
     // Transformar los nombres de los campos para que coincidan con lo que espera el frontend
     const transformedResults = results.map(article => {
-      // Forzar el campo category directamente desde la base de datos
-      const categoryFromDB = article.category || '';
+      // Obtener y analizar categorías (diferentes estrategias)
+      let categories = [];
       
-      // Imprimir para depuración
-      if (categoryFromDB === 'agricultura') {
-        console.log(`Transformando artículo con categoría 'agricultura': ${article.title}`);
-        console.log(`Valor original de category en DB: ${categoryFromDB}`);
+      // Estrategia 1: Usar el campo category si existe
+      const categoryFromDB = article.category || '';
+      if (categoryFromDB && categoryFromDB !== '') {
+        categories.push(categoryFromDB);
       }
       
-      // Construir el objeto transformado convirtiendo category en un array categories
+      // Estrategia 2: Revisar si hay categorías en JSON en el campo tags
+      try {
+        const tags = article.tags ? JSON.parse(article.tags) : [];
+        // Ver si hay alguna etiqueta que podría ser una categoría (comienza con 'cat:')
+        const catTags = tags.filter(tag => tag.startsWith('cat:'));
+        if (catTags.length > 0) {
+          catTags.forEach(tag => {
+            const catName = tag.substring(4).trim(); // Remover 'cat:'
+            if (catName && !categories.includes(catName)) {
+              categories.push(catName);
+            }
+          });
+        }
+      } catch (e) {
+        console.error(`Error al analizar tags para artículo ${article.title}:`, e);
+      }
+      
+      // Imprimir para depuración
+      console.log(`Artículo: ${article.title}, categorías encontradas:`, categories);
+      
+      
+      // Construir el objeto transformado usando las categorías extraídas
       const transformed = {
         slug: article.slug,
         title: article.title,
@@ -180,7 +237,7 @@ async function handleGetArticles(env, headers) {
         content: article.content,
         pubDate: article.pub_date, // Transformar pub_date a pubDate
         category: categoryFromDB, // Mantener el campo category tal como viene de la DB
-        categories: categoryFromDB ? [categoryFromDB] : [], // Convertir category a array categories
+        categories: categories, // Usar el array de categorías que construimos
         featured_image: article.featured_image,
         author: article.author, // Campo de texto original
         tags: article.tags ? JSON.parse(article.tags) : [],
@@ -191,6 +248,13 @@ async function handleGetArticles(env, headers) {
           avatar: article.author_avatar
         } : null
       };
+      
+      // Verificar si terminamos con categorías vacías cuando no debería ser así
+      if (categoryFromDB && transformed.categories.length === 0) {
+        console.log(`ERROR: Artículo ${transformed.title} tiene category='${categoryFromDB}' pero categories está vacío`);
+        // Forzar la categoría si es necesario
+        transformed.categories = [categoryFromDB];
+      }
       
       // Agregar un log para depuración
       if (categoryFromDB === 'agricultura') {
