@@ -1,8 +1,6 @@
 // Función para gestionar artículos por categoría a través de Cloudflare Functions
 export async function onRequest(context) {
   const { request, env } = context;
-  const url = new URL(request.url);
-  const path = url.pathname;
   
   // Configurar cabeceras CORS
   const headers = {
@@ -25,26 +23,13 @@ export async function onRequest(context) {
   }
   
   try {
-    // Extraer el ID de la categoría de la URL
-    // Formato esperado: /api/content/articles-by-category/{categoryId}
-    const parts = path.split('/');
-    const categoryId = parts[parts.length - 1];
+    // Extraer el ID de la categoría de los parámetros
+    const { categoryId } = context.params;
     
-    console.log(`Solicitud recibida: ${request.method} ${path}, categoryId: ${categoryId}`);
-    
-    // Verificar si estamos en la ruta raíz o en una categoría específica
-    const isRootPath = path === '/api/content/articles-by-category' || path === '/api/content/articles-by-category/';
+    console.log(`Solicitud recibida: ${request.method}, categoryId: ${categoryId}`);
     
     if (request.method === 'GET') {
-      if (!isRootPath && categoryId !== 'articles-by-category') {
-        return handleGetArticlesByCategory(categoryId, env, headers);
-      } else {
-        // Si estamos en la ruta raíz, devolver un mensaje de error
-        return new Response(JSON.stringify({ error: 'Se requiere especificar una categoría' }), {
-          status: 400,
-          headers
-        });
-      }
+      return handleGetArticlesByCategory(categoryId, env, headers);
     }
     
     // Método no permitido
