@@ -1,8 +1,5 @@
 // Función para gestionar artículos por categoría a través de Cloudflare Functions
 export async function onRequest(context) {
-  // --- Add log here ---
-  console.log('[articles-by-category.js] onRequest invoked');
-  // --------------------
   const { request, env } = context;
   const url = new URL(request.url);
   const path = url.pathname;
@@ -28,30 +25,22 @@ export async function onRequest(context) {
   }
   
   try {
-    console.log(`Solicitud recibida: ${request.method} ${path}`);
-    
-    // Extraer el ID de la categoría si está presente en la URL
+    // Extraer el ID de la categoría de la URL
     // Formato esperado: /api/content/articles-by-category/{categoryId}
     const parts = path.split('/');
     const categoryId = parts[parts.length - 1];
     
+    console.log(`Solicitud recibida: ${request.method} ${path}, categoryId: ${categoryId}`);
+    
     // Verificar si estamos en la ruta raíz o en una categoría específica
     const isRootPath = path === '/api/content/articles-by-category' || path === '/api/content/articles-by-category/';
-    const isSpecificCategory = !isRootPath && categoryId !== 'articles-by-category';
-    
-    console.log(`[DEBUG] Path: ${path}, CategoryId: ${categoryId}, isSpecificCategory: ${isSpecificCategory}`);
     
     if (request.method === 'GET') {
-      if (isSpecificCategory) {
-        console.log(`[DEBUG] Obteniendo artículos para la categoría: ${categoryId}`);
+      if (!isRootPath && categoryId !== 'articles-by-category') {
         return handleGetArticlesByCategory(categoryId, env, headers);
       } else {
         // Si estamos en la ruta raíz, devolver un mensaje de error
-        return new Response(JSON.stringify({ 
-          error: 'Se requiere especificar una categoría', 
-          path: path,
-          debug: 'Ruta raíz de articles-by-category'
-        }), {
+        return new Response(JSON.stringify({ error: 'Se requiere especificar una categoría' }), {
           status: 400,
           headers
         });
@@ -65,11 +54,7 @@ export async function onRequest(context) {
     });
   } catch (error) {
     console.error('Error en la API de artículos por categoría:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message || 'Error del servidor',
-      path: path,
-      debug: 'Error al procesar la solicitud de artículos por categoría'
-    }), {
+    return new Response(JSON.stringify({ error: error.message || 'Error del servidor' }), {
       status: 500,
       headers
     });
@@ -79,65 +64,32 @@ export async function onRequest(context) {
 // Obtener artículos por categoría
 async function handleGetArticlesByCategory(categoryId, env, headers) {
   try {
-    console.log(`[DEBUG] Obteniendo artículos para la categoría: ${categoryId}`);
-    
-    // Verificar si tenemos acceso a la base de datos
-    if (!env.DB) {
-      console.error(`[ERROR] No se pudo acceder a la base de datos D1`);
-      return new Response(JSON.stringify({
-        error: 'Error de configuración: No se pudo acceder a la base de datos',
-        debug: 'env.DB no está disponible'
-      }), {
-        status: 500,
-        headers
-      });
-    }
+    console.log(`Obteniendo artículos para la categoría: ${categoryId}`);
     
     // Usar D1 para obtener artículos filtrados por categoría
-    console.log(`[DEBUG] Ejecutando consulta SQL para categoría: ${categoryId}`);
     const { results } = await env.DB.prepare(`
       SELECT * FROM articles WHERE category = ? ORDER BY pub_date DESC
     `).bind(categoryId).all();
     
-    console.log(`[DEBUG] Resultados SQL para categoría '${categoryId}': ${results ? results.length : 0} artículos encontrados`);
+    console.log(`Recuperados ${results ? results.length : 0} artículos para la categoría ${categoryId}`);
     
     // Transformar los nombres de los campos para el frontend
-    const transformedResults = results ? results.map(article => {
-      // Verificar que todos los campos existan
-      const transformed = {
-        slug: article.slug || '',
-        title: article.title || '',
-        description: article.description || '',
-        content: article.content || '',
-        pubDate: article.pub_date || null,
-        category: article.category || '',
-        featured_image: article.featured_image || null,
-        author: article.author || '',
-        tags: []
-      };
-      
-      // Intentar parsear tags si existen
-      if (article.tags) {
-        try {
-          transformed.tags = JSON.parse(article.tags);
-        } catch (e) {
-          console.warn(`[WARN] Error al parsear tags para artículo ${article.slug}:`, e);
-          transformed.tags = [];
-        }
-      }
-      
-      return transformed;
-    }) : [];
+    const transformedResults = results ? results.map(article => ({
+      slug: article.slug || '',
+      title: article.title || '',
+      description: article.description || '',
+      content: article.content || '',
+      pubDate: article.pub_date || null,
+      category: article.category || '',
+      featured_image: article.featured_image || null,
+      author: article.author || '',
+      tags: article.tags ? JSON.parse(article.tags) : []
+    })) : [];
     
-    console.log(`[DEBUG] Transformados ${transformedResults.length} artículos para la respuesta`);
     return new Response(JSON.stringify(transformedResults), { headers });
   } catch (error) {
-    console.error(`[ERROR] Error al obtener artículos para la categoría ${categoryId}:`, error);
-    return new Response(JSON.stringify({
-      error: error.message || 'Error del servidor',
-      category: categoryId,
-      debug: 'Error al procesar la consulta de artículos por categoría'
-    }), {
+    console.error(`Error al obtener artículos para la categoría ${categoryId}:`, error);
+    return new Response(JSON.stringify({ error: error.message || 'Error del servidor' }), {
       status: 500,
       headers
     });
