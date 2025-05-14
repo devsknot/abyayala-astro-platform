@@ -14,6 +14,9 @@ export default defineConfig({
     platformProxy: {
       enabled: true,
       persistPaths: ['./.wrangler']
+    },
+    routes: {
+      exclude: ['/api/*']
     }
   }),
   build: {
