@@ -139,13 +139,16 @@ async function handleGetArticles(env, headers) {
     
     // Transformar los nombres de los campos para que coincidan con lo que espera el frontend
     const transformedResults = results.map(article => {
+      // Asegurarnos de que el campo category esté presente y sea un string
+      const categoryValue = article.category || '';
+      
       const transformed = {
         slug: article.slug,
         title: article.title,
         description: article.description,
         content: article.content,
         pubDate: article.pub_date, // Transformar pub_date a pubDate
-        category: article.category, // Campo de categoría singular
+        category: categoryValue, // Mantener el campo original para compatibilidad
         featured_image: article.featured_image, // Usar solo featured_image
         author: article.author, // Campo de texto original
         tags: article.tags ? JSON.parse(article.tags) : [],
@@ -156,6 +159,11 @@ async function handleGetArticles(env, headers) {
           avatar: article.author_avatar
         } : null
       };
+      
+      // Agregar un log para depuración
+      if (categoryValue === 'agricultura') {
+        console.log(`Artículo con categoría agricultura encontrado: ${article.title}`);
+      }
       
       return transformed;
     });

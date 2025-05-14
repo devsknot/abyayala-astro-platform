@@ -132,50 +132,63 @@ async function getArticlesByCategoryFallback(category, origin = '') {
     const normalizedCategory = String(category).trim().toLowerCase();
     console.log(`[RESPALDO] Categoría normalizada para búsqueda: "${normalizedCategory}"`);
     
-    // Extraer y mostrar todas las categorías disponibles en los artículos
-    const availableCategories = [];
-    allArticles.forEach(article => {
-      if (article.category) {
-        availableCategories.push(String(article.category));
-      }
-    });
-    
-    // Eliminar duplicados
-    const uniqueCategories = [...new Set(availableCategories)];
-    console.log(`[RESPALDO] Categorías disponibles en los artículos: ${JSON.stringify(uniqueCategories)}`);
-    
-    // Mostrar las categorías normalizadas para comparación
-    const normalizedCategories = uniqueCategories.map(c => ({ 
-      original: c, 
-      normalized: String(c).trim().toLowerCase() 
-    }));
-    console.log(`[RESPALDO] Categorías normalizadas: ${JSON.stringify(normalizedCategories)}`);
-    
-    // Contar cuántos artículos tienen cada categoría
-    const categoryCounts = {};
-    allArticles.forEach(article => {
-      if (article.category) {
-        const normalizedCat = String(article.category).trim().toLowerCase();
-        categoryCounts[normalizedCat] = (categoryCounts[normalizedCat] || 0) + 1;
-      }
-    });
-    console.log(`[RESPALDO] Conteo de artículos por categoría: ${JSON.stringify(categoryCounts)}`);
-    
     // Filtrar artículos por la categoría solicitada
     const filteredArticles = allArticles.filter(article => {
-      if (!article.category) return false;
-      
-      const articleCategory = String(article.category).trim().toLowerCase();
-      const matches = articleCategory === normalizedCategory;
-      
-      if (matches) {
-        console.log(`[RESPALDO] Coincidencia encontrada: Artículo "${article.title}" con categoría "${article.category}"`);
+      // Verificar si el artículo tiene categoría
+      if (!article.category && !article.categories) {
+        return false;
       }
       
-      return matches;
+      // Verificar en el campo category (principal)
+      if (article.category) {
+        const articleCategory = String(article.category).trim().toLowerCase();
+        const matches = articleCategory === normalizedCategory;
+        
+        if (matches) {
+          console.log(`[RESPALDO] Coincidencia encontrada en campo 'category': Artículo "${article.title}" con categoría "${article.category}"`);
+          return true;
+        }
+      }
+      
+      // Como respaldo, verificar también en el campo categories si existe
+      if (article.categories) {
+        // Si es un array
+        if (Array.isArray(article.categories) && article.categories.length > 0) {
+          const found = article.categories.some(cat => {
+            if (!cat) return false;
+            return String(cat).trim().toLowerCase() === normalizedCategory;
+          });
+          
+          if (found) {
+            console.log(`[RESPALDO] Coincidencia encontrada en campo 'categories': Artículo "${article.title}"`);
+            return true;
+          }
+        }
+        // Si es un string
+        else if (typeof article.categories === 'string' && article.categories) {
+          const catValue = String(article.categories).trim().toLowerCase();
+          if (catValue === normalizedCategory) {
+            console.log(`[RESPALDO] Coincidencia encontrada en campo 'categories' (string): Artículo "${article.title}"`);
+            return true;
+          }
+        }
+      }
+      
+      return false;
     });
     
     console.log(`[RESPALDO] Artículos filtrados para la categoría "${category}": ${filteredArticles.length}`);
+    
+    // Mostrar los títulos de los artículos encontrados para depuración
+    if (filteredArticles.length > 0) {
+      console.log('[RESPALDO] Artículos encontrados:');
+      filteredArticles.forEach((article, index) => {
+        console.log(`[RESPALDO] ${index + 1}. ${article.title} (categoría: ${article.category})`);
+      });
+    } else {
+      console.log('[RESPALDO] No se encontraron artículos para esta categoría');
+    }
+    
     return filteredArticles;
   } catch (error) {
     console.error(`Error al obtener artículos por categoría (fallback): ${error.message}`);
