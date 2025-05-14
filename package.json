@@ -5,11 +5,10 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build && npm run copy-functions",
+    "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
     "init-db": "node scripts/init-database.js",
-    "copy-functions": "node scripts/copy-functions.js",
     "predeploy": "rimraf node_modules && npm ci --omit=dev",
     "deploy": "npm run build && npx wrangler pages deploy dist --project-name abyayala-astro-platform --branch main --env production"
   },
