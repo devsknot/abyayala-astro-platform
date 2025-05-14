@@ -45,6 +45,8 @@ export async function onRequest(context) {
           }
         });
       }
+      // SI LA AUTENTICACIÓN ES EXITOSA PARA POST, PUT, DELETE, ETC., CONTINUAR:
+      return await next();
     }
   }
   
