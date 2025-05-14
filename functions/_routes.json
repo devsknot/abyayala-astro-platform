@@ -5,7 +5,8 @@
     "/api/content/articles-list",
     "/api/content/articleslist",
     "/api/content/allnews",
-    "/hello"
+    "/hello",
+    "/newsapi"
   ],
   "exclude": []
 }
