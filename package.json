@@ -10,7 +10,7 @@
     "astro": "astro",
     "init-db": "node scripts/init-database.js",
     "copy-functions": "node scripts/copy-functions.js",
-    "predeploy": "rm -rf node_modules && npm ci --omit=dev",
+    "predeploy": "rimraf node_modules && npm ci --omit=dev",
     "deploy": "npm run build && npx wrangler pages deploy dist --project-name abyayala-astro-platform --branch main --env production"
   },
   "dependencies": {
@@ -25,6 +25,7 @@
     "wrangler": "^3.69.1"
   },
   "devDependencies": {
+    "rimraf": "^3.0.2",
     "sharp": "^0.34.1"
   }
 }
