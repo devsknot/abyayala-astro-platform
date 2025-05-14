@@ -5,6 +5,7 @@ import sitemap from '@astrojs/sitemap';
 import tailwind from '@astrojs/tailwind';
 import cloudflare from '@astrojs/cloudflare';
 
+// Intentando invalidar la caché de construcción con un comentario - {{TIMESTAMP}}
 export default defineConfig({
   site: 'https://colectivoabyayala.org',
   integrations: [mdx(), sitemap(), tailwind()],
