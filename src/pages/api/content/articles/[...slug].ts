@@ -17,8 +17,7 @@ function transformArticleForFrontend(article: any) {
         description: article.description,
         content: article.content,
         pubDate: article.pub_date, // Transform pub_date to pubDate
-        // category: article.category, // Original was category, seems redundant if categories is present?
-        categories: article.categories ? JSON.parse(article.categories) : [], // Assuming categories is a JSON array string
+        category: article.category || '', // Usar solo category, no categories
         featured_image: article.featured_image,
         author_info: article.author_id ? { // Use author_info for structured data
             id: article.author_id,
@@ -274,11 +273,11 @@ async function handleCreateArticle(articleData: any, db: any, headers: HeadersIn
         }
 
         // Prepare data for insertion
-        const categoriesString = JSON.stringify(articleData.categories || []);
+        const category = articleData.category || ''; // Use category as a simple string
         const tagsString = JSON.stringify(articleData.tags || []);
 
         const result = await db.prepare(`
-            INSERT INTO articles (slug, title, description, content, pub_date, categories, featured_image, author_id, tags)
+            INSERT INTO articles (slug, title, description, content, pub_date, category, featured_image, author_id, tags)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
             articleData.slug,
@@ -286,7 +285,7 @@ async function handleCreateArticle(articleData: any, db: any, headers: HeadersIn
             articleData.description || '',
             articleData.content || '',
             pubDate,
-            categoriesString, // Store as JSON string
+            category, // Store as simple string
             articleData.featured_image || '',
             articleData.author_id || null, // Expecting author_id from frontend now
             tagsString // Store as JSON string
@@ -374,10 +373,10 @@ async function handleUpdateArticle(slug: string, articleData: any, db: any, head
             }
         }
 
-        // Handle categories update (store as JSON string)
-        if (articleData.hasOwnProperty('categories') && Array.isArray(articleData.categories)) {
-            setClauses.push('categories = ?');
-            bindings.push(JSON.stringify(articleData.categories));
+        // Handle category update (store as simple string)
+        if (articleData.hasOwnProperty('category')) {
+            setClauses.push('category = ?');
+            bindings.push(articleData.category || '');
         }
 
         // Handle tags update (store as JSON string)
