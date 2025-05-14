@@ -114,6 +114,20 @@ async function getArticlesByCategoryFallback(category, origin = '') {
     const allArticles = await getAllArticles(origin);
     console.log(`[RESPALDO] Total de artículos obtenidos: ${allArticles.length}`);
     
+    // Imprimir los primeros 3 artículos para depuración
+    if (allArticles.length > 0) {
+      console.log('[RESPALDO] Muestra de los primeros 3 artículos:');
+      for (let i = 0; i < Math.min(3, allArticles.length); i++) {
+        const article = allArticles[i];
+        console.log(`[RESPALDO] Artículo ${i+1}:`, {
+          title: article.title,
+          category: article.category,
+          categoryType: typeof article.category,
+          keys: Object.keys(article)
+        });
+      }
+    }
+    
     // Normalizar la categoría para la comparación
     const normalizedCategory = String(category).trim().toLowerCase();
     console.log(`[RESPALDO] Categoría normalizada para búsqueda: "${normalizedCategory}"`);
@@ -129,10 +143,20 @@ async function getArticlesByCategoryFallback(category, origin = '') {
     }));
     console.log(`[RESPALDO] Categorías normalizadas: ${JSON.stringify(normalizedCategories)}`);
     
+    // Contar cuántos artículos tienen cada categoría
+    const categoryCounts = {};
+    allArticles.forEach(article => {
+      if (article.category) {
+        const cat = String(article.category).trim().toLowerCase();
+        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      }
+    });
+    console.log(`[RESPALDO] Conteo de artículos por categoría: ${JSON.stringify(categoryCounts)}`);
+    
     // Filtrar los artículos por la categoría especificada (más flexible)
     const filteredArticles = allArticles.filter(article => {
+      // Verificar si el artículo tiene un campo category
       if (!article.category) {
-        console.log(`[RESPALDO] Artículo sin categoría: ${article.title || 'Sin título'}`);
         return false;
       }
       
