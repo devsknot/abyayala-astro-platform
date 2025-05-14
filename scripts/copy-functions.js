@@ -44,13 +44,55 @@ function copyDir(src, dest) {
 }
 
 // Directorios de origen y destino
-const srcDir = path.join(__dirname, '..', 'functions');
-const destDir = path.join(__dirname, '..', 'dist', 'functions');
+const functionsDir = path.join(__dirname, '..', 'functions');
+const distDir = path.join(__dirname, '..', 'dist');
+const destFunctionsDir = path.join(distDir, 'functions');
 
 try {
   console.log('Copiando funciones al directorio de salida...');
-  copyDir(srcDir, destDir);
+  copyDir(functionsDir, destFunctionsDir);
   console.log('Funciones copiadas correctamente.');
+
+  // Crear manualmente el archivo dist/_routes.json
+  const routesJsonPath = path.join(distDir, '_routes.json');
+  const routesJsonContent = {
+    version: 1,
+    include: [
+      "/*" // Default to Astro SSR
+    ],
+    exclude: [
+      // Routes handled by Cloudflare Functions
+      "/api/*",
+      "/admin/*",
+
+      // Astro's primary static asset folder
+      "/_assets/*",
+
+      // Other static files and folders at the root of 'dist'
+      "/blog-placeholder-1.jpg",
+      "/blog-placeholder-2.jpg",
+      "/blog-placeholder-3.jpg",
+      "/blog-placeholder-4.jpg",
+      "/blog-placeholder-5.jpg",
+      "/blog-placeholder-about.jpg",
+      "/favicon.ico",
+      "/favicon.png",
+      "/favicon.svg",
+      "/fonts/*",
+      "/images/*",
+      "/img/*",
+      "/sample-images/*",
+      "/sitemap-0.xml",
+      "/sitemap-index.xml"
+    ]
+  };
+
+  try {
+    fs.writeFileSync(routesJsonPath, JSON.stringify(routesJsonContent, null, 2));
+    console.log(`Archivo ${routesJsonPath} creado/sobrescrito correctamente.`);
+  } catch (e) {
+    console.error(`Error escribiendo ${routesJsonPath}:`, e.message);
+  }
 } catch (e) {
   console.error('Fallo el script de copia de funciones:', e.message);
   process.exit(1); // Salir con código de error si la copia falla
