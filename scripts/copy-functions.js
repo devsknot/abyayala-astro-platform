@@ -58,13 +58,11 @@ try {
   const routesJsonContent = {
     version: 1,
     include: [
-      "/*" // Default to Astro SSR
+      "/api/*",  // Incluir explícitamente las rutas API para que sean manejadas por funciones
+      "/hello"   // Incluir explícitamente la ruta hello para que sea manejada por funciones
     ],
     exclude: [
-      // Routes handled by Cloudflare Functions
-      "/api/*",
-      "/hello",
-      // Common static assets / Astro specific
+      // Archivos estáticos que deben ser servidos directamente
       "/_astro/*",      // Astro's build assets
       "/assets/*",      // Typical user assets folder
       "/images/*",      // Typical user images folder
@@ -78,8 +76,7 @@ try {
       "/*.webp",
       "/*.txt",         // e.g., robots.txt
       "/*.xml",         // e.g., sitemap.xml
-      "/*.json",        // e.g., manifest.json
-      // "/admin/*" // Descomentar si tienes un /admin estático o manejado por functions
+      "/*.json"         // e.g., manifest.json
     ]
   };
 
