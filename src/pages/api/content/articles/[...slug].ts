@@ -11,13 +11,24 @@ const commonHeaders = {
 // Helper to transform DB article structure to frontend structure
 function transformArticleForFrontend(article: any) {
     if (!article) return null;
+    
+    // Procesamiento seguro de tags
+    let parsedTags = [];
+    if (article.tags) {
+        try {
+            parsedTags = JSON.parse(article.tags);
+        } catch (e) {
+            console.error(`Error parsing tags for article ${article.slug}:`, e);
+        }
+    }
+
     return {
         slug: article.slug,
         title: article.title,
         description: article.description,
         content: article.content,
         pubDate: article.pub_date, // Transform pub_date to pubDate
-        category: article.category || '', // Usar solo category, no categories
+        category: article.category || '', // Usar solo category (singular)
         featured_image: article.featured_image,
         author_info: article.author_id ? { // Use author_info for structured data
             id: article.author_id,
@@ -25,8 +36,8 @@ function transformArticleForFrontend(article: any) {
             slug: article.author_slug,
             avatar: article.author_avatar
         } : null,
-        tags: article.tags ? JSON.parse(article.tags) : [],
-        // Include other fields if necessary
+        tags: parsedTags,
+        updated_at: article.updated_at || article.pub_date // Incluir fecha de actualización
     };
 }
 
@@ -197,6 +208,7 @@ async function verifyAuthentication(request: Request, env: any) {
 
 // Get all articles
 async function handleGetArticles(db: any, headers: HeadersInit) {
+    console.log('[articles/...slug.ts] Retrieving all articles');
     try {
         const { results } = await db.prepare(`
             SELECT a.*,
@@ -210,7 +222,16 @@ async function handleGetArticles(db: any, headers: HeadersInit) {
         `).all();
 
         const transformedResults = results.map(transformArticleForFrontend);
-        return new Response(JSON.stringify(transformedResults || []), { headers });
+        console.log(`[articles/...slug.ts] Retrieved ${transformedResults.length} articles`); 
+        // Mostrar detalles para los primeros artículos para depuración
+        if (transformedResults.length > 0) {
+            const previewArticle = transformedResults[0];
+            console.log(`[articles/...slug.ts] First article: ${previewArticle.title}, Category: ${previewArticle.category}`);
+        }
+        return new Response(JSON.stringify({
+            success: true,
+            articles: transformedResults || []
+        }), { headers });
     } catch (error: any) {
         console.error('Error fetching articles:', error);
         return new Response(JSON.stringify({ error: 'Failed to fetch articles' }), { status: 500, headers });
@@ -219,6 +240,7 @@ async function handleGetArticles(db: any, headers: HeadersInit) {
 
 // Get a specific article by slug
 async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
+    console.log(`[articles/...slug.ts] Retrieving article with slug: ${slug}`);
     try {
         const article = await db.prepare(`
             SELECT a.*,
@@ -237,7 +259,12 @@ async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
                 headers
             });
         }
-        return new Response(JSON.stringify(transformArticleForFrontend(article)), { headers });
+        const transformedArticle = transformArticleForFrontend(article);
+        console.log(`[articles/...slug.ts] Retrieved article: ${article.title}, Category: ${article.category}`);
+        return new Response(JSON.stringify({
+            success: true,
+            article: transformedArticle
+        }), { headers });
     } catch (error: any) {
         console.error(`Error fetching article ${slug}:`, error);
         return new Response(JSON.stringify({ error: 'Failed to fetch article' }), { status: 500, headers });
@@ -246,6 +273,7 @@ async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
 
 // Create a new article
 async function handleCreateArticle(articleData: any, db: any, headers: HeadersInit) {
+    console.log(`[articles/...slug.ts] Creating new article: ${articleData.title || 'Untitled'}, Category: ${articleData.category || ''}`);
     // Basic validation
     if (!articleData || !articleData.slug || !articleData.title) {
         return new Response(JSON.stringify({ error: 'Slug and title are required' }), {
@@ -298,10 +326,12 @@ async function handleCreateArticle(articleData: any, db: any, headers: HeadersIn
             WHERE a.slug = ?
         `).bind(articleData.slug).first();
 
+        const transformedArticle = transformArticleForFrontend(newArticleRaw);
+        console.log(`[articles/...slug.ts] Article created successfully: ${articleData.title}, Category: ${articleData.category || ''}`);
         return new Response(JSON.stringify({
             success: true,
             message: 'Article created successfully',
-            article: transformArticleForFrontend(newArticleRaw)
+            article: transformedArticle
         }), {
             status: 201,
             headers
@@ -318,6 +348,7 @@ async function handleCreateArticle(articleData: any, db: any, headers: HeadersIn
 
 // Update an existing article
 async function handleUpdateArticle(slug: string, articleData: any, db: any, headers: HeadersInit) {
+    console.log(`[articles/...slug.ts] Updating article with slug: ${slug}`);
      // Basic validation
     if (!articleData || Object.keys(articleData).length === 0) {
          return new Response(JSON.stringify({ error: 'No update data provided' }), {
@@ -365,13 +396,17 @@ async function handleUpdateArticle(slug: string, articleData: any, db: any, head
         // Handle date update (ensure ISO format)
         if (articleData.hasOwnProperty('pubDate')) {
             try {
-                 const formattedDate = new Date(articleData.pubDate).toISOString();
-                 setClauses.push('pub_date = ?');
-                 bindings.push(formattedDate);
+                const formattedDate = new Date(articleData.pubDate).toISOString();
+                setClauses.push('pub_date = ?');
+                bindings.push(formattedDate);
+                console.log(`[articles/...slug.ts] Update date for ${slug}: ${formattedDate}`);
             } catch (e) {
-                 console.warn(`Invalid pubDate format received for update: ${articleData.pubDate}. Skipping date update.`);
+                console.warn(`[articles/...slug.ts] Invalid pubDate format received for update: ${articleData.pubDate}. Skipping date update.`);
             }
         }
+        
+        // Always update the updated_at field when changing any article
+        setClauses.push('updated_at = datetime("now")');
 
         // Handle category update (store as simple string)
         if (articleData.hasOwnProperty('category')) {
@@ -404,10 +439,12 @@ async function handleUpdateArticle(slug: string, articleData: any, db: any, head
              WHERE a.slug = ?
         `).bind(slug).first();
 
+        const transformedArticle = transformArticleForFrontend(updatedArticleRaw);
+        console.log(`[articles/...slug.ts] Article updated successfully: ${updatedArticleRaw.title}, Category: ${updatedArticleRaw.category || ''}`);
         return new Response(JSON.stringify({
             success: true,
             message: 'Article updated successfully',
-            article: transformArticleForFrontend(updatedArticleRaw)
+            article: transformedArticle
         }), { headers });
 
     } catch (error: any) {
@@ -421,6 +458,7 @@ async function handleUpdateArticle(slug: string, articleData: any, db: any, head
 
 // Delete an article
 async function handleDeleteArticle(slug: string, db: any, headers: HeadersInit) {
+    console.log(`[articles/...slug.ts] Deleting article with slug: ${slug}`);
     try {
         const articleExists = await db.prepare(`SELECT slug FROM articles WHERE slug = ?`).bind(slug).first();
         if (!articleExists) {
@@ -433,13 +471,22 @@ async function handleDeleteArticle(slug: string, db: any, headers: HeadersInit) 
         const result = await db.prepare(`DELETE FROM articles WHERE slug = ?`).bind(slug).run();
 
         if (result.changes > 0) {
-             return new Response(JSON.stringify({ success: true, message: 'Article deleted successfully' }), {
+             console.log(`[articles/...slug.ts] Article deleted successfully: ${slug}`);
+             return new Response(JSON.stringify({ 
+                 success: true, 
+                 message: 'Article deleted successfully',
+                 slug: slug
+             }), {
                  status: 200, // OK for delete success
                  headers
              });
         } else {
             // Fallback in case delete failed unexpectedly
-             return new Response(JSON.stringify({ error: 'Article not found or already deleted' }), {
+             console.warn(`[articles/...slug.ts] Article not found or already deleted: ${slug}`);
+             return new Response(JSON.stringify({ 
+                 success: false,
+                 error: 'Article not found or already deleted' 
+             }), {
                  status: 404,
                  headers
              });
