@@ -116,21 +116,37 @@ async function getArticlesByCategoryFallback(category, origin = '') {
     
     // Normalizar la categoría para la comparación
     const normalizedCategory = String(category).trim().toLowerCase();
+    console.log(`[RESPALDO] Categoría normalizada para búsqueda: "${normalizedCategory}"`);
     
-    // Filtrar los artículos por la categoría especificada
+    // Mostrar todas las categorías disponibles en los artículos para ayudar a depurar
+    const availableCategories = [...new Set(allArticles.map(a => a.category).filter(Boolean))];
+    console.log(`[RESPALDO] Categorías disponibles en los artículos: ${JSON.stringify(availableCategories)}`);
+    
+    // Mostrar las categorías normalizadas para comparación
+    const normalizedCategories = availableCategories.map(c => ({ 
+      original: c, 
+      normalized: String(c).trim().toLowerCase() 
+    }));
+    console.log(`[RESPALDO] Categorías normalizadas: ${JSON.stringify(normalizedCategories)}`);
+    
+    // Filtrar los artículos por la categoría especificada (más flexible)
     const filteredArticles = allArticles.filter(article => {
-      if (!article.category) return false;
+      if (!article.category) {
+        console.log(`[RESPALDO] Artículo sin categoría: ${article.title || 'Sin título'}`);
+        return false;
+      }
+      
       const articleCategory = String(article.category).trim().toLowerCase();
-      return articleCategory === normalizedCategory;
+      const matches = articleCategory === normalizedCategory;
+      
+      if (matches) {
+        console.log(`[RESPALDO] Coincidencia encontrada: Artículo "${article.title}" con categoría "${article.category}"`);
+      }
+      
+      return matches;
     });
     
     console.log(`[RESPALDO] Artículos filtrados para la categoría "${category}": ${filteredArticles.length}`);
-    
-    if (filteredArticles.length === 0) {
-      // Mostrar todas las categorías disponibles en los artículos para ayudar a depurar
-      const availableCategories = [...new Set(allArticles.map(a => a.category).filter(Boolean))];
-      console.log(`[RESPALDO] Categorías disponibles en los artículos: ${JSON.stringify(availableCategories)}`);
-    }
     
     return filteredArticles;
   } catch (error) {
