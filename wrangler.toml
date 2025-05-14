@@ -1,0 +1,19 @@
+name = "abyayala-astro-platform"
+compatibility_date = "2025-03-31"
+pages_build_output_dir = "dist" # Indica a Pages dónde está la salida del build
+
+# Configuración de R2
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "abyayala-media"
+preview_bucket_name = "abyayala-media-dev"
+
+# Configuración de D1 (Base de datos)
+[[d1_databases]]
+binding = "DB"
+database_name = "abyayala-cms"
+database_id = "a50d9255-3be0-47bd-800c-85fb362c197f"
+
+# Variables de entorno
+[vars]
+ENVIRONMENT = "production"
