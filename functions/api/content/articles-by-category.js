@@ -1,7 +1,8 @@
-// Endpoint: /api/content/articles-by-category
-// Maneja las solicitudes para obtener artículos por categoría
-
+// Función para gestionar artículos por categoría a través de Cloudflare Functions
 export async function onRequest(context) {
+  // --- Add log here ---
+  console.log('[articles-by-category.js] onRequest invoked');
+  // --------------------
   const { request, env } = context;
   const url = new URL(request.url);
   const path = url.pathname;
@@ -29,31 +30,37 @@ export async function onRequest(context) {
   try {
     console.log(`Solicitud recibida: ${request.method} ${path}`);
     
-    // Verificar si la ruta tiene el formato correcto
-    if (path.startsWith('/api/content/articles-by-category/')) {
-      // Extraer el categoryId de la URL
-      // La ruta será /api/content/articles-by-category/CATEGORY_ID
-      const categoryId = path.slice('/api/content/articles-by-category/'.length);
-      
-      console.log(`[DEBUG] Ruta completa: ${path}`);
-      console.log(`[DEBUG] CategoryId extraído: ${categoryId}`);
-      
-      if (categoryId && categoryId !== '') {
-        if (request.method === 'GET') {
-          return handleGetArticlesByCategory(categoryId, env, headers);
-        }
-        
-        // Método no permitido
-        return new Response(JSON.stringify({ error: 'Método no permitido' }), {
-          status: 405,
+    // Extraer el ID de la categoría si está presente en la URL
+    // Formato esperado: /api/content/articles-by-category/{categoryId}
+    const parts = path.split('/');
+    const categoryId = parts[parts.length - 1];
+    
+    // Verificar si estamos en la ruta raíz o en una categoría específica
+    const isRootPath = path === '/api/content/articles-by-category' || path === '/api/content/articles-by-category/';
+    const isSpecificCategory = !isRootPath && categoryId !== 'articles-by-category';
+    
+    console.log(`[DEBUG] Path: ${path}, CategoryId: ${categoryId}, isSpecificCategory: ${isSpecificCategory}`);
+    
+    if (request.method === 'GET') {
+      if (isSpecificCategory) {
+        console.log(`[DEBUG] Obteniendo artículos para la categoría: ${categoryId}`);
+        return handleGetArticlesByCategory(categoryId, env, headers);
+      } else {
+        // Si estamos en la ruta raíz, devolver un mensaje de error
+        return new Response(JSON.stringify({ 
+          error: 'Se requiere especificar una categoría', 
+          path: path,
+          debug: 'Ruta raíz de articles-by-category'
+        }), {
+          status: 400,
           headers
         });
       }
     }
     
-    // Si llegamos aquí, la ruta no tiene el formato correcto o no se especificó categoría
-    return new Response(JSON.stringify({ error: 'Se requiere especificar una categoría válida' }), {
-      status: 400,
+    // Método no permitido
+    return new Response(JSON.stringify({ error: 'Método no permitido' }), {
+      status: 405,
       headers
     });
   } catch (error) {
