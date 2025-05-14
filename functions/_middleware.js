@@ -6,6 +6,22 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const path = url.pathname;
 
+  // Manejo específico para la función hello
+  if (url.pathname === '/hello') {
+    console.log(`Middleware: Procesando solicitud para ${url.pathname}`);
+    try {
+      const response = await next();
+      console.log(`Middleware: Respuesta recibida desde handler para ${url.pathname}, status: ${response.status}`);
+      return response;
+    } catch (e) {
+      console.error(`Middleware: Error en next() handler para ${url.pathname}: ${e.message}`, e.stack);
+      return new Response(JSON.stringify({ error: 'Error de ejecución de función', detalles: e.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
   // Configurar CORS para solicitudes API y logging específico para GET
   if (url.pathname.startsWith('/api/')) {
     if (request.method === 'GET') {
