@@ -23,10 +23,12 @@ function copyDir(src, dest) {
       const srcPath = path.join(src, entry.name);
       const destPath = path.join(dest, entry.name);
 
-      // Si el archivo es _routes.json en el directorio raíz de functions, no lo copies.
-      // Esto es para permitir que Cloudflare Pages use el enrutamiento basado en archivos para las funciones.
-      if (entry.isFile() && entry.name === '_routes.json' && src === functionsDir) {
-        console.log(`Omitiendo copia de: ${srcPath} (se usará enrutamiento basado en archivos para Functions)`);
+      // Si el archivo es _routes.json o _middleware.js en el directorio raíz de functions, no lo copies.
+      if (entry.isFile() && 
+         ( (entry.name === '_routes.json' && src === functionsDir) || 
+           (entry.name === '_middleware.js' && src === functionsDir) ) 
+         ) {
+        console.log(`Omitiendo copia de: ${srcPath}`);
         continue;
       }
 
