@@ -172,7 +172,7 @@ async function handleGetArticles(env, headers) {
         console.log(`Valor original de category en DB: ${categoryFromDB}`);
       }
       
-      // Construir el objeto transformado usando solo el campo category original
+      // Construir el objeto transformado convirtiendo category en un array categories
       const transformed = {
         slug: article.slug,
         title: article.title,
@@ -180,6 +180,7 @@ async function handleGetArticles(env, headers) {
         content: article.content,
         pubDate: article.pub_date, // Transformar pub_date a pubDate
         category: categoryFromDB, // Mantener el campo category tal como viene de la DB
+        categories: categoryFromDB ? [categoryFromDB] : [], // Convertir category a array categories
         featured_image: article.featured_image,
         author: article.author, // Campo de texto original
         tags: article.tags ? JSON.parse(article.tags) : [],
