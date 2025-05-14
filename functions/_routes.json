@@ -2,6 +2,7 @@
   "version": 1,
   "include": [
     "/api/*",
+    "/api/content/articles-list",
     "/hello"
   ],
   "exclude": []
