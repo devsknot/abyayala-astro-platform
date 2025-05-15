@@ -82,13 +82,11 @@
           timestamp: Date.now()
         }));
         
-        // Detectar la ruta base para redireccionamiento
-        const basePath = window.location.pathname.includes('/admin') 
-          ? window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/admin') + 7)
-          : '/admin/';
+        // Construir URL absoluta al panel de administración
+        const baseUrl = window.location.origin;
         
-        // Redirigir al panel de administración
-        window.location.href = basePath + 'index.html';
+        // Asegurar que siempre use una ruta completa y absoluta
+        window.location.href = `${baseUrl}/admin/index.html`;
       }, 1500);
     });
   </script>

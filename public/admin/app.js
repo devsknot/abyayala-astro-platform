@@ -1,4 +1,19 @@
 // Aplicación principal del CMS
+// Usar importaciones con rutas absolutas para evitar problemas de resolución
+const baseUrl = window.location.origin;
+
+// Definir las rutas de los componentes usando URL absolutas
+const componentUrls = {
+  articleManager: `${baseUrl}/admin/components/article-manager.js`,
+  mediaLibrary: `${baseUrl}/admin/components/media-library.js`,
+  categoryManager: `${baseUrl}/admin/components/category-manager.js`,
+  contentManager: `${baseUrl}/admin/content-manager.js`,
+  notifications: `${baseUrl}/admin/components/notification.js`,
+  bulkImportManager: `${baseUrl}/admin/components/bulk-import-manager.js`,
+  authorManager: `${baseUrl}/admin/author-manager.js`
+};
+
+// Importar los componentes
 import { ArticleManager } from './components/article-manager.js';
 import { MediaLibrary } from './components/media-library.js';
 import { CategoryManager } from './components/category-manager.js';
@@ -6,6 +21,17 @@ import { ContentManager } from './content-manager.js';
 import { notifications } from './components/notification.js';
 import { BulkImportManager } from './components/bulk-import-manager.js';
 import AuthorManager from './author-manager.js';
+
+// Registrar los componentes en el objeto global window para depuración
+window.cmsComponents = {
+  ArticleManager,
+  MediaLibrary,
+  CategoryManager,
+  ContentManager,
+  notifications,
+  BulkImportManager,
+  AuthorManager
+};
 
 // Componentes del panel de administración
 const components = {
@@ -49,16 +75,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Autenticación expirada
         localStorage.removeItem('abyayala_cms_auth');
         notifications.warning('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
-        window.location.href = '/admin/login.html';
+        // Usar ruta relativa para redireccionar al login
+        const baseUrl = window.location.origin;
+        window.location.href = `${baseUrl}/admin/login.html`;
       }
     } else {
       // No hay datos de autenticación
-      window.location.href = '/admin/login.html';
+      const baseUrl = window.location.origin;
+      window.location.href = `${baseUrl}/admin/login.html`;
     }
   } catch (error) {
     console.error('Error de autenticación:', error);
     notifications.error('Error de autenticación. Por favor, intenta nuevamente.');
-    window.location.href = '/admin/login.html';
+    const baseUrl = window.location.origin;
+    window.location.href = `${baseUrl}/admin/login.html`;
   }
 });
 
@@ -163,7 +193,8 @@ function renderApp(container) {
     
     // Redirigir a la página de login
     setTimeout(() => {
-      window.location.href = 'login.html';
+      const baseUrl = window.location.origin;
+      window.location.href = `${baseUrl}/admin/login.html`;
     }, 1000);
   });
   

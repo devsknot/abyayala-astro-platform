@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Administración de Contenido - Abya Yala</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-  <link rel="stylesheet" id="style-css" href="/admin/style.css">
+  <!-- Usar URL dinámica basada en la ubicación actual para el CSS -->
+  <script>
+    // Establecer la base URL dinámicamente
+    const baseUrl = window.location.origin;
+    document.write(`<link rel="stylesheet" id="style-css" href="${baseUrl}/admin/style.css">`); 
+  </script>
 </head>
 <body class="bg-gray-100 min-h-screen">
   <div id="app" class="p-4">
@@ -19,17 +24,48 @@
   <script>
     // Detectar la ruta base y ajustar las referencias a assets si es necesario
     document.addEventListener('DOMContentLoaded', function() {
-      const basePath = '/admin/'; // Siempre usar ruta absoluta desde la raíz
+      const baseUrl = window.location.origin;
+      const basePath = baseUrl + '/admin/'; // Construir ruta absoluta completa
       
-      // Si no estamos en la URL esperada, redirigir conservando la ruta base
+      // Si no estamos en la URL esperada, redirigir
       if (!window.location.pathname.includes('/admin')) {
         window.location.href = basePath;
+        return;
       }
       
-      // Verificar que los recursos se han cargado correctamente
+      // Verificar carga de recursos
       console.log('Verificando carga de recursos para el panel de administración');
+      
+      // Verificar que el usuario esté autenticado
+      const authData = localStorage.getItem('abyayala_cms_auth');
+      if (!authData) {
+        console.log('No hay sesión activa, redirigiendo a login...');
+        window.location.href = baseUrl + '/admin/login.html';
+        return;
+      }
+      
+      try {
+        // Validar que el formato de autenticación sea correcto
+        const auth = JSON.parse(authData);
+        if (!auth.authenticated) {
+          console.log('Sesión inválida, redirigiendo a login...');
+          localStorage.removeItem('abyayala_cms_auth');
+          window.location.href = baseUrl + '/admin/login.html';
+        }
+      } catch (error) {
+        console.error('Error al validar sesión:', error);
+        localStorage.removeItem('abyayala_cms_auth');
+        window.location.href = baseUrl + '/admin/login.html';
+      }
     });
   </script>
-  <script type="module" src="/admin/app.js"></script>
+  <!-- Usar URL dinámica para el JS principal -->
+  <script>
+    const appJsUrl = window.location.origin + '/admin/app.js';
+    const scriptEl = document.createElement('script');
+    scriptEl.setAttribute('type', 'module');
+    scriptEl.setAttribute('src', appJsUrl);
+    document.body.appendChild(scriptEl);
+  </script>
 </body>
 </html>

@@ -1,13 +1,15 @@
 // Gestor de contenido para el CMS
 export class ContentManager {
   constructor() {
-    // Usar URL base relativa para que funcione tanto en desarrollo como en producción
-    this.apiBase = '/api/content';
+    // Obtener la base URL dinámicamente para construir rutas absolutas
+    this.baseUrl = window.location.origin;
+    // Construir ruta absoluta para la API
+    this.apiBase = `${this.baseUrl}/api/content`;
     // Nunca usar datos de prueba, siempre conectar con la API real
     this.useFallbackData = false;
     
-    // Usar siempre rutas relativas para compatibilidad con SSR
-    console.log('Usando API con ruta relativa para compatibilidad con SSR:', this.apiBase);
+    // Usar rutas absolutas para evitar problemas de resolución
+    console.log('Usando API con ruta absoluta para mayor compatibilidad:', this.apiBase);
   }
 
   // Método para obtener las cabeceras de autenticación

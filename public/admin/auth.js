@@ -19,9 +19,12 @@ export async function checkCloudflareAuth() {
     }
     
     // En producción, verificamos el token JWT de Cloudflare Access
-    const response = await fetch('/api/auth/verify', {
+    // Usar URL absoluta para la API de autenticación
+    const baseUrl = window.location.origin;
+    const response = await fetch(`${baseUrl}/api/auth/verify`, {
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
       }
     });
     
@@ -56,7 +59,12 @@ export async function logout() {
   }
   
   // En producción, redirigimos a la URL de cierre de sesión de Cloudflare Access
-  window.location.href = '/cdn-cgi/access/logout';
+  // Limpiar localStorage primero para asegurar que no queden datos de sesión
+  localStorage.removeItem('abyayala_cms_auth');
+  
+  // Redirigir a la página de logout de Cloudflare Access con URL absoluta
+  const baseUrl = window.location.origin;
+  window.location.href = `${baseUrl}/cdn-cgi/access/logout`;
 }
 
 // Función para obtener información del usuario actual
