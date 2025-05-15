@@ -28,6 +28,16 @@ const sortedNews = articlesArray.length > 0
     })
   : [];
 
+// Función para normalizar imágenes
+const normalizeImage = (imagePath: string | undefined): string => {
+  // Si no hay imagen o la ruta está causando 404
+  if (!imagePath || imagePath.startsWith('media/uploads/') || 
+      imagePath.includes('+') || imagePath.includes('%25')) {
+    return '/img/placeholder-image.png';
+  }
+  return imagePath;
+};
+
 const pageTitle = `Todas las Noticias | ${SITE_TITLE}`;
 const pageDescription = 'Explora todas las noticias publicadas por el colectivo agrario Abya Yala. Mantente informado sobre agricultura, sostenibilidad, comunidad y más.';
 ---
@@ -85,16 +95,14 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
           sortedNews.map(article => (
             <article class="news-card" data-category={article.category} data-date={article.pubDate}>
               <a href={`/news/${article.slug}`} class="news-card-link">
-                {article.featured_image && (
-                  <div class="news-image">
-                    <img 
-                      src={article.featured_image} 
-                      alt={article.title} 
-                      loading="lazy" 
-                      onerror="this.onerror=null; this.src='/images/CAAY Logo sin fondo.png'; this.classList.add('fallback-image');"
-                    />
-                  </div>
-                )}
+                <div class="news-image">
+                  <img 
+                    src={normalizeImage(article.featured_image || article.image)} 
+                    alt={article.title} 
+                    loading="lazy" 
+                    onerror="this.onerror=null; this.src='/img/placeholder-image.png'; this.classList.add('fallback-image');"
+                  />
+                </div>
                 <div class="news-content">
                   <CategoryTag category={article.category} />
                   <h2 class="news-title">{article.title}</h2>

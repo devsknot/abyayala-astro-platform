@@ -26,6 +26,16 @@ const sortedArticles = articlesArray.length > 0
     })
   : [];
 
+// Función para normalizar imágenes
+const normalizeImage = (imagePath: string | undefined): string => {
+  // Si no hay imagen o la ruta está causando 404
+  if (!imagePath || imagePath.startsWith('media/uploads/') || 
+      imagePath.includes('+') || imagePath.includes('%25')) {
+    return '/img/placeholder-image.png';
+  }
+  return imagePath;
+};
+
 // Obtener artículos destacados (los 3 más recientes)
 const featuredNews = sortedArticles.slice(0, 3).map(article => {
   return {
@@ -33,7 +43,7 @@ const featuredNews = sortedArticles.slice(0, 3).map(article => {
     description: article.description || 'Sin descripción',
     pubDate: article.pubDate ? new Date(article.pubDate) : new Date(),
     category: article.category || 'general',
-    image: article.featured_image || "/blog-placeholder-3.jpg",
+    image: normalizeImage(article.featured_image || article.image),
     slug: article.slug || '',
     featured: sortedArticles.indexOf(article) === 0
   };
@@ -46,7 +56,7 @@ const recentNews = sortedArticles.slice(3, 9).map(article => {
     description: article.description || 'Sin descripción',
     pubDate: article.pubDate ? new Date(article.pubDate) : new Date(),
     category: article.category || 'general',
-    image: article.featured_image || "/blog-placeholder-1.jpg",
+    image: normalizeImage(article.featured_image || article.image),
     slug: article.slug || ''
   };
 });
