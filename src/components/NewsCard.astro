@@ -29,6 +29,21 @@ const {
 // Usar date si pubDate no está disponible
 const dateToUse = pubDate || date;
 
+// Normalizar la ruta de imagen (consolidar diferentes formatos posibles)
+let normalizedImage = image || '';
+
+// Si no hay imagen o si es una URL que sabemos que da error 404 (media/uploads/...)
+if (!normalizedImage || normalizedImage.startsWith('media/uploads/')) {
+  // Usar imagen de respaldo
+  normalizedImage = '/img/placeholder-image.png';
+}
+
+// Limpiar URLs codificadas (+ o %25 se convierten en caracteres incorrectos en las rutas)
+if (normalizedImage.includes('+') || normalizedImage.includes('%25')) {
+  // Usar imagen de respaldo para URLs codificadas problemáticas
+  normalizedImage = '/img/placeholder-image.png';
+}
+
 // Función para manejar la fecha de forma segura
 const formatDateSafely = (date: Date | string | undefined) => {
   if (!date) return '';
@@ -65,10 +80,11 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
   <a href={href} class="news-card-link">
     <div class="image-container">
       <img 
-        src={image} 
+        src={normalizedImage} 
         alt={title} 
         loading="lazy" 
-        onerror="this.onerror=null; this.src='/images/CAAY Logo sin fondo.png'; this.classList.add('fallback-image');" 
+        class={normalizedImage === '/img/placeholder-image.png' ? 'fallback-image' : ''}
+        onerror="this.onerror=null; this.src='/img/placeholder-image.png'; this.classList.add('fallback-image');" 
       />
       <CategoryTag category={category} />
     </div>
@@ -128,6 +144,15 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     height: 100%;
     object-fit: cover;
     transition: transform 0.3s ease;
+  }
+  
+  /* Estilos específicos para imágenes de respaldo */
+  .fallback-image {
+    object-fit: contain !important;
+    padding: 1rem;
+    background-color: #f8f8f8;
+    max-width: 100%;
+    max-height: 100%;
   }
 
   .news-card:hover .image-container img {
