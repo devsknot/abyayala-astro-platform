@@ -39,8 +39,27 @@ const normalizeImage = (imagePath: string | undefined): string => {
   return imagePath;
 };
 
-const pageTitle = `Todas las Noticias | ${SITE_TITLE}`;
-const pageDescription = 'Explora todas las noticias publicadas por el colectivo agrario Abya Yala. Mantente informado sobre agricultura, sostenibilidad, comunidad y más.';
+// Configuración de paginación
+const ITEMS_PER_PAGE = 10;
+
+// Obtener el número de página actual de los parámetros de URL
+const currentPage = new URL(Astro.request.url).searchParams.get('page') || '1';
+const pageNumber = parseInt(currentPage) || 1;
+
+// Calcular el total de páginas
+const totalPages = Math.ceil(sortedNews.length / ITEMS_PER_PAGE);
+
+// Obtener los artículos para la página actual
+const startIndex = (pageNumber - 1) * ITEMS_PER_PAGE;
+const endIndex = startIndex + ITEMS_PER_PAGE;
+const paginatedNews = sortedNews.slice(startIndex, endIndex);
+
+// Preparar URLs para navegación
+const previousPage = pageNumber > 1 ? `?page=${pageNumber - 1}` : null;
+const nextPage = pageNumber < totalPages ? `?page=${pageNumber + 1}` : null;
+
+const pageTitle = `Todas las Noticias | Página ${pageNumber} de ${totalPages} | ${SITE_TITLE}`;
+const pageDescription = 'Explora todas las noticias publicadas por el colectivo agrario Abya Yala. Manténte informado sobre agricultura, sostenibilidad, comunidad y más.';
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
@@ -92,8 +111,8 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
       <div class="active-filters" id="active-filters"></div>
       
       <div class="news-grid">
-        {sortedNews.length > 0 ? (
-          sortedNews.map(article => (
+        {paginatedNews.length > 0 ? (
+          paginatedNews.map(article => (
             <article class="news-card" data-category={article.category} data-date={article.pubDate}>
               <a href={`/news/${article.slug}`} class="news-card-link">
                 <div class="news-image">
@@ -119,27 +138,43 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
           ))
         ) : (
           <div class="no-results">
-            <p>No se encontraron noticias que coincidan con los criterios de búsqueda.</p>
-            <button type="button" class="clear-filters-btn clear-filters">Limpiar filtros</button>
+            <p>No se encontraron noticias. Por favor, inténtelo de nuevo más tarde.</p>
           </div>
         )}
       </div>
-      
-      <div class="pagination">
-        <button type="button" class="pagination-prev" disabled>
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-          Anterior
-        </button>
-        <div class="pagination-info">Página <span id="current-page">1</span> de <span id="total-pages">1</span></div>
-        <button type="button" class="pagination-next" disabled>
-          Siguiente
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
-        </button>
-      </div>
+
+      {sortedNews.length > ITEMS_PER_PAGE && (
+        <div class="pagination">
+          <a 
+            href={previousPage} 
+            class="pagination-btn prev-page" 
+            aria-label="Página anterior"
+            style={!previousPage ? "opacity: 0.5; pointer-events: none;" : ""}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            Anterior
+          </a>
+          
+          <span class="pagination-info">
+            Página {pageNumber} de {totalPages}
+          </span>
+          
+          <a 
+            href={nextPage} 
+            class="pagination-btn next-page" 
+            aria-label="Página siguiente"
+            style={!nextPage ? "opacity: 0.5; pointer-events: none;" : ""}
+          >
+            Siguiente
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </a>
+        </div>
+      )}
+    </div>
     </div>
   </main>
 </BaseLayout>
@@ -409,43 +444,38 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
     margin-bottom: 3rem;
   }
   
-  .pagination button {
+  .pagination-btn {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background-color: var(--color-card-bg);
+    padding: 0.75rem 1rem;
     border: 1px solid var(--color-border);
     border-radius: 4px;
+    background-color: white;
     color: var(--color-text);
     font-weight: 500;
-    cursor: pointer;
+    text-decoration: none;
     transition: all 0.2s ease;
   }
   
-  .pagination button:hover:not(:disabled) {
-    background-color: var(--color-bg-hover);
-    color: var(--color-primary);
-  }
-  
-  .pagination button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  .pagination-btn:hover {
+    background-color: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
   }
   
   .pagination-info {
+    font-weight: 500;
     color: var(--color-text-muted);
-    font-size: 0.95rem;
   }
   
-  /* Responsive */
-  @media (max-width: 992px) {
+@media (max-width: 992px) {
     .news-grid {
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     }
   }
   
-  @media (max-width: 768px) {
+@media (max-width: 768px) {
     .page-header h1 {
       font-size: 2rem;
     }

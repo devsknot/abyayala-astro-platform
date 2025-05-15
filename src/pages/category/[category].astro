@@ -85,6 +85,26 @@ const normalizeImage = (imagePath: string | undefined): string => {
   return imagePath;
 };
 
+// Configuración de paginación
+const ITEMS_PER_PAGE = 10;
+
+// Obtener el número de página actual de los parámetros de URL
+const currentPage = new URL(Astro.request.url).searchParams.get('page') || '1';
+const pageNumber = parseInt(currentPage) || 1;
+
+// Calcular el total de páginas
+const totalPages = Math.ceil(newsItems.length / ITEMS_PER_PAGE);
+
+// Obtener los artículos para la página actual
+const startIndex = (pageNumber - 1) * ITEMS_PER_PAGE;
+const endIndex = startIndex + ITEMS_PER_PAGE;
+const paginatedItems = newsItems.slice(startIndex, endIndex);
+console.log(`[CATEGORY-PAGE] Mostrando ${paginatedItems.length} artículos de ${newsItems.length} (página ${pageNumber} de ${totalPages})`);
+
+// Preparar URLs para navegación
+const previousPage = pageNumber > 1 ? `?page=${pageNumber - 1}` : null;
+const nextPage = pageNumber < totalPages ? `?page=${pageNumber + 1}` : null;
+
 // Mensaje para mostrar si no hay artículos
 const noArticlesMessage = `No hay artículos disponibles en la categoría ${category.name}. Por favor, vuelva a intentarlo más tarde.`;
 ---
@@ -131,44 +151,78 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
         </div>
       </div>
       
-      {newsItems.length > 0 ? (
-        <div class="news-grid" id="news-grid">
-          {newsItems.map(news => {
-            // Estandarización de campos
-            const title = news.title || 'Sin título';
-            
-            // Recortar la descripción a un máximo de 150 caracteres
-            let description = news.description || news.excerpt || '';
-            if (description.length > 150) {
-              description = description.substring(0, 147) + '...';
-            }
-            
-            // Manejar diferentes formatos de fecha
-            const pubDate = news.pubDate || news.pub_date || news.date || new Date();
-            
-            // Manejar diferentes formatos de categoría
-            const category = news.category || news.categorySlug || categorySlug;
-            
-            // Manejar diferentes formatos de imagen
-            const image = normalizeImage(news.featured_image || news.image || news.hero_image || news.thumbnailUrl);
-            
-            return (
-              <div class="news-item" 
-                data-title={title.toLowerCase()}
-                data-date={new Date(pubDate).toISOString()}
+      {paginatedItems.length > 0 ? (
+        <>
+          <div class="news-grid" id="news-grid">
+            {paginatedItems.map(news => {
+              // Estandarización de campos
+              const title = news.title || 'Sin título';
+              
+              // Recortar la descripción a un máximo de 150 caracteres
+              let description = news.description || news.excerpt || '';
+              if (description.length > 150) {
+                description = description.substring(0, 147) + '...';
+              }
+              
+              // Manejar diferentes formatos de fecha
+              const pubDate = news.pubDate || news.pub_date || news.date || new Date();
+              
+              // Manejar diferentes formatos de categoría
+              const category = news.category || news.categorySlug || categorySlug;
+              
+              // Manejar diferentes formatos de imagen
+              const image = normalizeImage(news.featured_image || news.image || news.hero_image || news.thumbnailUrl);
+              
+              return (
+                <div class="news-item" 
+                  data-title={title.toLowerCase()}
+                  data-date={new Date(pubDate).toISOString()}
+                >
+                  <NewsCard 
+                    title={title}
+                    description={description}
+                    pubDate={pubDate}
+                    category={category}
+                    image={image}
+                    slug={news.slug}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          {newsItems.length > ITEMS_PER_PAGE && (
+            <div class="pagination">
+              <a 
+                href={previousPage} 
+                class="pagination-btn prev-page" 
+                aria-label="Página anterior"
+                style={!previousPage ? "opacity: 0.5; pointer-events: none;" : ""}
               >
-                <NewsCard 
-                  title={title}
-                  description={description}
-                  pubDate={pubDate}
-                  category={category}
-                  image={image}
-                  slug={news.slug}
-                />
-              </div>
-            );
-          })}
-        </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Anterior
+              </a>
+              
+              <span class="pagination-info">
+                Página {pageNumber} de {totalPages}
+              </span>
+              
+              <a 
+                href={nextPage} 
+                class="pagination-btn next-page" 
+                aria-label="Página siguiente"
+                style={!nextPage ? "opacity: 0.5; pointer-events: none;" : ""}
+              >
+                Siguiente
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </a>
+            </div>
+          )}
+        </>
       ) : (
         <div class="no-articles">
           <p>{noArticlesMessage}</p>
