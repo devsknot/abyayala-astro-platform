@@ -122,21 +122,41 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
       
       {newsItems.length > 0 ? (
         <div class="news-grid" id="news-grid">
-          {newsItems.map(news => (
-            <div class="news-item" 
-              data-title={news.title.toLowerCase()}
-              data-date={new Date(news.pubDate).toISOString()}
-            >
-              <NewsCard 
-                title={news.title}
-                description={news.description}
-                pubDate={new Date(news.pubDate)}
-                category={news.category}
-                image={news.featured_image || "/blog-placeholder-1.jpg"}
-                slug={news.slug}
-              />
-            </div>
-          ))}
+          {newsItems.map(news => {
+            // Estandarización de campos
+            const title = news.title || 'Sin título';
+            
+            // Recortar la descripción a un máximo de 150 caracteres
+            let description = news.description || news.excerpt || '';
+            if (description.length > 150) {
+              description = description.substring(0, 147) + '...';
+            }
+            
+            // Manejar diferentes formatos de fecha
+            const pubDate = news.pubDate || news.pub_date || news.date || new Date();
+            
+            // Manejar diferentes formatos de categoría
+            const category = news.category || news.categorySlug || categorySlug;
+            
+            // Manejar diferentes formatos de imagen
+            const image = news.featured_image || news.image || news.hero_image || news.thumbnailUrl || '/img/placeholder-image.png';
+            
+            return (
+              <div class="news-item" 
+                data-title={title.toLowerCase()}
+                data-date={new Date(pubDate).toISOString()}
+              >
+                <NewsCard 
+                  title={title}
+                  description={description}
+                  pubDate={pubDate}
+                  category={category}
+                  image={image}
+                  slug={news.slug}
+                />
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div class="no-articles">
@@ -156,8 +176,8 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
             <ul>
               {categories.map(cat => (
                 <li>
-                  <strong>{cat.name}</strong> (ID: {cat.id})
-                  {cat.id === categoryId && <span class="highlight"> ← COINCIDENCIA</span>}
+                  <strong>{cat.name}</strong> (Slug: {cat.slug || 'N/A'})
+                  {(cat.slug === categorySlug || cat.id === categorySlug) && <span class="highlight"> ← COINCIDENCIA</span>}
                 </li>
               ))}
             </ul>
@@ -275,9 +295,27 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
   
   .news-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
+  }
+  
+  .news-item {
+    display: flex;
+    height: 100%;
+  }
+  
+  /* Estilos para tarjetas consistentes */
+  .news-item :global(.news-card) {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Asegurar que todas las imágenes tienen la misma proporción */
+  .news-item :global(.image-container) {
+    aspect-ratio: 16 / 9;
   }
   
   .pagination {
