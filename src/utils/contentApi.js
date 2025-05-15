@@ -8,15 +8,19 @@
 // console.log('API_BASE_URL configurada con ruta relativa para compatibilidad con SSR');
 
 /**
- * Obtiene todos los artículos
+ * Obtiene todos los artículos con soporte para paginación
  * @param {string} [origin=''] - El origen de la URL para llamadas SSR.
- * @returns {Promise<Array>} Lista de artículos
+ * @param {number} [page=1] - Número de página a recuperar.
+ * @param {number} [pageSize=10] - Número de artículos por página.
+ * @returns {Promise<Object>} Objeto con artículos y datos de paginación
  */
-export async function getAllArticles(origin = '') {
-  const path = '/api/content/articles';
+export async function getAllArticles(origin = '', page = 1, pageSize = 10) {
+  // Construir URL con parámetros de paginación
+  const path = `/api/content/articles?page=${page}&pageSize=${pageSize}`;
   const fetchUrl = origin ? `${origin}${path}` : path;
+  
   try {
-    console.log(`Obteniendo todos los artículos desde: ${fetchUrl}`);
+    console.log(`Obteniendo artículos (página ${page}, tamaño ${pageSize}) desde: ${fetchUrl}`);
     
     const response = await fetch(fetchUrl, {
       method: 'GET',
@@ -41,29 +45,86 @@ export async function getAllArticles(origin = '') {
     try {
       data = JSON.parse(responseText);
       
-      // Verificar el formato de respuesta (nuevo formato con success y articles)
+      // Formato nuevo con paginación
       if (data && data.success === true && Array.isArray(data.articles)) {
-        console.log(`Artículos obtenidos (nuevo formato): ${data.articles.length}`);
-        return data.articles;
+        console.log(`Artículos obtenidos: ${data.articles.length}, página ${data.pagination?.page || 1} de ${data.pagination?.totalPages || 1}`);
+        
+        // Devolver tanto los artículos como la información de paginación
+        return {
+          articles: data.articles,
+          pagination: data.pagination || {
+            page: 1,
+            pageSize,
+            totalItems: data.articles.length,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false
+          }
+        };
       }
       
-      // Formato antiguo: directamente un array
+      // Formato antiguo: directamente un array (sin paginación)
       if (Array.isArray(data)) {
-        console.log(`Artículos obtenidos (formato antiguo): ${data.length}`);
-        return data;
+        console.log(`Artículos obtenidos (formato antiguo sin paginación): ${data.length}`);
+        // Crear estructura compatible con el nuevo formato
+        return {
+          articles: data,
+          pagination: {
+            page: 1,
+            pageSize: data.length,
+            totalItems: data.length,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false
+          }
+        };
       }
       
-      console.warn('Formato de respuesta inesperado:', data);
-      return [];
+      console.error('Formato de respuesta inesperado:', data);
+      // Devolver estructura vacía pero consistente
+      return {
+        articles: [],
+        pagination: {
+          page: 1,
+          pageSize,
+          totalItems: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false
+        }
+      };
       
-    } catch (parseError) {
-      console.error('Error al parsear JSON de artículos:', parseError);
-      console.log('Texto de respuesta:', responseText.substring(0, 200) + '...');
-      return [];
+    } catch (jsonError) {
+      console.error('Error al parsear la respuesta JSON:', jsonError);
+      console.log('Respuesta no válida:', responseText);
+      // Devolver estructura vacía pero consistente
+      return {
+        articles: [],
+        pagination: {
+          page: 1,
+          pageSize,
+          totalItems: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false
+        }
+      };
     }
+    
   } catch (error) {
-    console.error('Error al obtener artículos:', error);
-    return [];
+    console.error('Error en getAllArticles:', error);
+    // En caso de error, devolver objeto vacío pero con estructura consistente
+    return {
+      articles: [],
+      pagination: {
+        page: 1,
+        pageSize,
+        totalItems: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false
+      }
+    };
   }
 }
 
@@ -116,112 +177,112 @@ export async function getArticleBySlug(slug, origin = '') {
 }
 
 /**
- * Obtiene artículos filtrados por categoría
+ * Obtiene artículos filtrados por categoría con soporte para paginación
  * @param {string} category - Categoría para filtrar (id de la categoría)
  * @param {string} [origin=''] - El origen de la URL para llamadas SSR.
- * @returns {Promise<Array>} Lista de artículos filtrados
+ * @param {number} [page=1] - Número de página a recuperar.
+ * @param {number} [pageSize=10] - Número de artículos por página.
+ * @returns {Promise<Object>} Objeto con artículos y datos de paginación
  */
-export async function getArticlesByCategory(category, origin = '') {
-  console.log(`Obteniendo artículos para la categoría: "${category}" (Origin: ${origin || 'N/A'})`);
-  console.log('Usando método de filtrado en el cliente');
+export async function getArticlesByCategory(category, origin = '', page = 1, pageSize = 10) {
+  console.log(`Obteniendo artículos para la categoría: "${category}" (Origin: ${origin || 'N/A'}, Página: ${page}, Tamaño: ${pageSize})`);
+  console.log('Usando método de filtrado en el cliente con paginación');
   
-  // Siempre usar el método de filtrado en el cliente
-  return getArticlesByCategoryFallback(category, origin);
+  // Siempre usar el método de filtrado en el cliente con parámetros de paginación
+  return getArticlesByCategoryFallback(category, origin, page, pageSize);
 }
 
 /**
- * Método de respaldo para obtener artículos por categoría cuando el endpoint dedicado falla
+ * Método de respaldo para obtener artículos por categoría con soporte para paginación
  * @param {string} category - Categoría para filtrar
  * @param {string} [origin=''] - El origen de la URL
- * @returns {Promise<Array>} Lista de artículos filtrados
+ * @param {number} [page=1] - Número de página a recuperar.
+ * @param {number} [pageSize=10] - Número de artículos por página.
+ * @returns {Promise<Object>} Objeto con artículos y datos de paginación
  */
-async function getArticlesByCategoryFallback(category, origin = '') {
+async function getArticlesByCategoryFallback(category, origin = '', page = 1, pageSize = 10) {
   try {
     console.log(`[RESPALDO] Obteniendo todos los artículos para filtrar por categoría "${category}"...`);
     
-    // Obtener todos los artículos
-    const allArticles = await getAllArticles(origin);
+    // Obtener todos los artículos (sin paginación para hacer el filtrado del lado del cliente)
+    const response = await getAllArticles(origin);
+    const allArticles = response.articles || [];
+    
     console.log(`[RESPALDO] Total de artículos obtenidos: ${allArticles.length}`);
     
-    // Imprimir los primeros 3 artículos para depuración
-    if (allArticles.length > 0) {
-      console.log('[RESPALDO] Muestra de los primeros 3 artículos:');
-      for (let i = 0; i < Math.min(3, allArticles.length); i++) {
-        const article = allArticles[i];
-        console.log(`[RESPALDO] Artículo ${i+1}:`, {
-          title: article.title,
-          category: article.category,
-          categoryType: typeof article.category,
-          keys: Object.keys(article)
-        });
-      }
-    }
+    // Convertir la categoría a minúsculas y recortar espacios para comparación
+    const normCategory = String(category).trim().toLowerCase();
+    console.log(`[RESPALDO] Buscando artículos con categoría normalizada: "${normCategory}"`);
     
-    // Normalizar la categoría para la comparación
-    const normalizedCategory = String(category).trim().toLowerCase();
-    console.log(`[RESPALDO] Categoría normalizada para búsqueda: "${normalizedCategory}"`);
-    
-    // Filtrar artículos por la categoría solicitada
+    // Filtrar artículos por categoría (normalizada para comparación)
     const filteredArticles = allArticles.filter(article => {
-      // Verificar si el artículo tiene categoría
-      if (!article.category && !article.categories) {
-        return false;
-      }
-      
       // Verificar en el campo category (principal)
-      if (article.category) {
-        const articleCategory = String(article.category).trim().toLowerCase();
-        const matches = articleCategory === normalizedCategory;
-        
-        if (matches) {
-          console.log(`[RESPALDO] Coincidencia encontrada en campo 'category': Artículo "${article.title}" con categoría "${article.category}"`);
-          return true;
-        }
+      const articleCategory = String(article.category || '').trim().toLowerCase();
+      if (articleCategory === normCategory) {
+        return true;
       }
       
       // Como respaldo, verificar también en el campo categories si existe
       if (article.categories) {
-        // Si es un array
-        if (Array.isArray(article.categories) && article.categories.length > 0) {
-          const found = article.categories.some(cat => {
-            if (!cat) return false;
-            return String(cat).trim().toLowerCase() === normalizedCategory;
-          });
-          
-          if (found) {
-            console.log(`[RESPALDO] Coincidencia encontrada en campo 'categories': Artículo "${article.title}"`);
-            return true;
-          }
+        // Si es un array, verificar si alguna categoría coincide
+        if (Array.isArray(article.categories)) {
+          return article.categories.some(cat => 
+            String(cat).trim().toLowerCase() === normCategory
+          );
         }
-        // Si es un string
-        else if (typeof article.categories === 'string' && article.categories) {
-          const catValue = String(article.categories).trim().toLowerCase();
-          if (catValue === normalizedCategory) {
-            console.log(`[RESPALDO] Coincidencia encontrada en campo 'categories' (string): Artículo "${article.title}"`);
-            return true;
-          }
+        // Si es un string, verificar si coincide
+        if (typeof article.categories === 'string') {
+          return String(article.categories).trim().toLowerCase() === normCategory;
         }
       }
       
       return false;
     });
     
-    console.log(`[RESPALDO] Artículos filtrados para la categoría "${category}": ${filteredArticles.length}`);
+    console.log(`[RESPALDO] Artículos filtrados por categoría "${category}": ${filteredArticles.length}`);
     
-    // Mostrar los títulos de los artículos encontrados para depuración
-    if (filteredArticles.length > 0) {
-      console.log('[RESPALDO] Artículos encontrados:');
-      filteredArticles.forEach((article, index) => {
-        console.log(`[RESPALDO] ${index + 1}. ${article.title} (categoría: ${article.category})`);
-      });
-    } else {
-      console.log('[RESPALDO] No se encontraron artículos para esta categoría');
-    }
+    // Aplicar paginación manualmente
+    const validPage = page > 0 ? page : 1;
+    const validPageSize = pageSize > 0 && pageSize <= 100 ? pageSize : 10;
+    const startIndex = (validPage - 1) * validPageSize;
+    const endIndex = startIndex + validPageSize;
     
-    return filteredArticles;
+    // Obtener los artículos para la página actual
+    const paginatedArticles = filteredArticles.slice(startIndex, endIndex);
+    
+    // Calcular la información de paginación
+    const totalItems = filteredArticles.length;
+    const totalPages = Math.ceil(totalItems / validPageSize);
+    
+    console.log(`[RESPALDO] Artículos paginados: ${paginatedArticles.length} (página ${validPage} de ${totalPages})`);
+    
+    // Devolver formato consistente con getAllArticles
+    return {
+      articles: paginatedArticles,
+      pagination: {
+        page: validPage,
+        pageSize: validPageSize,
+        totalItems,
+        totalPages,
+        hasNextPage: validPage < totalPages,
+        hasPrevPage: validPage > 1
+      }
+    };
+    
   } catch (error) {
-    console.error(`Error al obtener artículos por categoría (fallback): ${error.message}`);
-    return [];
+    console.error(`[RESPALDO] Error al obtener artículos por categoría:`, error);
+    // En caso de error, devolver objeto vacío pero con estructura consistente
+    return {
+      articles: [],
+      pagination: {
+        page,
+        pageSize,
+        totalItems: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false
+      }
+    };
   }
 }
 

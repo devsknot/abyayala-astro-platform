@@ -9,24 +9,71 @@ import { getAllArticles, getAllCategories } from '../../utils/contentApi.js';
 // Configuración para SSR
 export const prerender = false;
 
-// Obtener todas las noticias desde la API
-const allArticles = await getAllArticles(Astro.url.origin);
+// Configuración de paginación
+const ITEMS_PER_PAGE = 10;
+
+// Obtener el número de página actual de los parámetros de URL
+const url = new URL(Astro.request.url);
+const currentPage = url.searchParams.get('page') || '1';
+const pageNumber = parseInt(currentPage) || 1;
+
+// Definir un tipo para la respuesta de la API
+interface ArticleResponse {
+  articles: Array<{
+    slug: string;
+    title: string;
+    description: string;
+    content: string;
+    pubDate?: string;
+    pub_date?: string;
+    date?: string;
+    category?: string;
+    featured_image?: string;
+    image?: string;
+    author?: string;
+  }>;
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}
+
+// Obtener todas las noticias desde la API con paginación
+const response = await getAllArticles(Astro.url.origin, pageNumber, ITEMS_PER_PAGE) as ArticleResponse;
 
 // Obtener todas las categorías para el filtro
 const categories = await getAllCategories(Astro.url.origin);
 
-// Verificar que allArticles sea un array y tenga elementos
-const articlesArray = Array.isArray(allArticles) ? allArticles : [];
+// Desestructurar la respuesta para obtener artículos y datos de paginación
+// Definir un tipo para los artículos
+interface Article {
+  slug: string;
+  title: string;
+  description: string;
+  content: string;
+  pubDate?: string;
+  pub_date?: string;
+  date?: string;
+  category?: string;
+  featured_image?: string;
+  image?: string;
+  author?: string;
+}
 
-// Ordenar por fecha de publicación (más reciente primero)
-const sortedNews = articlesArray.length > 0 
-  ? articlesArray.sort((a, b) => {
-      // Manejar diferentes formatos de fecha (pubDate o pub_date o date) y valores nulos
-      const dateA = new Date(a.pubDate || a.pub_date || a.date || 0).valueOf();
-      const dateB = new Date(b.pubDate || b.pub_date || b.date || 0).valueOf();
-      return dateB - dateA;
-    })
-  : [];
+// Extraer los datos de la respuesta con tipado
+const articles = response.articles || [];
+const pagination = response.pagination || {
+  page: 1,
+  pageSize: ITEMS_PER_PAGE,
+  totalItems: 0,
+  totalPages: 0,
+  hasNextPage: false,
+  hasPrevPage: false
+};
 
 // Función para normalizar imágenes
 const normalizeImage = (imagePath: string | undefined): string => {
@@ -39,27 +86,24 @@ const normalizeImage = (imagePath: string | undefined): string => {
   return imagePath;
 };
 
-// Configuración de paginación
-const ITEMS_PER_PAGE = 10;
+// Configurar variables de paginación desde la respuesta de la API
+const { page, totalPages, hasNextPage, hasPrevPage } = pagination;
 
-// Obtener el número de página actual de los parámetros de URL
-const currentPage = new URL(Astro.request.url).searchParams.get('page') || '1';
-const pageNumber = parseInt(currentPage) || 1;
+// Título y descripción de la página
+const pageTitle = `Noticias - ${SITE_TITLE}`;
+const pageDescription = "Archivo de noticias del Colectivo Agrario Abya Yala.";
 
-// Calcular el total de páginas
-const totalPages = Math.ceil(sortedNews.length / ITEMS_PER_PAGE);
+// Inicializar las variables de filtro
+const initialCategory = "";
+const initialDateFrom = null;
+const initialDateTo = null;
+const initialSearchTerm = "";
 
-// Obtener los artículos para la página actual
-const startIndex = (pageNumber - 1) * ITEMS_PER_PAGE;
-const endIndex = startIndex + ITEMS_PER_PAGE;
-const paginatedNews = sortedNews.slice(startIndex, endIndex);
-
+// No necesitamos hacer slicing manualmente ya que la API ya nos devuelve los artículos paginados
 // Preparar URLs para navegación
-const previousPage = pageNumber > 1 ? `?page=${pageNumber - 1}` : null;
-const nextPage = pageNumber < totalPages ? `?page=${pageNumber + 1}` : null;
+const previousPage = pagination.hasPrevPage ? `?page=${pagination.page - 1}` : null;
+const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}` : null;
 
-const pageTitle = `Todas las Noticias | Página ${pageNumber} de ${totalPages} | ${SITE_TITLE}`;
-const pageDescription = 'Explora todas las noticias publicadas por el colectivo agrario Abya Yala. Manténte informado sobre agricultura, sostenibilidad, comunidad y más.';
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
@@ -70,96 +114,89 @@ const pageDescription = 'Explora todas las noticias publicadas por el colectivo 
         <p class="lead">Explora todas nuestras noticias, desde las más recientes hasta las más antiguas.</p>
       </div>
 
-      <div class="filters-section">
-        <div class="search-filter">
-          <label for="search-input">Buscar:</label>
-          <div class="search-input-wrapper">
-            <input type="text" id="search-input" placeholder="Buscar por título o contenido...">
-            <button type="button" class="search-button">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-            </button>
-          </div>
+      <div class="filters-container">
+        <div class="search-container">
+          <input
+            type="text"
+            id="search-input"
+            class="search-input"
+            placeholder="Buscar noticias..."
+          />
+          <button id="search-button" class="search-button">
+            <i class="ri-search-line"></i>
+          </button>
         </div>
-        
-        <div class="category-filter">
-          <label for="category-select">Categoría:</label>
-          <select id="category-select">
+
+        <div class="filter-group">
+          <label for="category-filter">Categoría:</label>
+          <select id="category-filter" class="filter-select">
             <option value="">Todas las categorías</option>
             {categories.map(category => (
               <option value={category.id}>{category.name}</option>
             ))}
           </select>
         </div>
-        
-        <div class="date-filter">
-          <div class="date-from">
+
+        <div class="filter-row">
+          <div class="filter-group date-filter">
             <label for="date-from">Desde:</label>
             <DatePicker id="date-from" />
           </div>
-          <div class="date-to">
+
+          <div class="filter-group date-filter">
             <label for="date-to">Hasta:</label>
             <DatePicker id="date-to" />
           </div>
+
+          <button id="clear-filters" class="clear-filters">
+            Limpiar filtros
+          </button>
         </div>
-        
-        <button type="button" id="clear-filters" class="clear-filters-btn">Limpiar filtros</button>
       </div>
-      
+
       <div class="active-filters" id="active-filters"></div>
       
       <div class="news-grid">
-        {paginatedNews.length > 0 ? (
-          paginatedNews.map(article => (
-            <article class="news-card" data-category={article.category} data-date={article.pubDate}>
-              <a href={`/news/${article.slug}`} class="news-card-link">
-                <div class="news-image">
-                  <img 
-                    src={normalizeImage(article.featured_image || article.image)} 
-                    alt={article.title} 
-                    loading="lazy" 
-                    onerror="this.onerror=null; this.src='/images/CAAY Logo sin fondo.png'; this.classList.add('fallback-image');"
-                  />
+        {articles && articles.length > 0 ? articles.map((article: Article) => (
+          <article class="news-card" data-category={article.category} data-date={article.pubDate || article.pub_date || article.date}>
+            <a href={`/news/${article.slug}`} class="news-card-link">
+              <div class="news-image">
+                <img 
+                  src={normalizeImage(article.featured_image || article.image)} 
+                  alt={article.title} 
+                  loading="lazy" 
+                  onerror="this.onerror=null; this.src='/images/CAAY Logo sin fondo.png'; this.classList.add('fallback-image');"
+                />
+              </div>
+              <div class="news-content">
+                {article.category && <CategoryTag category={article.category} />}
+                <h2 class="news-title">{article.title}</h2>
+                <div class="news-meta">
+                  <FormattedDate date={new Date(article.pubDate || article.pub_date || article.date || '')} />
+                  {article.author && <span class="news-author">Por: {article.author}</span>}
                 </div>
-                <div class="news-content">
-                  <CategoryTag category={article.category} />
-                  <h2 class="news-title">{article.title}</h2>
-                  <div class="news-meta">
-                    <FormattedDate date={new Date(article.pubDate)} />
-                    {article.author && <span class="news-author">Por: {article.author}</span>}
-                  </div>
-                  <p class="news-excerpt">{article.description}</p>
-                  <span class="read-more">Leer más</span>
-                </div>
-              </a>
-            </article>
-          ))
-        ) : (
+                <p class="news-excerpt">{article.description}</p>
+                <span class="read-more">Leer más</span>
+              </div>
+            </a>
+          </article>
+        )) : (
           <div class="no-results">
             <p>No se encontraron noticias. Por favor, inténtelo de nuevo más tarde.</p>
           </div>
         )}
       </div>
 
-      {sortedNews.length > ITEMS_PER_PAGE && (
+      {pagination.totalPages > 0 && (
         <div class="pagination">
           <a 
             href={previousPage} 
-            class="pagination-btn prev-page" 
-            aria-label="Página anterior"
-            style={!previousPage ? "opacity: 0.5; pointer-events: none;" : ""}
+            class="pagination-link prev" 
+            class:list={{ disabled: !previousPage }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-            Anterior
+            <i class="ri-arrow-left-line"></i> Página anterior
           </a>
-          
-          <span class="pagination-info">
-            Página {pageNumber} de {totalPages}
-          </span>
+          <span class="pagination-info">Página {pagination.page} de {pagination.totalPages}</span>
           
           <a 
             href={nextPage} 

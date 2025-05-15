@@ -45,34 +45,8 @@ if (!category) {
   return Astro.redirect('/');
 }
 
-// Obtener artículos de la API filtrados por categoría
-// Usar slug como identificador principal, con fallback a id para compatibilidad
-const categoryIdentifier = category.slug || category.id;
-console.log(`[CATEGORY-PAGE] Obteniendo artículos para la categoría: "${categoryIdentifier}"`);
-const articlesResult = await getArticlesByCategory(categoryIdentifier, Astro.url.origin);
-
-// Asegurar que newsItems sea siempre un array
-const newsItems = Array.isArray(articlesResult) ? articlesResult : [];
-console.log(`[CATEGORY-PAGE] Artículos obtenidos: ${newsItems.length}`);
-
-if (newsItems.length > 0) {
-  console.log(`[CATEGORY-PAGE] Primer artículo: ${JSON.stringify({
-    title: newsItems[0].title,
-    category: newsItems[0].category || 'no-category',
-    fecha: newsItems[0].pubDate || newsItems[0].pub_date || newsItems[0].date || 'sin fecha'
-  })}`);
-}
-
-// Ordenar por fecha de publicación (más reciente primero)
-console.log(`[CATEGORY-PAGE] Ordenando artículos por fecha...`);
-if (newsItems.length > 0) {
-  newsItems.sort((a, b) => {
-    // Manejar diferentes formatos de fecha y valores nulos
-    const dateA = new Date(a.pubDate || a.pub_date || a.date || 0).valueOf();
-    const dateB = new Date(b.pubDate || b.pub_date || b.date || 0).valueOf();
-    return dateB - dateA;
-  });
-}
+// La obtención de artículos por categoría con paginación se realiza más abajo
+// Ahora usamos la función getArticlesByCategory que soporta paginación
 
 // Función para normalizar imágenes
 const normalizeImage = (imagePath: string | undefined): string => {
@@ -89,26 +63,68 @@ const normalizeImage = (imagePath: string | undefined): string => {
 const ITEMS_PER_PAGE = 10;
 
 // Obtener el número de página actual de los parámetros de URL
-const currentPage = new URL(Astro.request.url).searchParams.get('page') || '1';
+const url = new URL(Astro.request.url);
+const currentPage = url.searchParams.get('page') || '1';
 const pageNumber = parseInt(currentPage) || 1;
 
-// Calcular el total de páginas
-const totalPages = Math.ceil(newsItems.length / ITEMS_PER_PAGE);
+// Definir tipos para la respuesta de getArticlesByCategory
+interface Article {
+  slug: string;
+  title: string;
+  description: string;
+  content: string;
+  pubDate?: string;
+  pub_date?: string;
+  date?: string;
+  category?: string;
+  featured_image?: string;
+  image?: string;
+  author?: string;
+}
 
-// Obtener los artículos para la página actual
-const startIndex = (pageNumber - 1) * ITEMS_PER_PAGE;
-const endIndex = startIndex + ITEMS_PER_PAGE;
-const paginatedItems = newsItems.slice(startIndex, endIndex);
-console.log(`[CATEGORY-PAGE] Mostrando ${paginatedItems.length} artículos de ${newsItems.length} (página ${pageNumber} de ${totalPages})`);
+interface PaginationResponse {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+interface ArticlesResponse {
+  articles: Article[];
+  pagination: PaginationResponse;
+}
+
+// Obtener artículos de la API filtrados por categoría, con paginación
+// Usar slug como identificador principal, con fallback a id para compatibilidad
+const categoryIdentifier = category.slug || category.id;
+console.log(`[CATEGORY-PAGE] Obteniendo artículos para la categoría: "${categoryIdentifier}", página ${pageNumber}`);
+const response = await getArticlesByCategory(categoryIdentifier, Astro.url.origin, pageNumber, ITEMS_PER_PAGE) as ArticlesResponse;
+
+// Extraer artículos y datos de paginación de la respuesta
+const articles = response.articles || [];
+const pagination = response.pagination || {
+  page: 1,
+  pageSize: ITEMS_PER_PAGE,
+  totalItems: 0,
+  totalPages: 0,
+  hasNextPage: false,
+  hasPrevPage: false
+};
+const { page, totalPages, hasNextPage, hasPrevPage } = pagination;
+
+console.log(`[CATEGORY-PAGE] Artículos obtenidos: ${articles.length}, página ${page} de ${totalPages}`);
+console.log(`[CATEGORY-PAGE] Mostrando ${articles.length} artículos (página ${page} de ${totalPages})`);
 
 // Preparar URLs para navegación
-const previousPage = pageNumber > 1 ? `?page=${pageNumber - 1}` : null;
-const nextPage = pageNumber < totalPages ? `?page=${pageNumber + 1}` : null;
+const previousPage = pagination.hasPrevPage ? `?page=${pagination.page - 1}` : null;
+const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}` : null;
 
 // Mensaje para mostrar si no hay artículos
 const noArticlesMessage = `No hay artículos disponibles en la categoría ${category.name}. Por favor, vuelva a intentarlo más tarde.`;
----
 
+---
 <BaseLayout title={`${category.name} - Abya Yala`} description={category.description}>
   <div class="category-header">
     <div class="container">
@@ -151,27 +167,27 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
         </div>
       </div>
       
-      {paginatedItems.length > 0 ? (
+      {articles.length > 0 ? (
         <>
           <div class="news-grid" id="news-grid">
-            {paginatedItems.map(news => {
+            {articles.map((article: Article) => {
               // Estandarización de campos
-              const title = news.title || 'Sin título';
+              const title = article.title || 'Sin título';
               
               // Recortar la descripción a un máximo de 150 caracteres
-              let description = news.description || news.excerpt || '';
+              let description = article.description || '';
               if (description.length > 150) {
                 description = description.substring(0, 147) + '...';
               }
               
               // Manejar diferentes formatos de fecha
-              const pubDate = news.pubDate || news.pub_date || news.date || new Date();
+              const pubDate = article.pubDate || article.pub_date || article.date || new Date();
               
               // Manejar diferentes formatos de categoría
-              const category = news.category || news.categorySlug || categorySlug;
+              const category = article.category || categorySlug;
               
               // Manejar diferentes formatos de imagen
-              const image = normalizeImage(news.featured_image || news.image || news.hero_image || news.thumbnailUrl);
+              const image = normalizeImage(article.featured_image || article.image || '');
               
               return (
                 <div class="news-item" 
@@ -182,61 +198,58 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
                     title={title}
                     description={description}
                     pubDate={pubDate}
-                    category={category}
+                    category={category || ''}
                     image={image}
-                    slug={news.slug}
+                    slug={article.slug || ''}
                   />
                 </div>
               );
             })}
           </div>
-
-          {newsItems.length > ITEMS_PER_PAGE && (
-            <div class="pagination">
-              <a 
-                href={previousPage} 
-                class="pagination-btn prev-page" 
-                aria-label="Página anterior"
-                style={!previousPage ? "opacity: 0.5; pointer-events: none;" : ""}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        </>
+      ) : (
+        <div class="no-results">
+          <p>{noArticlesMessage}</p>
+        </div>
+      )}
+      
+      {totalPages > 1 && (
+        <div class="pagination">
+          <div class="pagination-controls">
+            {hasPrevPage ? (
+              <a href={`/category/${categorySlug}?page=${page - 1}`} class="pagination-prev">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
-                Anterior
+                Página anterior
               </a>
-              
-              <span class="pagination-info">
-                Página {pageNumber} de {totalPages}
+            ) : (
+              <span class="pagination-prev disabled">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Página anterior
               </span>
-              
-              <a 
-                href={nextPage} 
-                class="pagination-btn next-page" 
-                aria-label="Página siguiente"
-                style={!nextPage ? "opacity: 0.5; pointer-events: none;" : ""}
-              >
-                Siguiente
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            )}
+            
+            <span class="pagination-info">Página {page} de {totalPages}</span>
+            
+            {hasNextPage ? (
+              <a href={`/category/${categorySlug}?page=${page + 1}`} class="pagination-next">
+                Página siguiente
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="9 18 15 12 9 6"></polyline>
                 </svg>
               </a>
-            </div>
-          )}
-        </>
-      ) : (
-        <div class="no-articles">
-          <p>{noArticlesMessage}</p>
-          
-          <!-- Información de depuración -->
-          <div class="debug-info">
-            <h3>Información de depuración (solo visible en desarrollo)</h3>
-            <p><strong>Categoría solicitada (slug):</strong> {categorySlug}</p>
-            <p><strong>Categoría encontrada:</strong> {category ? 'Sí' : 'No'}</p>
-            <p><strong>Nombre de categoría:</strong> {category?.name}</p>
-            <p><strong>Slug de categoría:</strong> {category?.slug}</p>
-            <p><strong>ID de categoría (legacy):</strong> {category?.id || 'N/A'}</p>
-            <p><strong>Total de categorías disponibles:</strong> {categories.length}</p>
-            
+            ) : (
+              <span class="pagination-next disabled">
+                Página siguiente
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </span>
+            )}
+          </div>
             <h4>Todas las categorías disponibles:</h4>
             <ul>
               {categories.map(cat => (

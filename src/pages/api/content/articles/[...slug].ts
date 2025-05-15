@@ -55,11 +55,14 @@ export async function GET(context: APIContext) {
         if (slug) {
             return handleGetArticle(slug, db, commonHeaders);
         } else {
-            return handleGetArticles(db, commonHeaders);
+            return handleGetArticles(db, commonHeaders, context.request);
         }
     } catch (error: any) {
         console.error('Error in GET /api/content/articles:', error);
-        return new Response(JSON.stringify({ error: error.message || 'Server Error' }), {
+        return new Response(JSON.stringify({ 
+            success: false,
+            error: error.message || 'Server Error' 
+        }), {
             status: 500,
             headers: commonHeaders
         });
@@ -206,10 +209,29 @@ async function verifyAuthentication(request: Request, env: any) {
     return !!jwt;
 }
 
-// Get all articles
-async function handleGetArticles(db: any, headers: HeadersInit) {
-    console.log('[articles/...slug.ts] Retrieving all articles');
+// Get all articles with pagination support
+async function handleGetArticles(db: any, headers: HeadersInit, request?: Request) {
+    console.log('[articles/...slug.ts] Retrieving articles with pagination');
+    
     try {
+        // Parse pagination parameters from URL
+        const url = request?.url ? new URL(request.url) : null;
+        const page = url?.searchParams.get('page') ? parseInt(url.searchParams.get('page')!) : 1;
+        const pageSize = url?.searchParams.get('pageSize') ? parseInt(url.searchParams.get('pageSize')!) : 10;
+        
+        // Validate pagination parameters
+        const validPage = page > 0 ? page : 1;
+        const validPageSize = pageSize > 0 && pageSize <= 100 ? pageSize : 10;
+        const offset = (validPage - 1) * validPageSize;
+        
+        // Get total count of articles for pagination info
+        const { count } = await db.prepare('SELECT COUNT(*) as count FROM articles').first();
+        const totalArticles = count || 0;
+        const totalPages = Math.ceil(totalArticles / validPageSize);
+        
+        console.log(`[articles/...slug.ts] Pagination: page=${validPage}, pageSize=${validPageSize}, offset=${offset}, total=${totalArticles}, totalPages=${totalPages}`);
+
+        // Query articles with pagination
         const { results } = await db.prepare(`
             SELECT a.*,
                    aut.id as author_id,
@@ -219,30 +241,54 @@ async function handleGetArticles(db: any, headers: HeadersInit) {
             FROM articles a
             LEFT JOIN authors aut ON a.author_id = aut.id
             ORDER BY a.pub_date DESC
-        `).all();
+            LIMIT ? OFFSET ?
+        `).bind(validPageSize, offset).all();
 
         const transformedResults = results.map(transformArticleForFrontend);
-        console.log(`[articles/...slug.ts] Retrieved ${transformedResults.length} articles`); 
-        // Mostrar detalles para los primeros artículos para depuración
+        console.log(`[articles/...slug.ts] Retrieved ${transformedResults.length} articles (page ${validPage} of ${totalPages})`); 
+        
+        // Log first article for debugging
         if (transformedResults.length > 0) {
             const previewArticle = transformedResults[0];
             console.log(`[articles/...slug.ts] First article: ${previewArticle.title}, Category: ${previewArticle.category}`);
         }
+        
+        // Return standardized response with pagination info
         return new Response(JSON.stringify({
             success: true,
+            pagination: {
+                page: validPage,
+                pageSize: validPageSize,
+                totalItems: totalArticles,
+                totalPages: totalPages,
+                hasNextPage: validPage < totalPages,
+                hasPrevPage: validPage > 1
+            },
             articles: transformedResults || []
-        }), { headers });
+        }), { 
+            headers: {
+                ...headers,
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
+            } 
+        });
     } catch (error: any) {
         console.error('Error fetching articles:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch articles' }), { status: 500, headers });
+        return new Response(JSON.stringify({ 
+            success: false,
+            error: 'Failed to fetch articles',
+            message: error.message || 'Unknown database error'
+        }), { 
+            status: 500, 
+            headers 
+        });
     }
 }
 
 // Get a specific article by slug
 async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
-    console.log(`[articles/...slug.ts] Retrieving article with slug: ${slug}`);
+    console.log(`[articles/...slug.ts] Retrieving article by slug: ${slug}`);
     try {
-        const article = await db.prepare(`
+        const { results } = await db.prepare(`
             SELECT a.*,
                    aut.id as author_id,
                    aut.name as author_name,
@@ -251,23 +297,42 @@ async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
             FROM articles a
             LEFT JOIN authors aut ON a.author_id = aut.id
             WHERE a.slug = ?
-        `).bind(slug).first();
+        `).bind(slug).all();
 
-        if (!article) {
-            return new Response(JSON.stringify({ error: 'Article not found' }), {
-                status: 404,
-                headers
+        if (!results || results.length === 0) {
+            console.log(`[articles/...slug.ts] No article found with slug: ${slug}`);
+            return new Response(JSON.stringify({ 
+                success: false,
+                error: 'Article not found' 
+            }), { 
+                status: 404, 
+                headers: {
+                    ...headers,
+                    'Cache-Control': 'no-cache, no-store, must-revalidate'
+                }
             });
         }
-        const transformedArticle = transformArticleForFrontend(article);
-        console.log(`[articles/...slug.ts] Retrieved article: ${article.title}, Category: ${article.category}`);
+
+        const article = transformArticleForFrontend(results[0]);
         return new Response(JSON.stringify({
             success: true,
-            article: transformedArticle
-        }), { headers });
+            article
+        }), { 
+            headers: {
+                ...headers,
+                'Cache-Control': 'no-cache, no-store, must-revalidate'
+            }
+        });
     } catch (error: any) {
-        console.error(`Error fetching article ${slug}:`, error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch article' }), { status: 500, headers });
+        console.error(`Error fetching article with slug ${slug}:`, error);
+        return new Response(JSON.stringify({ 
+            success: false,
+            error: 'Failed to fetch article',
+            message: error.message || 'Unknown database error'
+        }), { 
+            status: 500, 
+            headers 
+        });
     }
 }
 
