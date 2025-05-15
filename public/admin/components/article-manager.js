@@ -1050,9 +1050,13 @@ export class ArticleManager {
                         // Intentar reinicializar el editor
                         this.editor = new ContentEditor(editorContainer);
                         setTimeout(() => {
-                          if (this.editor && typeof this.editor.setContent === 'function') {
-                            this.editor.setContent(content);
-                            console.log('Contenido establecido en el editor después de reinicializar');
+                          try {
+                            if (this.editor && typeof this.editor.setContent === 'function') {
+                              this.editor.setContent(content);
+                              console.log('Contenido establecido en el editor después de reinicializar');
+                            }
+                          } catch (reinitError) {
+                            console.error('Error al establecer contenido después de reinicializar:', reinitError);
                           }
                         }, 1000);
                       }
