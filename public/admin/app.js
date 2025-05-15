@@ -234,11 +234,25 @@ async function renderDashboard(container) {
     // Crear instancia del gestor de contenido
     const contentManager = new ContentManager();
     
-    // Obtener artículos y actividades recientes
-    const [articles, activities] = await Promise.all([
-      contentManager.getArticles(),
-      contentManager.getActivities(5)
-    ]);
+    // Obtener artículos y actividades recientes con manejo de errores individual
+    let articles = [];
+    let activities = [];
+
+    try {
+      articles = await contentManager.getArticles();
+      console.log('Artículos cargados:', articles.length);
+    } catch (articleError) {
+      console.error('Error al cargar artículos:', articleError);
+      notifications.warning('No se pudieron cargar todos los artículos.');
+    }
+    
+    try {
+      activities = await contentManager.getActivities(5);
+      console.log('Actividades cargadas:', activities.length);
+    } catch (activityError) {
+      console.error('Error al cargar actividades:', activityError);
+      // Las actividades son opcionales, continuamos sin ellas
+    }
     
     // Renderizar el dashboard con los datos obtenidos
     container.innerHTML = `
