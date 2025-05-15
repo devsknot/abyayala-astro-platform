@@ -15,10 +15,18 @@ const allArticles = await getAllArticles(Astro.url.origin);
 // Obtener todas las categorías para el filtro
 const categories = await getAllCategories(Astro.url.origin);
 
+// Verificar que allArticles sea un array y tenga elementos
+const articlesArray = Array.isArray(allArticles) ? allArticles : [];
+
 // Ordenar por fecha de publicación (más reciente primero)
-const sortedNews = allArticles.sort(
-  (a, b) => new Date(b.pubDate).valueOf() - new Date(a.pubDate).valueOf()
-);
+const sortedNews = articlesArray.length > 0 
+  ? articlesArray.sort((a, b) => {
+      // Manejar diferentes formatos de fecha (pubDate o pub_date o date) y valores nulos
+      const dateA = new Date(a.pubDate || a.pub_date || a.date || 0).valueOf();
+      const dateB = new Date(b.pubDate || b.pub_date || b.date || 0).valueOf();
+      return dateB - dateA;
+    })
+  : [];
 
 const pageTitle = `Todas las Noticias | ${SITE_TITLE}`;
 const pageDescription = 'Explora todas las noticias publicadas por el colectivo agrario Abya Yala. Mantente informado sobre agricultura, sostenibilidad, comunidad y más.';
