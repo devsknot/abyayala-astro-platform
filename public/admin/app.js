@@ -1,65 +1,92 @@
 // Aplicación principal del CMS
-// Usar importaciones con rutas absolutas para evitar problemas de resolución
-const baseUrl = window.location.origin;
+// Evitar importaciones estáticas y usar importaciones dinámicas para mayor compatibilidad
 
-// Definir las rutas de los componentes usando URL absolutas
-const componentUrls = {
-  articleManager: `${baseUrl}/admin/components/article-manager.js`,
-  mediaLibrary: `${baseUrl}/admin/components/media-library.js`,
-  categoryManager: `${baseUrl}/admin/components/category-manager.js`,
-  contentManager: `${baseUrl}/admin/content-manager.js`,
-  notifications: `${baseUrl}/admin/components/notification.js`,
-  bulkImportManager: `${baseUrl}/admin/components/bulk-import-manager.js`,
-  authorManager: `${baseUrl}/admin/author-manager.js`
-};
+// Función para actualizar el estado de carga (definida en index.html)
+const updateLoadingStatus = window.updateLoadingStatus || function(msg) { console.log(msg); };
+const showDebugInfo = window.showDebugInfo || function(msg) { console.log(msg); };
 
-// Importar los componentes
-import { ArticleManager } from './components/article-manager.js';
-import { MediaLibrary } from './components/media-library.js';
-import { CategoryManager } from './components/category-manager.js';
-import { ContentManager } from './content-manager.js';
-import { notifications } from './components/notification.js';
-import { BulkImportManager } from './components/bulk-import-manager.js';
-import AuthorManager from './author-manager.js';
+// Usar la URL base global o crearla si no existe
+window.appBaseUrl = window.appBaseUrl || window.location.origin;
+const baseUrl = window.appBaseUrl;
 
-// Registrar los componentes en el objeto global window para depuración
-window.cmsComponents = {
-  ArticleManager,
-  MediaLibrary,
-  CategoryManager,
-  ContentManager,
-  notifications,
-  BulkImportManager,
-  AuthorManager
-};
+// Señalar que la app ha comenzado a inicializarse
+showDebugInfo('Iniciando la carga del CMS...');
 
-// Componentes del panel de administración
-const components = {
-  dashboard: renderDashboard,
-  articles: renderArticlesManager,
-  media: renderMediaLibrary,
-  categories: renderCategories,
-  settings: renderSettings,
-  bulkImport: renderBulkImport,
-  authors: renderAuthors
-};
+// Almacenar versiones de los componentes cargados
+window.cmsComponents = {};
+
+// Helper para importar módulos dinámicamente con manejo de errores
+async function importModule(url) {
+  updateLoadingStatus(`Importando: ${url.split('/').pop()}`);
+  try {
+    return await import(url);
+  } catch (error) {
+    showDebugInfo(`Error al importar ${url}: ${error.message}`);
+    // Devolver un módulo vacío para no romper el flujo
+    return { default: {}, error: error.message };
+  }
+}
 
 // Estado global de la aplicación
 const appState = {
   currentView: 'dashboard',
   user: null,
-  authenticated: false
+  authenticated: false,
+  componentsLoaded: false
 };
 
-// Inicializar la aplicación cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', async () => {
-  const appElement = document.getElementById('app');
-  
-  // Verificar autenticación usando localStorage
+// Componentes del panel de administración (se definirán dinámicamente)
+let components = {};
+
+// Rutas de los archivos de componentes
+const moduleUrls = {
+  contentManager: `${baseUrl}/admin/content-manager.js`,
+  notifications: `${baseUrl}/admin/components/notification.js`,
+  articleManager: `${baseUrl}/admin/components/article-manager.js`,
+  mediaLibrary: `${baseUrl}/admin/components/media-library.js`,
+  categoryManager: `${baseUrl}/admin/components/category-manager.js`,
+  bulkImportManager: `${baseUrl}/admin/components/bulk-import-manager.js`,
+  authorManager: `${baseUrl}/admin/author-manager.js`
+};
+
+// Función principal de inicialización
+async function initializeApp() {
   try {
+    // Primero cargar el módulo de notificaciones que es crítico
+    updateLoadingStatus('Cargando módulo de notificaciones...');
+    const notificationModule = await importModule(moduleUrls.notifications);
+    if (notificationModule.error) {
+      showDebugInfo('No se pudo cargar el módulo de notificaciones. Usando módulo de respaldo.');
+      
+      // Si falla, crear un módulo de notificaciones mínimo de respaldo
+      window.cmsComponents.notifications = {
+        success: (msg) => { console.log('SUCCESS:', msg); alert(msg); },
+        error: (msg) => { console.error('ERROR:', msg); alert('Error: ' + msg); },
+        warning: (msg) => { console.warn('WARNING:', msg); alert('Advertencia: ' + msg); },
+        confirm: (msg) => { return confirm(msg); }
+      };
+    } else {
+      // Guardar la referencia a las notificaciones
+      window.cmsComponents.notifications = notificationModule.notifications || notificationModule.default;
+    }
+    
+    // Definir el acceso directo a notificaciones
+    const notifications = window.cmsComponents.notifications;
+    
+    // Verificar autenticación usando localStorage
+    updateLoadingStatus('Verificando autenticación...');
     const authData = localStorage.getItem('abyayala_cms_auth');
     
-    if (authData) {
+    if (!authData) {
+      // No hay datos de autenticación
+      updateLoadingStatus('No hay sesión activa, redirigiendo a login...');
+      setTimeout(() => {
+        window.location.href = `${baseUrl}/admin/login.html`;
+      }, 1000);
+      return;
+    }
+    
+    try {
       const auth = JSON.parse(authData);
       
       // Verificar si la autenticación no ha expirado (24 horas)
@@ -67,30 +94,105 @@ document.addEventListener('DOMContentLoaded', async () => {
       const authTime = auth.timestamp || 0;
       const authValid = (now - authTime) < (24 * 60 * 60 * 1000);
       
-      if (auth.authenticated && authValid) {
-        appState.authenticated = true;
-        appState.user = auth.user;
-        renderApp(appElement);
-      } else {
-        // Autenticación expirada
+      if (!auth.authenticated || !authValid) {
+        // Autenticación inválida o expirada
         localStorage.removeItem('abyayala_cms_auth');
         notifications.warning('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
-        // Usar ruta relativa para redireccionar al login
-        const baseUrl = window.location.origin;
-        window.location.href = `${baseUrl}/admin/login.html`;
+        
+        updateLoadingStatus('Sesión expirada, redirigiendo a login...');
+        setTimeout(() => {
+          window.location.href = `${baseUrl}/admin/login.html`;
+        }, 1000);
+        return;
       }
-    } else {
-      // No hay datos de autenticación
-      const baseUrl = window.location.origin;
+      
+      // Actualizar estado con datos de autenticación
+      appState.authenticated = true;
+      appState.user = auth.user;
+      
+      // Cargar resto de componentes y renderizar la aplicación
+      await loadComponentModules();
+      renderApp(document.getElementById('app'));
+      
+      // Marcar la app como inicializada
+      window.appInitialized = true;
+    } catch (authError) {
+      showDebugInfo(`Error al procesar autenticación: ${authError.message}`);
+      localStorage.removeItem('abyayala_cms_auth');
       window.location.href = `${baseUrl}/admin/login.html`;
     }
   } catch (error) {
-    console.error('Error de autenticación:', error);
-    notifications.error('Error de autenticación. Por favor, intenta nuevamente.');
-    const baseUrl = window.location.origin;
-    window.location.href = `${baseUrl}/admin/login.html`;
+    showDebugInfo(`Error fatal en inicialización: ${error.message}`);
+    updateLoadingStatus(`Error al inicializar: ${error.message}`);
   }
-});
+}
+
+// Función para cargar todos los módulos de componentes
+async function loadComponentModules() {
+  updateLoadingStatus('Cargando componentes del CMS...');
+  
+  try {
+    // Cargar el ContentManager primero ya que otros dependen de él
+    const contentManagerModule = await importModule(moduleUrls.contentManager);
+    window.cmsComponents.ContentManager = contentManagerModule.ContentManager || 
+                                          contentManagerModule.default;
+    
+    // Cargar el resto de módulos
+    const [articleModule, mediaModule, categoryModule, bulkImportModule, authorModule] = await Promise.allSettled([
+      importModule(moduleUrls.articleManager),
+      importModule(moduleUrls.mediaLibrary),
+      importModule(moduleUrls.categoryManager),
+      importModule(moduleUrls.bulkImportManager),
+      importModule(moduleUrls.authorManager)
+    ]);
+    
+    // Guardar referencias a los componentes exitosamente cargados
+    if (articleModule.status === 'fulfilled') {
+      window.cmsComponents.ArticleManager = articleModule.value.ArticleManager || 
+                                            articleModule.value.default;
+    }
+    
+    if (mediaModule.status === 'fulfilled') {
+      window.cmsComponents.MediaLibrary = mediaModule.value.MediaLibrary || 
+                                          mediaModule.value.default;
+    }
+    
+    if (categoryModule.status === 'fulfilled') {
+      window.cmsComponents.CategoryManager = categoryModule.value.CategoryManager || 
+                                             categoryModule.value.default;
+    }
+    
+    if (bulkImportModule.status === 'fulfilled') {
+      window.cmsComponents.BulkImportManager = bulkImportModule.value.BulkImportManager || 
+                                                bulkImportModule.value.default;
+    }
+    
+    if (authorModule.status === 'fulfilled') {
+      window.cmsComponents.AuthorManager = authorModule.value.AuthorManager || 
+                                            authorModule.value.default;
+    }
+    
+    // Crear componentes UI para cada vista
+    components = {
+      dashboard: renderDashboard,
+      articles: renderArticlesManager,
+      media: renderMediaLibrary,
+      categories: renderCategories,
+      settings: renderSettings,
+      bulkImport: renderBulkImport,
+      authors: renderAuthors
+    };
+    
+    appState.componentsLoaded = true;
+    updateLoadingStatus('Componentes cargados correctamente.');
+  } catch (error) {
+    showDebugInfo(`Error al cargar componentes: ${error.message}`);
+    throw new Error(`Error al cargar componentes: ${error.message}`);
+  }
+}
+
+// Iniciar la aplicación cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', initializeApp);
 
 // Renderizar la aplicación completa
 function renderApp(container) {
@@ -182,6 +284,7 @@ function renderApp(container) {
   // Configurar evento de cierre de sesión
   document.getElementById('logout-btn').addEventListener('click', async () => {
     // Pedir confirmación
+    const notifications = window.cmsComponents.notifications;
     const confirmed = await notifications.confirm('¿Estás seguro de que deseas cerrar sesión?');
     if (!confirmed) return;
     
@@ -193,7 +296,6 @@ function renderApp(container) {
     
     // Redirigir a la página de login
     setTimeout(() => {
-      const baseUrl = window.location.origin;
       window.location.href = `${baseUrl}/admin/login.html`;
     }, 1000);
   });
@@ -218,6 +320,10 @@ function renderApp(container) {
 // Función para renderizar el dashboard
 async function renderDashboard(container) {
   try {
+    // Acceder a componentes cargados dinámicamente
+    const { ContentManager } = window.cmsComponents;
+    const notifications = window.cmsComponents.notifications;
+    
     // Mostrar indicador de carga
     container.innerHTML = `
       <div class="p-4">
@@ -231,6 +337,11 @@ async function renderDashboard(container) {
       </div>
     `;
     
+    // Verificar si el componente está disponible
+    if (!ContentManager) {
+      throw new Error('El componente ContentManager no está disponible');
+    }
+    
     // Crear instancia del gestor de contenido
     const contentManager = new ContentManager();
     
@@ -240,17 +351,17 @@ async function renderDashboard(container) {
 
     try {
       articles = await contentManager.getArticles();
-      console.log('Artículos cargados:', articles.length);
+      showDebugInfo(`Artículos cargados: ${articles.length}`);
     } catch (articleError) {
-      console.error('Error al cargar artículos:', articleError);
-      notifications.warning('No se pudieron cargar todos los artículos.');
+      showDebugInfo(`Error al cargar artículos: ${articleError.message}`);
+      if (notifications) notifications.warning('No se pudieron cargar todos los artículos.');
     }
     
     try {
       activities = await contentManager.getActivities(5);
-      console.log('Actividades cargadas:', activities.length);
+      showDebugInfo(`Actividades cargadas: ${activities.length}`);
     } catch (activityError) {
-      console.error('Error al cargar actividades:', activityError);
+      showDebugInfo('Las actividades son opcionales, continuando sin ellas');
       // Las actividades son opcionales, continuamos sin ellas
     }
     
@@ -451,52 +562,147 @@ function renderRecentActivities(activities) {
         </div>
       </div>
     `;
-  }).join('');
-}
-
-// Renderizar gestor de artículos
 function renderArticlesManager(container) {
-  container.innerHTML = '<div id="articles-container"></div>';
-  const articlesContainer = container.querySelector('#articles-container');
-  new ArticleManager(articlesContainer);
-}
-
-// Renderizar biblioteca de medios
-function renderMediaLibrary(container) {
-  container.innerHTML = '<div id="media-container"></div>';
-  const mediaContainer = container.querySelector('#media-container');
-  new MediaLibrary(mediaContainer);
-}
-
-// Renderizar gestor de categorías
-function renderCategories(container) {
-  container.innerHTML = `
-    <div class="categories-manager p-6">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold">Categorías</h2>
-      </div>
-      
-      <div id="category-manager-container">
-        <div class="flex flex-col items-center justify-center p-8">
-          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500 mb-2"></div>
-          <span class="text-gray-500">Inicializando gestor de categorías...</span>
+  try {
+    // Acceder a componentes cargados dinámicamente
+    const { ArticleManager, ContentManager } = window.cmsComponents;
+    const notifications = window.cmsComponents.notifications;
+    
+    // Verificar que los componentes existen
+    if (!ArticleManager || !ContentManager) {
+      showDebugInfo('Componentes para artículos no disponibles. ArticleManager: ' + 
+                   (ArticleManager ? 'OK' : 'No disponible') + 
+                   ', ContentManager: ' + (ContentManager ? 'OK' : 'No disponible'));
+      container.innerHTML = `
+        <div class="p-4">
+          <h2 class="text-2xl font-bold mb-6">Gestor de Artículos</h2>
+          <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+            <p class="text-yellow-700">Algunos componentes no están disponibles. Estamos trabajando en ello.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
+    // Verificar si ya hay una instancia creada
+    if (!window.articleManager) {
+      showDebugInfo('Creando instancia de ArticleManager');
+      // Crear instancia
+      window.articleManager = new ArticleManager(container, {
+        onSave: () => notifications.success('Artículo guardado correctamente'),
+        onError: (error) => notifications.error(`Error: ${error}`),
+        onDelete: () => notifications.success('Artículo eliminado correctamente'),
+        contentManager: new ContentManager()
+      });
+    }
+    
+    // Renderizar la lista de artículos
+    window.articleManager.renderArticlesList();
+  } catch (error) {
+    showDebugInfo(`Error al renderizar gestor de artículos: ${error.message}`);
+    container.innerHTML = `
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-6">Gestor de Artículos</h2>
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <p class="text-red-700">Error al cargar el componente: ${error.message}</p>
         </div>
       </div>
-    </div>
-  `;
-  
-  // Inicializar el gestor de categorías
-  const contentManager = new ContentManager();
-  const categoryManager = new CategoryManager(contentManager);
-  
-  // Inicializar el componente
-  setTimeout(() => {
-    categoryManager.init('category-manager-container')
-      .catch(error => {
-        console.error('Error al inicializar el gestor de categorías:', error);
-        notifications.error('Error al inicializar el gestor de categorías. Por favor, recarga la página.');
+    `;
+  }
+}
+
+function renderMediaLibrary(container) {
+  try {
+    // Acceder a componentes cargados dinámicamente
+    const { MediaLibrary, ContentManager } = window.cmsComponents;
+    const notifications = window.cmsComponents.notifications;
+    
+    // Verificar que los componentes existen
+    if (!MediaLibrary || !ContentManager) {
+      showDebugInfo('Componentes para medios no disponibles');
+      container.innerHTML = `
+        <div class="p-4">
+          <h2 class="text-2xl font-bold mb-6">Biblioteca de Medios</h2>
+          <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+            <p class="text-yellow-700">Algunos componentes no están disponibles. Estamos trabajando en ello.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
+    // Verificar si ya hay una instancia creada
+    if (!window.mediaLibrary) {
+      showDebugInfo('Creando instancia de MediaLibrary');
+      // Crear instancia
+      window.mediaLibrary = new MediaLibrary(container, {
+        onUpload: () => notifications.success('Archivo subido correctamente'),
+        onError: (error) => notifications.error(`Error: ${error}`),
+        onDelete: () => notifications.success('Archivo eliminado correctamente'),
+        contentManager: new ContentManager()
       });
-  }, 100);
+    }
+    
+    // Renderizar la biblioteca de medios
+    window.mediaLibrary.render();
+  } catch (error) {
+    showDebugInfo(`Error al renderizar biblioteca de medios: ${error.message}`);
+    container.innerHTML = `
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-6">Biblioteca de Medios</h2>
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <p class="text-red-700">Error al cargar el componente: ${error.message}</p>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function renderCategories(container) {
+  try {
+    // Acceder a componentes cargados dinámicamente
+    const { CategoryManager, ContentManager } = window.cmsComponents;
+    const notifications = window.cmsComponents.notifications;
+    
+    // Verificar que los componentes existen
+    if (!CategoryManager || !ContentManager) {
+      showDebugInfo('Componentes para categorías no disponibles');
+      container.innerHTML = `
+        <div class="p-4">
+          <h2 class="text-2xl font-bold mb-6">Gestor de Categorías</h2>
+          <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+            <p class="text-yellow-700">Algunos componentes no están disponibles. Estamos trabajando en ello.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
+    // Verificar si ya hay una instancia creada
+    if (!window.categoryManager) {
+      showDebugInfo('Creando instancia de CategoryManager');
+      // Crear instancia
+      window.categoryManager = new CategoryManager(container, {
+        onSave: () => notifications.success('Categoría guardada correctamente'),
+        onError: (error) => notifications.error(`Error: ${error}`),
+        onDelete: () => notifications.success('Categoría eliminada correctamente'),
+        contentManager: new ContentManager()
+      });
+    }
+    
+    // Renderizar el gestor de categorías
+    window.categoryManager.render();
+  } catch (error) {
+    showDebugInfo(`Error al renderizar gestor de categorías: ${error.message}`);
+    container.innerHTML = `
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-6">Gestor de Categorías</h2>
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <p class="text-red-700">Error al cargar el componente: ${error.message}</p>
+        </div>
+      </div>
+    `;
+  }
 }
 
 // Renderizar configuración
@@ -539,33 +745,106 @@ function renderSettings(container) {
         <p><strong>Rol:</strong> ${appState.user?.role || 'Administrador'}</p>
       </div>
       
-      <p class="text-gray-600">Para cambiar la información de usuario o añadir nuevos usuarios, contacta con el administrador del sistema.</p>
     </div>
   `;
-  
-  // Configurar evento para el formulario de configuración
-  const siteSettingsForm = container.querySelector('#site-settings-form');
-  siteSettingsForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    notifications.success('Configuración guardada correctamente');
-  });
 }
 
-// Renderizar carga masiva
+// Renderizar herramienta de carga masiva
 function renderBulkImport(container) {
-  container.innerHTML = '<div id="bulk-import-container"></div>';
-  const bulkImportContainer = document.getElementById('bulk-import-container');
-  const bulkImportManager = new BulkImportManager();
-  bulkImportManager.init(bulkImportContainer);
+  try {
+    // Acceder a componentes cargados dinámicamente
+    const { BulkImportManager, ContentManager } = window.cmsComponents;
+    const notifications = window.cmsComponents.notifications;
+    
+    // Verificar que los componentes existen
+    if (!BulkImportManager || !ContentManager) {
+      showDebugInfo('Componentes para carga masiva no disponibles');
+      container.innerHTML = `
+        <div class="p-4">
+          <h2 class="text-2xl font-bold mb-6">Carga Masiva</h2>
+          <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+            <p class="text-yellow-700">Algunos componentes no están disponibles. Estamos trabajando en ello.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
+    // Verificar si ya hay una instancia creada
+    if (!window.bulkImportManager) {
+      showDebugInfo('Creando instancia de BulkImportManager');
+      // Crear instancia
+      window.bulkImportManager = new BulkImportManager(container, {
+        onComplete: () => notifications.success('Carga masiva completada'),
+        onError: (error) => notifications.error(`Error: ${error}`),
+        contentManager: new ContentManager()
+      });
+    }
+    
+    // Renderizar el gestor de carga masiva
+    window.bulkImportManager.render();
+  } catch (error) {
+    showDebugInfo(`Error al renderizar gestor de carga masiva: ${error.message}`);
+    container.innerHTML = `
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-6">Carga Masiva</h2>
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <p class="text-red-700">Error al cargar el componente: ${error.message}</p>
+        </div>
+      </div>
+    `;
+  }
 }
 
-// Renderizar autores
+// Renderizar gestor de autores
 function renderAuthors(container) {
-  container.innerHTML = '<div id="authors-container"></div>';
-  const authorsContainer = document.getElementById('authors-container');
-  const authorManager = new AuthorManager();
-  authorManager.init(authorsContainer);
+  try {
+    // Acceder a componentes cargados dinámicamente
+    const { AuthorManager, ContentManager } = window.cmsComponents;
+    const notifications = window.cmsComponents.notifications;
+    
+    // Verificar que los componentes existen
+    if (!AuthorManager || !ContentManager) {
+      showDebugInfo('Componentes para autores no disponibles');
+      container.innerHTML = `
+        <div class="p-4">
+          <h2 class="text-2xl font-bold mb-6">Gestor de Autores</h2>
+          <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+            <p class="text-yellow-700">Algunos componentes no están disponibles. Estamos trabajando en ello.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
+    // Verificar si ya hay una instancia creada
+    if (!window.authorManager) {
+      showDebugInfo('Creando instancia de AuthorManager');
+      // Crear instancia
+      window.authorManager = new AuthorManager(container, {
+        onSave: () => notifications.success('Autor guardado correctamente'),
+        onError: (error) => notifications.error(`Error: ${error}`),
+        onDelete: () => notifications.success('Autor eliminado correctamente'),
+        contentManager: new ContentManager()
+      });
+    }
+    
+    // Renderizar el gestor de autores
+    window.authorManager.render();
+  } catch (error) {
+    showDebugInfo(`Error al renderizar gestor de autores: ${error.message}`);
+    container.innerHTML = `
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-6">Gestor de Autores</h2>
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <p class="text-red-700">Error al cargar el componente: ${error.message}</p>
+        </div>
+      </div>
+    `;
+  }
 }
+
+// Funciones auxiliares para el CMS
 
 // Función auxiliar para obtener el nombre de la categoría
 function getCategoryName(slug) {
@@ -596,14 +875,11 @@ function formatDate(dateString) {
       year: 'numeric'
     });
   } catch (error) {
-    console.error('Error al formatear fecha:', error);
+    showDebugInfo(`Error al formatear fecha: ${error.message}`);
     return '';
   }
 }
 
-// Función para obtener el conteo de archivos multimedia
-// En una implementación real, esto vendría de la API
-function getMediaCount() {
-  // Por ahora retornamos un valor fijo, pero esto debería venir de la API
-  return 24;
-}
+// Indicar que el script ha terminado de cargar
+showDebugInfo('Script app.js cargado completamente');
+window.appInitialized = true;
