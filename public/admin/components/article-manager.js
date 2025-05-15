@@ -80,11 +80,12 @@ export class ArticleManager {
   }
   
   async render(container) {
-    // Guardar referencia al contenedor
-    this.container = container;
-    
-    // Crear la estructura del gestor de artículos
-    this.container.innerHTML = `
+    try {
+      // Guardar referencia al contenedor
+      this.container = container;
+      
+      // Crear la estructura del gestor de artículos
+      this.container.innerHTML = `
       <div class="article-manager">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold">Artículos</h2>
@@ -292,13 +293,21 @@ export class ArticleManager {
       this.editorContainer = editorContainer;
       this.editor = new ContentEditor(this.editorContainer);
     }
+    } catch (error) {
+      console.error('Error en el método render:', error);
+      if (this.notificationManager) {
+        this.notificationManager.error('Error al cargar el gestor de artículos');
+      }
+      throw error; // Propagar el error para que sea manejado por el método loadArticlesManager
+    }
   }
   
   setupEvents() {
-    // Evento para crear un nuevo artículo
-    this.container.querySelector('.new-article-btn').addEventListener('click', () => {
-      this.showArticleEditor();
-    });
+    try {
+      // Evento para crear un nuevo artículo
+      this.container.querySelector('.new-article-btn').addEventListener('click', () => {
+        this.showArticleEditor();
+      });
     
     // Evento para volver a la lista de artículos
     this.container.querySelector('.back-to-list-btn').addEventListener('click', () => {
@@ -537,6 +546,12 @@ export class ArticleManager {
     this.container.querySelector('#article-slug').addEventListener('input', (e) => {
       e.target.dataset.modified = 'true';
     });
+    } catch (error) {
+      console.error('Error al configurar eventos:', error);
+      if (this.notificationManager) {
+        this.notificationManager.error('Error al configurar la interfaz del editor');
+      }
+    }
   }
   
   async loadCategories() {
