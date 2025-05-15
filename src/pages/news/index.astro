@@ -357,16 +357,32 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}` : null;
   
   .news-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
   }
 
   .news-item {
+    display: flex;
     height: 100%;
     transition: transform 0.3s, box-shadow 0.3s;
   }
 
   .news-item:hover {
     transform: translateY(-5px);
+  }
+
+  /* Estilos para tarjetas consistentes */
+  .news-item :global(.news-card) {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Asegurar que todas las imágenes tienen la misma proporción */
+  .news-item :global(.image-container) {
+    aspect-ratio: 16 / 9;
   }
 
   @media (max-width: 768px) {
@@ -487,6 +503,169 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}` : null;
     }
   }
 </style>
+
+<script>
+  // Funcionalidad de filtrado y ordenación
+  document.addEventListener('DOMContentLoaded', () => {
+    const sortSelect = document.getElementById('category-filter') as HTMLSelectElement;
+    const searchInput = document.getElementById('search-input') as HTMLInputElement;
+    const searchBtn = document.getElementById('search-button');
+    const dateFromInput = document.getElementById('date-from') as HTMLInputElement;
+    const dateToInput = document.getElementById('date-to') as HTMLInputElement;
+    const clearFiltersBtn = document.getElementById('clear-filters');
+    const newsGrid = document.getElementById('news-grid');
+    const activeFilters = document.getElementById('active-filters');
+    
+    if (!newsGrid || !searchInput || !searchBtn) return;
+    
+    // Obtener todos los elementos de noticias
+    const newsItems = document.querySelectorAll('.news-item');
+    
+    // Función para filtrar y ordenar los elementos
+    const filterAndSortItems = () => {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      const selectedCategory = sortSelect?.value || '';
+      const dateFrom = dateFromInput?.value ? new Date(dateFromInput.value) : null;
+      const dateTo = dateToInput?.value ? new Date(dateToInput.value) : null;
+      
+      // Crear un array de los elementos para ordenar
+      const itemsArray = Array.from(newsItems);
+      
+      // Filtrar por término de búsqueda, categoría y fechas
+      let filteredItems = itemsArray.filter(item => {
+        const title = (item as HTMLElement).dataset.title || '';
+        const category = (item as HTMLElement).dataset.category || '';
+        const dateStr = (item as HTMLElement).dataset.date;
+        let passesFilter = true;
+        
+        // Filtrar por término de búsqueda
+        if (searchTerm && !title.includes(searchTerm)) {
+          passesFilter = false;
+        }
+        
+        // Filtrar por categoría
+        if (selectedCategory && category !== selectedCategory) {
+          passesFilter = false;
+        }
+        
+        // Filtrar por fecha
+        if (dateStr) {
+          const itemDate = new Date(dateStr);
+          
+          if (dateFrom && itemDate < dateFrom) {
+            passesFilter = false;
+          }
+          
+          if (dateTo) {
+            // Ajustar la fecha final para incluir todo el día
+            const adjustedDateTo = new Date(dateTo);
+            adjustedDateTo.setHours(23, 59, 59, 999);
+            
+            if (itemDate > adjustedDateTo) {
+              passesFilter = false;
+            }
+          }
+        }
+        
+        return passesFilter;
+      });
+      
+      // Ocultar todos los elementos
+      itemsArray.forEach(item => {
+        (item as HTMLElement).style.display = 'none';
+      });
+      
+      // Mostrar los elementos filtrados
+      if (filteredItems.length > 0) {
+        filteredItems.forEach(item => {
+          (item as HTMLElement).style.display = '';
+        });
+        
+        // Eliminar mensaje de no resultados si existe
+        const noResultsEl = document.querySelector('.no-results');
+        if (noResultsEl) {
+          noResultsEl.remove();
+        }
+      } else {
+        // Mostrar mensaje si no hay resultados
+        if (!document.querySelector('.no-results')) {
+          const noResults = document.createElement('div');
+          noResults.className = 'no-results';
+          noResults.innerHTML = '<p>No se encontraron noticias con los criterios seleccionados.</p>';
+          if (newsGrid.parentNode) {
+            newsGrid.parentNode.insertBefore(noResults, newsGrid.nextSibling);
+          }
+        }
+      }
+      
+      // Actualizar filtros activos
+      updateActiveFilters();
+    };
+    
+    // Función para actualizar los filtros activos
+    const updateActiveFilters = () => {
+      if (!activeFilters) return;
+      
+      activeFilters.innerHTML = '';
+      
+      const searchTerm = searchInput.value.trim();
+      const selectedCategory = sortSelect?.value || '';
+      const dateFrom = dateFromInput?.value || '';
+      const dateTo = dateToInput?.value || '';
+      
+      if (searchTerm) {
+        addActiveFilter(`Búsqueda: ${searchTerm}`);
+      }
+      
+      if (selectedCategory) {
+        const categoryOption = sortSelect.options[sortSelect.selectedIndex];
+        addActiveFilter(`Categoría: ${categoryOption.textContent}`);
+      }
+      
+      if (dateFrom) {
+        addActiveFilter(`Desde: ${new Date(dateFrom).toLocaleDateString()}`);
+      }
+      
+      if (dateTo) {
+        addActiveFilter(`Hasta: ${new Date(dateTo).toLocaleDateString()}`);
+      }
+    };
+    
+    // Función para añadir un filtro activo
+    const addActiveFilter = (text: string) => {
+      const filter = document.createElement('span');
+      filter.className = 'active-filter';
+      filter.textContent = text;
+      activeFilters?.appendChild(filter);
+    };
+    
+    // Evento para buscar al hacer clic en el botón
+    searchBtn?.addEventListener('click', filterAndSortItems);
+    
+    // Evento para buscar al presionar Enter en el campo de búsqueda
+    searchInput?.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        filterAndSortItems();
+      }
+    });
+    
+    // Eventos para filtrar por categoría
+    sortSelect?.addEventListener('change', filterAndSortItems);
+    
+    // Eventos para filtrar por fecha
+    dateFromInput?.addEventListener('change', filterAndSortItems);
+    dateToInput?.addEventListener('change', filterAndSortItems);
+    
+    // Evento para limpiar filtros
+    clearFiltersBtn?.addEventListener('click', () => {
+      if (searchInput) searchInput.value = '';
+      if (sortSelect) sortSelect.selectedIndex = 0;
+      if (dateFromInput) dateFromInput.value = '';
+      if (dateToInput) dateToInput.value = '';
+      filterAndSortItems();
+    });
+  });
+</script>
 
 <script>
   import DatePicker from '../../scripts/datePicker.js';
