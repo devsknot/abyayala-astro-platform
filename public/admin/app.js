@@ -265,18 +265,59 @@ function setupEvents(container) {
             showDebugInfo('ERROR: No se encontró el elemento de título');
           }
           
-          // En una versión completa, aquí cargaríamos el contenido de cada vista
+          // Cargar el contenido adecuado según la vista seleccionada
           const mainContent = document.getElementById('main-content');
           if (mainContent) {
-            mainContent.innerHTML = `
-              <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-lg font-semibold mb-4">Sección: ${viewName}</h3>
-                <p class="text-gray-600">
-                  Esta sección está en desarrollo. Pronto estará disponible.
-                </p>
-              </div>
-            `;
-            showDebugInfo(`Vista ${viewName} cargada correctamente`);
+            // Limpiar el contenido anterior
+            mainContent.innerHTML = '';
+            
+            // Cargar el componente según la vista seleccionada
+            switch (view) {
+              case 'articles':
+                showDebugInfo('Cargando gestor de artículos...');
+                loadArticlesManager(mainContent);
+                break;
+              case 'media':
+                showDebugInfo('Cargando biblioteca multimedia...');
+                loadMediaLibrary(mainContent);
+                break;
+              case 'categories':
+                showDebugInfo('Cargando gestor de categorías...');
+                loadCategoriesManager(mainContent);
+                break;
+              case 'settings':
+                showDebugInfo('Cargando configuración...');
+                loadSettings(mainContent);
+                break;
+              case 'dashboard':
+              default:
+                // Cargar dashboard por defecto
+                mainContent.innerHTML = `
+                  <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold mb-4">Dashboard</h3>
+                    <p class="text-gray-600">
+                      Bienvenido al panel de administración de Abya Yala.
+                    </p>
+                    <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                        <h4 class="font-medium text-blue-700">Artículos</h4>
+                        <p class="text-sm text-blue-600 mt-1">Gestiona el contenido del sitio</p>
+                      </div>
+                      
+                      <div class="bg-green-50 p-4 rounded-lg border border-green-100">
+                        <h4 class="font-medium text-green-700">Multimedia</h4>
+                        <p class="text-sm text-green-600 mt-1">Administra imágenes y archivos</p>
+                      </div>
+                      
+                      <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                        <h4 class="font-medium text-purple-700">Categorías</h4>
+                        <p class="text-sm text-purple-600 mt-1">Organiza el contenido</p>
+                      </div>
+                    </div>
+                  </div>
+                `;
+                showDebugInfo(`Vista ${viewName} cargada correctamente`);
+              }
           } else {
             showDebugInfo('ERROR: No se encontró el contenedor principal');
           }
@@ -314,6 +355,190 @@ function setupEvents(container) {
   }
 }
 
+// Funciones para cargar los diferentes componentes del panel
+
+// Cargar el gestor de artículos
+async function loadArticlesManager(container) {
+  try {
+    showDebugInfo('Iniciando carga del gestor de artículos');
+    container.innerHTML = '<div class="p-4"><div class="loading flex items-center"><div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-green-500 mr-3"></div> Cargando gestor de artículos...</div></div>';
+    
+    // Cargar dinámicamente el módulo ArticleManager
+    const articleManagerModule = await import('./components/article-manager.js');
+    const contentManagerModule = await import('./content-manager.js');
+    const notificationsModule = await import('./components/notification.js');
+    
+    showDebugInfo('Módulos cargados correctamente');
+    
+    // Crear instancia del gestor de artículos
+    const ArticleManager = articleManagerModule.ArticleManager;
+    const ContentManager = contentManagerModule.ContentManager;
+    const notifications = notificationsModule.notifications;
+    
+    if (!ArticleManager) {
+      throw new Error('No se pudo cargar el componente ArticleManager');
+    }
+    
+    // Limpiar el contenedor
+    container.innerHTML = '<div id="article-manager-container" class="p-4"></div>';
+    const articleContainer = document.getElementById('article-manager-container');
+    
+    // Crear instancia y renderizar
+    const articleManager = new ArticleManager(articleContainer);
+    showDebugInfo('Gestor de artículos inicializado correctamente');
+  } catch (error) {
+    showDebugInfo(`Error al cargar el gestor de artículos: ${error.message}`);
+    container.innerHTML = `
+      <div class="p-4">
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <p class="text-red-700">Error al cargar el gestor de artículos: ${error.message}</p>
+          <button class="mt-2 px-4 py-2 bg-red-500 text-white rounded" onclick="window.location.reload()">Reintentar</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// Cargar la biblioteca multimedia
+async function loadMediaLibrary(container) {
+  try {
+    showDebugInfo('Iniciando carga de la biblioteca multimedia');
+    container.innerHTML = '<div class="p-4"><div class="loading flex items-center"><div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-green-500 mr-3"></div> Cargando biblioteca multimedia...</div></div>';
+    
+    // Cargar dinámicamente el módulo MediaLibrary
+    const mediaLibraryModule = await import('./components/media-library.js');
+    const contentManagerModule = await import('./content-manager.js');
+    
+    showDebugInfo('Módulos multimedia cargados correctamente');
+    
+    // Crear instancia de la biblioteca multimedia
+    const MediaLibrary = mediaLibraryModule.MediaLibrary;
+    const ContentManager = contentManagerModule.ContentManager;
+    
+    if (!MediaLibrary) {
+      throw new Error('No se pudo cargar el componente MediaLibrary');
+    }
+    
+    // Limpiar el contenedor
+    container.innerHTML = '<div id="media-library-container" class="p-4"></div>';
+    const mediaContainer = document.getElementById('media-library-container');
+    
+    // Crear instancia y renderizar
+    const mediaLibrary = new MediaLibrary(mediaContainer);
+    showDebugInfo('Biblioteca multimedia inicializada correctamente');
+  } catch (error) {
+    showDebugInfo(`Error al cargar la biblioteca multimedia: ${error.message}`);
+    container.innerHTML = `
+      <div class="p-4">
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <p class="text-red-700">Error al cargar la biblioteca multimedia: ${error.message}</p>
+          <button class="mt-2 px-4 py-2 bg-red-500 text-white rounded" onclick="window.location.reload()">Reintentar</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// Cargar el gestor de categorías
+async function loadCategoriesManager(container) {
+  try {
+    showDebugInfo('Iniciando carga del gestor de categorías');
+    container.innerHTML = '<div class="p-4"><div class="loading flex items-center"><div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-green-500 mr-3"></div> Cargando gestor de categorías...</div></div>';
+    
+    // Cargar dinámicamente el módulo CategoryManager
+    const categoryManagerModule = await import('./components/category-manager.js');
+    const contentManagerModule = await import('./content-manager.js');
+    
+    showDebugInfo('Módulos de categorías cargados correctamente');
+    
+    // Crear instancia del gestor de categorías
+    const CategoryManager = categoryManagerModule.CategoryManager;
+    const ContentManager = contentManagerModule.ContentManager;
+    
+    if (!CategoryManager) {
+      throw new Error('No se pudo cargar el componente CategoryManager');
+    }
+    
+    // Limpiar el contenedor
+    container.innerHTML = '<div id="category-manager-container" class="p-4"></div>';
+    const categoryContainer = document.getElementById('category-manager-container');
+    
+    // Crear instancia y renderizar
+    const categoryManager = new CategoryManager(categoryContainer);
+    showDebugInfo('Gestor de categorías inicializado correctamente');
+  } catch (error) {
+    showDebugInfo(`Error al cargar el gestor de categorías: ${error.message}`);
+    container.innerHTML = `
+      <div class="p-4">
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <p class="text-red-700">Error al cargar el gestor de categorías: ${error.message}</p>
+          <button class="mt-2 px-4 py-2 bg-red-500 text-white rounded" onclick="window.location.reload()">Reintentar</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// Cargar la configuración
+function loadSettings(container) {
+  try {
+    showDebugInfo('Cargando configuración');
+    
+    // Renderizar la configuración (versión simple por ahora)
+    container.innerHTML = `
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-6">Configuración</h2>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h3 class="text-lg font-semibold mb-4">Información del usuario</h3>
+          <div class="mb-4">
+            <p><strong>Nombre:</strong> ${appState.user?.name || 'Usuario'}</p>
+            <p><strong>Email:</strong> ${appState.user?.email || 'No disponible'}</p>
+            <p><strong>Rol:</strong> ${appState.user?.role || 'Administrador'}</p>
+          </div>
+          
+          <p class="text-gray-600">Para cambiar la información de usuario o añadir nuevos usuarios, contacta con el administrador del sistema.</p>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h3 class="text-lg font-semibold mb-4">Configuración del sitio</h3>
+          <form id="site-settings-form" class="space-y-4">
+            <div class="form-group">
+              <label class="block text-gray-700 mb-2">Título del sitio</label>
+              <input type="text" class="w-full p-2 border rounded" value="Abya Yala" disabled>
+              <p class="text-sm text-gray-500 mt-1">Esta configuración está bloqueada</p>
+            </div>
+            
+            <div class="form-group">
+              <label class="block text-gray-700 mb-2">Descripción</label>
+              <textarea class="w-full p-2 border rounded" rows="2" disabled>Plataforma de contenidos sobre agricultura y comunidad</textarea>
+              <p class="text-sm text-gray-500 mt-1">Esta configuración está bloqueada</p>
+            </div>
+            
+            <button type="submit" class="px-4 py-2 bg-gray-300 text-gray-700 rounded cursor-not-allowed" disabled>
+              Guardar cambios
+            </button>
+          </form>
+        </div>
+      </div>
+    `;
+    
+    showDebugInfo('Configuración cargada correctamente');
+  } catch (error) {
+    showDebugInfo(`Error al cargar la configuración: ${error.message}`);
+    container.innerHTML = `
+      <div class="p-4">
+        <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <p class="text-red-700">Error al cargar la configuración: ${error.message}</p>
+          <button class="mt-2 px-4 py-2 bg-red-500 text-white rounded" onclick="window.location.reload()">Reintentar</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
 // Indicar que el script ha terminado de cargar
 showDebugInfo('Script app.js cargado completamente');
 window.appInitialized = true;
+
+// Fin del archivo app.js
