@@ -66,7 +66,16 @@ export class ContentManager {
       });
       
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        console.log('Respuesta de la API de artículos:', data);
+        
+        // Usar el nuevo formato estándar con paginación
+        if (data.articles && Array.isArray(data.articles)) {
+          return data.articles;
+        } else {
+          console.error('Formato de respuesta inesperado:', data);
+          return [];
+        }
       }
       
       console.error(`Error al obtener artículos: ${response.status}`);
@@ -237,7 +246,20 @@ export class ContentManager {
       });
       
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        console.log('Respuesta de la API de categorías:', data);
+        
+        // Usar el nuevo formato estándar con paginación
+        if (data.categories && Array.isArray(data.categories)) {
+          return data.categories;
+        } else if (Array.isArray(data)) {
+          // Mantener compatibilidad temporal, pero registrando que aún necesita actualizarse
+          console.warn('La API de categorías aún usa formato antiguo sin paginación');
+          return data;
+        } else {
+          console.error('Formato de respuesta inesperado para categorías:', data);
+          return [];
+        }
       }
       
       console.error(`Error al obtener categorías: ${response.status}`);
