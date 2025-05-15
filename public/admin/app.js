@@ -562,6 +562,10 @@ function renderRecentActivities(activities) {
         </div>
       </div>
     `;
+  });
+}
+
+// Renderizar gestor de artículos
 function renderArticlesManager(container) {
   try {
     // Acceder a componentes cargados dinámicamente
@@ -883,3 +887,5 @@ function formatDate(dateString) {
 // Indicar que el script ha terminado de cargar
 showDebugInfo('Script app.js cargado completamente');
 window.appInitialized = true;
+
+// Fin del archivo app.js
