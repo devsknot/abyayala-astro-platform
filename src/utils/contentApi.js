@@ -37,17 +37,30 @@ export async function getAllArticles(origin = '') {
     const responseText = await response.text();
     
     // Intentar parsear el texto como JSON
-    let articles;
+    let data;
     try {
-      articles = JSON.parse(responseText);
-      console.log(`Artículos obtenidos: ${articles.length}`);
+      data = JSON.parse(responseText);
+      
+      // Verificar el formato de respuesta (nuevo formato con success y articles)
+      if (data && data.success === true && Array.isArray(data.articles)) {
+        console.log(`Artículos obtenidos (nuevo formato): ${data.articles.length}`);
+        return data.articles;
+      }
+      
+      // Formato antiguo: directamente un array
+      if (Array.isArray(data)) {
+        console.log(`Artículos obtenidos (formato antiguo): ${data.length}`);
+        return data;
+      }
+      
+      console.warn('Formato de respuesta inesperado:', data);
+      return [];
+      
     } catch (parseError) {
       console.error('Error al parsear JSON de artículos:', parseError);
       console.log('Texto de respuesta:', responseText.substring(0, 200) + '...');
       return [];
     }
-    
-    return articles;
   } catch (error) {
     console.error('Error al obtener artículos:', error);
     return [];
@@ -79,7 +92,23 @@ export async function getArticleBySlug(slug, origin = '') {
       }
       throw new Error(`Error al obtener artículo: ${response.status}`);
     }
-    return await response.json();
+    
+    const data = await response.json();
+    
+    // Verificar el formato de respuesta (nuevo formato con success y article)
+    if (data && data.success === true && data.article) {
+      console.log(`Artículo obtenido (nuevo formato): ${data.article.title || slug}`);
+      return data.article;
+    }
+    
+    // Formato antiguo: directamente el objeto artículo
+    if (data && data.title) {
+      console.log(`Artículo obtenido (formato antiguo): ${data.title}`);
+      return data;
+    }
+    
+    console.warn('Formato de respuesta inesperado:', data);
+    return null;
   } catch (error) {
     console.error(`Error al obtener artículo ${slug}:`, error);
     return null;
@@ -227,8 +256,22 @@ export async function getAllCategories(origin = '') {
     // Intentar parsear la respuesta como JSON
     try {
       const data = await response.json();
-      console.log('getAllCategories - Datos de categorías obtenidos:', data.length || 'No es un array');
-      return data;
+      
+      // Verificar formato nuevo (con success y categories)
+      if (data && data.success === true && Array.isArray(data.categories)) {
+        console.log(`getAllCategories - Categorías obtenidas (nuevo formato): ${data.categories.length}`);
+        return data.categories;
+      }
+      
+      // Verificar formato antiguo (array directo)
+      if (Array.isArray(data)) {
+        console.log(`getAllCategories - Categorías obtenidas (formato antiguo): ${data.length}`);
+        return data;
+      }
+      
+      console.warn('getAllCategories - Formato de respuesta inesperado:', data);
+      return [];
+      
     } catch (parseError) {
       console.error('getAllCategories - Error al parsear JSON de categorías:', parseError);
       
