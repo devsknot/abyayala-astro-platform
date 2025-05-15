@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Administración de Contenido - Abya Yala</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" id="style-css" href="/admin/style.css">
 </head>
 <body class="bg-gray-100 min-h-screen">
   <div id="app" class="p-4">
@@ -19,16 +19,17 @@
   <script>
     // Detectar la ruta base y ajustar las referencias a assets si es necesario
     document.addEventListener('DOMContentLoaded', function() {
-      const basePath = window.location.pathname.includes('/admin') 
-        ? window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/admin') + 7)
-        : '/admin/';
+      const basePath = '/admin/'; // Siempre usar ruta absoluta desde la raíz
       
       // Si no estamos en la URL esperada, redirigir conservando la ruta base
       if (!window.location.pathname.includes('/admin')) {
         window.location.href = basePath;
       }
+      
+      // Verificar que los recursos se han cargado correctamente
+      console.log('Verificando carga de recursos para el panel de administración');
     });
   </script>
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="/admin/app.js"></script>
 </body>
 </html>
