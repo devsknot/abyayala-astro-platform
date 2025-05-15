@@ -363,13 +363,40 @@ async function loadArticlesManager(container) {
     showDebugInfo('Iniciando carga del gestor de artículos');
     container.innerHTML = '<div class="p-4"><div class="loading flex items-center"><div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-green-500 mr-3"></div> Cargando gestor de artículos...</div></div>';
     
-    // Cargar dinámicamente el módulo ArticleManager
-    const articleManagerModule = await import('./components/article-manager.js');
-    const contentManagerModule = await import('./content-manager.js');
-    const mediaManagerModule = await import('./media-manager.js');
-    const notificationsModule = await import('./components/notification.js');
+    // Cargar dinámicamente los módulos necesarios con mejor manejo de errores
+    let articleManagerModule, contentManagerModule, mediaManagerModule, notificationsModule;
     
-    showDebugInfo('Módulos cargados correctamente');
+    try {
+      articleManagerModule = await import('./components/article-manager.js');
+      showDebugInfo('Módulo article-manager.js cargado correctamente');
+    } catch (importError) {
+      showDebugInfo(`Error al cargar el módulo article-manager.js: ${importError.message}`);
+      throw new Error(`Error al importar ArticleManager: ${importError.message}`);
+    }
+    
+    try {
+      contentManagerModule = await import('./content-manager.js');
+      showDebugInfo('Módulo content-manager.js cargado correctamente');
+    } catch (importError) {
+      showDebugInfo(`Error al cargar el módulo content-manager.js: ${importError.message}`);
+      throw new Error(`Error al importar ContentManager: ${importError.message}`);
+    }
+    
+    try {
+      mediaManagerModule = await import('./media-manager.js');
+      showDebugInfo('Módulo media-manager.js cargado correctamente');
+    } catch (importError) {
+      showDebugInfo(`Error al cargar el módulo media-manager.js: ${importError.message}`);
+      throw new Error(`Error al importar MediaManager: ${importError.message}`);
+    }
+    
+    try {
+      notificationsModule = await import('./components/notification.js');
+      showDebugInfo('Módulo notification.js cargado correctamente');
+    } catch (importError) {
+      showDebugInfo(`Error al cargar el módulo notification.js: ${importError.message}`);
+      throw new Error(`Error al importar notificaciones: ${importError.message}`);
+    }
     
     // Crear instancia del gestor de artículos
     const ArticleManager = articleManagerModule.ArticleManager;
@@ -389,20 +416,27 @@ async function loadArticlesManager(container) {
     const contentManager = new ContentManager();
     const mediaManager = new MediaManager();
     
-    // Crear instancia y renderizar con el nuevo formato
-    const articleManager = new ArticleManager(null, {
-      contentManager: contentManager,
-      mediaManager: mediaManager,
-      notificationManager: notifications
-    });
+    // Crear instancia y renderizar con el nuevo formato - con mejor manejo de errores
+    let articleManager;
+    try {
+      articleManager = new ArticleManager(null, {
+        contentManager: contentManager,
+        mediaManager: mediaManager,
+        notificationManager: notifications
+      });
+      showDebugInfo('Instancia de ArticleManager creada correctamente');
+    } catch (constructorError) {
+      showDebugInfo(`Error al crear instancia de ArticleManager: ${constructorError.message}`);
+      throw new Error(`Error al instanciar ArticleManager: ${constructorError.message}`);
+    }
     
-    // Renderizar en el contenedor (método asíncrono)
+    // Renderizar en el contenedor (método asíncrono) con mejor manejo de errores
     try {
       await articleManager.render(articleContainer);
       showDebugInfo('Gestor de artículos inicializado correctamente');
     } catch (renderError) {
       showDebugInfo(`Error al renderizar el gestor de artículos: ${renderError.message}`);
-      throw renderError; // Propagar el error para que sea manejado por el catch exterior
+      throw new Error(`Error al renderizar ArticleManager: ${renderError.message}`);
     }
   } catch (error) {
     showDebugInfo(`Error al cargar el gestor de artículos: ${error.message}`);

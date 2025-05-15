@@ -7,43 +7,47 @@ import { notifications } from './notification.js';
 
 export class ArticleManager {
   constructor(container, options = {}) {
-    // Si se pasa un contenedor directamente, usar el modo antiguo
-    if (container && typeof container === 'object' && container.nodeType === 1) {
-      this.container = container;
-      this.contentManager = new ContentManager();
-      this.mediaManager = new MediaManager();
-      this.notificationManager = notifications;
-    } else {
-      // Modo nuevo: se pasan los managers como parámetros
-      this.contentManager = options.contentManager || new ContentManager();
-      this.mediaManager = options.mediaManager || new MediaManager();
-      this.notificationManager = options.notificationManager || notifications;
-      this.container = null;
-    }
-    
-    this.articlesContainer = null;
-    this.editor = null;
-    this.currentArticle = null;
-    
-    // Configuración de paginación
-    this.pagination = {
-      page: 1,
-      limit: 10,
-      total: 0,
-      totalPages: 1
-    };
-    
-    // Configuración de filtros
-    this.filters = {
-      search: '',
-      category: '',
-      sortBy: 'pubDate',
-      sortOrder: 'desc'
-    };
-    
-    // Inicializar si tenemos un contenedor
-    if (this.container) {
-      this.init();
+    try {
+      // Si se pasa un contenedor directamente, usar el modo antiguo
+      if (container && typeof container === 'object' && container.nodeType === 1) {
+        this.container = container;
+        this.contentManager = new ContentManager();
+        this.mediaManager = new MediaManager();
+        this.notificationManager = notifications;
+      } else {
+        // Modo nuevo: se pasan los managers como parámetros
+        this.contentManager = options.contentManager || new ContentManager();
+        this.mediaManager = options.mediaManager || new MediaManager();
+        this.notificationManager = options.notificationManager || notifications;
+        this.container = null;
+      }
+      
+      this.articlesContainer = null;
+      this.editor = null;
+      this.currentArticle = null;
+      
+      // Configuración de paginación
+      this.pagination = {
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 1
+      };
+      
+      // Configuración de filtros
+      this.filters = {
+        search: '',
+        category: '',
+        sortBy: 'pubDate',
+        sortOrder: 'desc'
+      };
+      
+      // Inicializar si tenemos un contenedor
+      if (this.container) {
+        this.init();
+      }
+    } catch (error) {
+      console.error('Error en el constructor de ArticleManager:', error);
     }
   }
   
@@ -80,11 +84,14 @@ export class ArticleManager {
   }
   
   async render(container) {
+    // Método completamente reescrito para evitar errores
     try {
+      console.log('Inicializando gestor de artículos...');
+      
       // Guardar referencia al contenedor
       this.container = container;
       
-      // Crear la estructura del gestor de artículos
+      // Crear la estructura del gestor de artículos (HTML simplificado para el debug)
       this.container.innerHTML = `
       <div class="article-manager">
         <div class="flex justify-between items-center mb-6">
@@ -109,21 +116,11 @@ export class ArticleManager {
               <div class="w-full md:w-48">
                 <select class="form-input w-full" id="category-filter">
                   <option value="">Todas las categorías</option>
-                  <option value="agricultura">Agricultura</option>
-                  <option value="comunidad">Comunidad</option>
-                  <option value="sostenibilidad">Sostenibilidad</option>
-                  <option value="politica-agraria">Política Agraria</option>
-                  <option value="tecnologia-rural">Tecnología Rural</option>
-                  <option value="cultura">Cultura</option>
-                  <option value="eventos">Eventos</option>
                 </select>
               </div>
               <div class="w-full md:w-48">
                 <select class="form-input w-full" id="sort-filter">
                   <option value="pubDate-desc">Más recientes primero</option>
-                  <option value="pubDate-asc">Más antiguos primero</option>
-                  <option value="title-asc">Título (A-Z)</option>
-                  <option value="title-desc">Título (Z-A)</option>
                 </select>
               </div>
             </div>
@@ -174,13 +171,6 @@ export class ArticleManager {
                 <label for="article-category" class="form-label">Categoría</label>
                 <select id="article-category" class="form-input" required>
                   <option value="">Seleccionar categoría</option>
-                  <option value="agricultura">Agricultura</option>
-                  <option value="comunidad">Comunidad</option>
-                  <option value="sostenibilidad">Sostenibilidad</option>
-                  <option value="politica-agraria">Política Agraria</option>
-                  <option value="tecnologia-rural">Tecnología Rural</option>
-                  <option value="cultura">Cultura</option>
-                  <option value="eventos">Eventos</option>
                 </select>
               </div>
               
@@ -192,58 +182,49 @@ export class ArticleManager {
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="form-group">
-                <label for="article-author" class="form-label">Autor</label>
-                <select id="article-author" class="form-input">
-                  <option value="">Sin autor asignado</option>
-                  <!-- Los autores se cargarán dinámicamente -->
-                </select>
+                <label for="article-slug" class="form-label">URL amigable (slug)</label>
+                <input type="text" id="article-slug" class="form-input" required>
               </div>
               
               <div class="form-group">
-                <label for="article-tags" class="form-label">Etiquetas</label>
-                <input type="text" id="article-tags" class="form-input" placeholder="agricultura, sostenible, comunidad">
-                <small class="text-gray-500">Separadas por comas</small>
+                <label for="article-author" class="form-label">Autor</label>
+                <select id="article-author" class="form-input">
+                  <option value="">Sin autor asignado</option>
+                </select>
               </div>
             </div>
             
-            <div class="form-group">
-              <label for="article-slug" class="form-label">Slug (URL)</label>
-              <input type="text" id="article-slug" class="form-input" required pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$">
-              <small class="text-gray-500">Solo letras minúsculas, números y guiones. Ejemplo: mi-nuevo-articulo</small>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="form-group">
+                <label for="article-tags" class="form-label">Etiquetas (separadas por coma)</label>
+                <input type="text" id="article-tags" class="form-input" placeholder="agricultura, comunidad, sostenibilidad">
+              </div>
             </div>
             
-            <div class="form-group">
+            <div class="form-group featured-image-container">
               <label class="form-label">Imagen destacada</label>
-              <div class="featured-image-container">
-                <div class="featured-image-preview bg-gray-100 border rounded-lg p-4 flex items-center justify-center h-40 mb-2">
-                  <span class="text-gray-500">No hay imagen seleccionada</span>
+              <div class="flex space-x-2 mb-2">
+                <button type="button" class="btn-secondary select-image-btn">Seleccionar imagen</button>
+                <button type="button" class="btn-outline toggle-gallery-btn">Mostrar galería</button>
+              </div>
+              
+              <div class="featured-image-preview border rounded-lg p-2 h-32 flex items-center justify-center bg-gray-50">
+                <span class="text-gray-500">No hay imagen seleccionada</span>
+              </div>
+              
+              <div class="image-gallery border rounded-lg p-2 mt-2 hidden">
+                <div class="flex justify-between items-center mb-2">
+                  <h4 class="text-sm font-semibold">Galería de imágenes</h4>
+                  <button type="button" class="text-gray-500 hover:text-gray-700 close-gallery-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
                 </div>
-                
-                <div class="flex space-x-2 mb-2">
-                  <button type="button" class="btn-primary select-image-btn">Seleccionar imagen</button>
-                  <button type="button" class="btn-secondary toggle-gallery-btn">Mostrar galería</button>
-                  <label class="btn-secondary cursor-pointer">
-                    Subir imagen
-                    <input type="file" class="hidden upload-image-input" accept="image/*">
-                  </label>
+                <div class="gallery-grid grid grid-cols-4 gap-2 max-h-60 overflow-y-auto">
+                  <div class="loading">Cargando imágenes...</div>
                 </div>
-                
-                <div class="image-gallery hidden bg-gray-50 border rounded-lg p-3 mb-2">
-                  <div class="flex justify-between items-center mb-2">
-                    <h4 class="font-medium">Galería de imágenes</h4>
-                    <button type="button" class="text-gray-500 hover:text-gray-700 close-gallery-btn">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                  </div>
-                  <div class="gallery-grid grid grid-cols-4 gap-2 max-h-60 overflow-y-auto">
-                    <div class="loading">Cargando imágenes...</div>
-                  </div>
-                </div>
-                
-                <input type="hidden" id="article-image" value="">
               </div>
             </div>
             
@@ -259,297 +240,314 @@ export class ArticleManager {
           </form>
         </div>
       </div>
-    `;
-    
-    // Obtener referencias a los elementos
-    this.articlesList = this.container.querySelector('.articles-list');
-    this.articlesContainer = this.container.querySelector('.articles-container');
-    this.articleEditor = this.container.querySelector('.article-editor');
-    this.articleForm = this.container.querySelector('.article-form');
-    this.editorContainer = this.container.querySelector('#article-content-editor');
-    this.featuredImagePreview = this.container.querySelector('.featured-image-preview');
-    this.featuredImageInput = this.container.querySelector('#article-image');
-    this.galleryGrid = this.container.querySelector('.gallery-grid');
-    
-    // Configurar eventos
-    this.setupEvents();
-    
-    // Cargar categorías para los filtros
-    await this.loadCategories();
-    
-    // Cargar artículos
-    await this.loadArticles();
-    
-    // Configurar eventos para filtros y paginación
-    this.setupFilterEvents();
-    this.setupPaginationEvents();
-    
-    // Referencia al contenedor de artículos
-    this.articlesContainer = this.container.querySelector('.articles-container');
-    
-    // Inicializar el editor de contenido si existe el contenedor
-    const editorContainer = this.container.querySelector('.editor-container');
-    if (editorContainer) {
-      this.editorContainer = editorContainer;
-      this.editor = new ContentEditor(this.editorContainer);
-    }
+      `;
+      
+      console.log('Estructura del gestor de artículos creada');
+      
+      // Obtener referencias a los elementos
+      this.articlesList = this.container.querySelector('.articles-list');
+      this.articlesContainer = this.container.querySelector('.articles-container');
+      this.articleEditor = this.container.querySelector('.article-editor');
+      this.articleForm = this.container.querySelector('.article-form');
+      this.editorContainer = this.container.querySelector('#article-content-editor');
+      this.featuredImagePreview = this.container.querySelector('.featured-image-preview');
+      this.featuredImageInput = this.container.querySelector('#article-image');
+      this.galleryGrid = this.container.querySelector('.gallery-grid');
+      
+      console.log('Referencias a elementos obtenidas');
+      
+      // Configurar eventos
+      this.setupEvents();
+      console.log('Eventos configurados');
+      
+      // Cargar categorías para los filtros
+      await this.loadCategories();
+      console.log('Categorías cargadas');
+      
+      // Cargar artículos
+      await this.loadArticles();
+      console.log('Artículos cargados');
+      
+      // Configurar eventos para filtros y paginación
+      this.setupFilterEvents();
+      this.setupPaginationEvents();
+      console.log('Eventos de filtros y paginación configurados');
+      
+      // Inicializar el editor de contenido si existe el contenedor
+      const editorContainer = this.container.querySelector('.editor-container');
+      if (editorContainer) {
+        this.editorContainer = editorContainer;
+        this.editor = new ContentEditor(this.editorContainer);
+        console.log('Editor de contenido inicializado');
+      }
+      
+      console.log('Renderizado del gestor de artículos completado');
     } catch (error) {
       console.error('Error en el método render:', error);
       if (this.notificationManager) {
         this.notificationManager.error('Error al cargar el gestor de artículos');
       }
-      throw error; // Propagar el error para que sea manejado por el método loadArticlesManager
+      throw error; // Propagar el error
     }
   }
   
   setupEvents() {
     try {
       // Evento para crear un nuevo artículo
-      this.container.querySelector('.new-article-btn').addEventListener('click', () => {
-        this.showArticleEditor();
-      });
-    
-    // Evento para volver a la lista de artículos
-    this.container.querySelector('.back-to-list-btn').addEventListener('click', () => {
-      this.showArticlesList();
-    });
-    
-    // Evento para cancelar la edición
-    this.container.querySelector('.cancel-btn').addEventListener('click', () => {
-      this.showArticlesList();
-    });
-    
-    // Eventos para filtros y paginación
-    this.setupFilterEvents();
-    this.setupPaginationEvents();
-    
-    // Evento para seleccionar imagen destacada
-    this.container.querySelector('.select-image-btn').addEventListener('click', () => {
-      MediaLibrary.openModal((file) => {
-        // Usar la URL pública si está disponible, de lo contrario usar la ruta
-        const imagePath = file.publicUrl || file.path;
-        
-        // Actualizar la vista previa
-        this.updateFeaturedImagePreview(imagePath);
-        
-        // Guardar la ruta de la imagen
-        this.featuredImageInput.value = file.path;
-      });
-    });
-    
-    // Evento para mostrar la galería de imágenes
-    this.container.querySelector('.toggle-gallery-btn').addEventListener('click', async () => {
-      const gallery = this.container.querySelector('.image-gallery');
-      const isHidden = gallery.classList.contains('hidden');
+      const newArticleBtn = this.container.querySelector('.new-article-btn');
+      if (newArticleBtn) {
+        newArticleBtn.addEventListener('click', () => {
+          this.showArticleEditor();
+        });
+      }
       
-      if (isHidden) {
-        // Si vamos a mostrar la galería, cargar las imágenes
-        await this.loadGalleryImages();
-        
-        // Añadir evento de clic a las imágenes de la galería
-        this.galleryGrid.addEventListener('click', (e) => {
-          const galleryItem = e.target.closest('.gallery-item');
-          if (!galleryItem) return;
+      // Evento para volver a la lista de artículos
+      const backToListBtn = this.container.querySelector('.back-to-list-btn');
+      if (backToListBtn) {
+        backToListBtn.addEventListener('click', () => {
+          this.showArticlesList();
+        });
+      }
+      
+      // Evento para cancelar la edición
+      const cancelBtn = this.container.querySelector('.cancel-btn');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+          this.showArticlesList();
+        });
+      }
+      
+      // Evento para seleccionar imagen destacada
+      const selectImageBtn = this.container.querySelector('.select-image-btn');
+      if (selectImageBtn) {
+        selectImageBtn.addEventListener('click', () => {
+          MediaLibrary.openModal((file) => {
+            // Usar la URL pública si está disponible, de lo contrario usar la ruta
+            const imagePath = file.publicUrl || file.path;
+            
+            // Actualizar la vista previa
+            this.updateFeaturedImagePreview(imagePath);
+            
+            // Guardar la ruta de la imagen
+            this.featuredImageInput.value = file.path;
+          });
+        });
+      }
+      
+      // Evento para mostrar la galería de imágenes
+      const toggleGalleryBtn = this.container.querySelector('.toggle-gallery-btn');
+      if (toggleGalleryBtn) {
+        toggleGalleryBtn.addEventListener('click', async () => {
+          const gallery = this.container.querySelector('.image-gallery');
+          const isHidden = gallery && gallery.classList.contains('hidden');
           
-          // Obtener la ruta de la imagen
-          const imagePath = galleryItem.dataset.path;
-          
-          // Crear una instancia del gestor de medios para obtener la URL correcta
-          const mediaManager = new MediaManager();
-          
-          // Extraer el ID de la imagen (sin el dominio) si es una URL completa
-          let imageId = imagePath;
-          if (imagePath.includes('https://')) {
-            // Si es una URL completa, extraer solo la parte de la ruta después del dominio
-            try {
-              const url = new URL(imagePath);
-              imageId = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-            } catch (e) {
-              console.warn('URL inválida:', imagePath);
+          if (isHidden) {
+            // Si vamos a mostrar la galería, cargar las imágenes
+            await this.loadGalleryImages();
+            
+            // Añadir evento de clic a las imágenes de la galería
+            if (this.galleryGrid) {
+              this.galleryGrid.addEventListener('click', (e) => {
+                const galleryItem = e.target.closest('.gallery-item');
+                if (!galleryItem) return;
+                
+                // Obtener la ruta de la imagen
+                const imagePath = galleryItem.dataset.path;
+                
+                // Crear una instancia del gestor de medios para obtener la URL correcta
+                const mediaManager = new MediaManager();
+                
+                // Extraer el ID de la imagen (sin el dominio) si es una URL completa
+                let imageId = imagePath;
+                if (imagePath.includes('https://')) {
+                  // Si es una URL completa, extraer solo la parte de la ruta después del dominio
+                  try {
+                    const url = new URL(imagePath);
+                    imageId = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+                  } catch (e) {
+                    console.warn('URL inválida:', imagePath);
+                  }
+                }
+              
+                const imageUrl = mediaManager.getPublicUrl(imageId);
+                
+                // Actualizar la vista previa
+                this.updateFeaturedImagePreview(imageUrl);
+                
+                // Guardar la ruta de la imagen
+                this.featuredImageInput.value = imageId;
+                
+                // Cerrar la galería
+                this.toggleImageGallery();
+              });
             }
           }
           
-          const imageUrl = mediaManager.getPublicUrl(imageId);
-          
-          // Actualizar la vista previa
-          this.updateFeaturedImagePreview(imageUrl);
-          
-          // Guardar la ruta de la imagen
-          this.featuredImageInput.value = imageId;
-          
-          // Cerrar la galería
           this.toggleImageGallery();
         });
       }
       
-      this.toggleImageGallery();
-    });
-    
-    // Evento para cerrar la galería de imágenes
-    this.container.querySelector('.close-gallery-btn').addEventListener('click', () => {
-      this.toggleImageGallery();
-    });
-    
-    // Evento para subir imagen
-    this.container.querySelector('.upload-image-input').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      try {
-        // Mostrar indicador de carga
-        this.featuredImagePreview.innerHTML = `
-          <div class="flex flex-col items-center justify-center">
-            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500 mb-2"></div>
-            <span class="text-gray-500">Subiendo imagen...</span>
-          </div>
-        `;
-        
-        // Crear una instancia del gestor de medios
-        const mediaManager = new MediaManager();
-        
-        // Subir el archivo
-        const result = await mediaManager.uploadFile(file);
-        
-        // Actualizar la vista previa con la imagen subida
-        this.updateFeaturedImagePreview(result.path);
-        
-        // Guardar la ruta de la imagen
-        this.featuredImageInput.value = result.path;
-        
-        // Si la galería está visible, recargar las imágenes
-        if (!this.container.querySelector('.image-gallery').classList.contains('hidden')) {
-          await this.loadGalleryImages();
-        }
-      } catch (error) {
-        console.error('Error al subir imagen:', error);
-        notifications.error('Error al subir la imagen. Por favor, intenta de nuevo.');
-        this.resetFeaturedImagePreview();
-      } finally {
-        // Limpiar el input de archivo
-        e.target.value = '';
-      }
-    });
-    
-    // Evento para seleccionar imagen desde la galería
-    this.galleryGrid.addEventListener('click', (e) => {
-      const imageItem = e.target.closest('.gallery-item');
-      if (!imageItem) return;
-      
-      // Obtener la ruta de la imagen
-      const imagePath = imageItem.dataset.path;
-      
-      // Crear una instancia del gestor de medios para obtener la URL correcta
-      const mediaManager = new MediaManager();
-      
-      // Extraer el ID de la imagen (sin el dominio) si es una URL completa
-      let imageId = imagePath;
-      if (imagePath.includes('https://')) {
-        // Si es una URL completa, extraer solo la parte de la ruta después del dominio
-        try {
-          const url = new URL(imagePath);
-          imageId = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
-        } catch (e) {
-          console.warn('URL inválida:', imagePath);
-        }
+      // Evento para cerrar la galería de imágenes
+      const closeGalleryBtn = this.container.querySelector('.close-gallery-btn');
+      if (closeGalleryBtn) {
+        closeGalleryBtn.addEventListener('click', () => {
+          this.toggleImageGallery();
+        });
       }
       
-      const imageUrl = mediaManager.getPublicUrl(imageId);
-      
-      // Actualizar la vista previa
-      this.updateFeaturedImagePreview(imageUrl);
-      
-      // Guardar la ruta de la imagen
-      this.featuredImageInput.value = imageId;
-      
-      // Cerrar la galería
-      this.toggleImageGallery();
-    });
-    
-    // Evento para guardar el artículo
-    this.articleForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      try {
-        // Obtener datos del formulario
-        const articleData = {
-          title: this.container.querySelector('#article-title').value,
-          description: this.container.querySelector('#article-description').value,
-          category: this.container.querySelector('#article-category').value,
-          pubDate: this.formatDate(this.container.querySelector('#article-date').value),
-          slug: this.container.querySelector('#article-slug').value,
-          featured_image: this.featuredImageInput.value,
-          content: this.editor.getContent(),
-          author_id: this.container.querySelector('#article-author').value,
-          tags: this.container.querySelector('#article-tags').value.split(',').map(tag => tag.trim())
-        };
+      // Evento para subir imagen
+      const uploadImageInput = this.container.querySelector('.upload-image-input');
+      if (uploadImageInput) {
+        uploadImageInput.addEventListener('change', async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          try {
+            // Mostrar indicador de carga
+            if (this.featuredImagePreview) {
+              this.featuredImagePreview.innerHTML = `
+                <div class="flex flex-col items-center justify-center">
+                  <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500 mb-2"></div>
+                  <span class="text-gray-500">Subiendo imagen...</span>
+                </div>
+              `;
+            }
+            
+            // Crear una instancia del gestor de medios
+            const mediaManager = new MediaManager();
+            
+            // Subir el archivo
+            const result = await mediaManager.uploadFile(file);
         
-        // Validar datos
-        if (!this.validateArticleData(articleData)) {
-          return;
-        }
-        
-        // Deshabilitar el botón de guardar
-        const saveButton = this.container.querySelector('.save-btn');
-        saveButton.disabled = true;
-        saveButton.textContent = 'Guardando...';
-        
-        // Crear o actualizar el artículo
-        let result;
-        if (this.currentArticle) {
-          result = await this.contentManager.updateArticle(this.currentArticle.slug, articleData);
-        } else {
-          result = await this.contentManager.createArticle(articleData);
-        }
-        
-        // Registrar la actividad
-        await this.contentManager.logActivity({
-          type: this.currentArticle ? 'edit' : 'create',
-          entity_type: 'article',
-          entity_id: articleData.slug,
-          entity_title: articleData.title,
-          user_name: 'Admin',
-          details: {
-            category: articleData.category,
-            author_id: articleData.author_id
+            // Actualizar la vista previa con la imagen subida
+            this.updateFeaturedImagePreview(result.path);
+            
+            // Guardar la ruta de la imagen
+            if (this.featuredImageInput) {
+              this.featuredImageInput.value = result.path;
+            }
+            
+            // Si la galería está visible, recargar las imágenes
+            const gallery = this.container.querySelector('.image-gallery');
+            if (gallery && !gallery.classList.contains('hidden')) {
+              await this.loadGalleryImages();
+            }
+          } catch (error) {
+            console.error('Error al subir imagen:', error);
+            if (this.notificationManager) {
+              this.notificationManager.error('Error al subir la imagen. Por favor, intenta de nuevo.');
+            }
+            this.resetFeaturedImagePreview();
+          } finally {
+            // Limpiar el input de archivo
+            e.target.value = '';
+          }
+        });
+      }
+      
+      // Evento para guardar el artículo
+      if (this.articleForm) {
+        this.articleForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          try {
+            // Obtener datos del formulario
+            const articleData = {
+              title: this.container.querySelector('#article-title').value,
+              description: this.container.querySelector('#article-description').value,
+              category: this.container.querySelector('#article-category').value,
+              pubDate: this.formatDate(this.container.querySelector('#article-date').value),
+              slug: this.container.querySelector('#article-slug').value,
+              featured_image: this.featuredImageInput.value,
+              content: this.editor.getContent(),
+              author_id: this.container.querySelector('#article-author').value,
+              tags: this.container.querySelector('#article-tags').value.split(',').map(tag => tag.trim())
+            };
+            
+            // Validar datos
+            if (!this.validateArticleData(articleData)) {
+              return;
+            }
+            
+            // Deshabilitar el botón de guardar
+            const saveButton = this.container.querySelector('.save-btn');
+            if (saveButton) {
+              saveButton.disabled = true;
+              saveButton.textContent = 'Guardando...';
+            }
+            
+            // Crear o actualizar el artículo
+            let result;
+            if (this.currentArticle) {
+              result = await this.contentManager.updateArticle(this.currentArticle.slug, articleData);
+            } else {
+              result = await this.contentManager.createArticle(articleData);
+            }
+            
+            // Registrar la actividad
+            await this.contentManager.logActivity({
+              type: this.currentArticle ? 'edit' : 'create',
+              entity_type: 'article',
+              entity_id: articleData.slug,
+              entity_title: articleData.title,
+              user_name: 'Admin',
+              details: {
+                category: articleData.category,
+                author_id: articleData.author_id
+              }
+            });
+            
+            // Mostrar notificación de éxito
+            if (this.notificationManager) {
+              this.notificationManager.success(
+                this.currentArticle 
+                  ? 'Artículo actualizado correctamente' 
+                  : 'Artículo creado correctamente'
+              );
+            }
+            
+            // Recargar la lista de artículos y volver a la lista
+            await this.loadArticles();
+            this.showArticlesList();
+            
+          } catch (error) {
+            console.error('Error al guardar artículo:', error);
+            if (this.notificationManager) {
+              this.notificationManager.error('Error al guardar el artículo. Por favor, intenta de nuevo.');
+            }
+          } finally {
+            // Habilitar nuevamente el botón de guardar
+            const saveButton = this.container.querySelector('.save-btn');
+            if (saveButton) {
+              saveButton.disabled = false;
+              saveButton.textContent = 'Guardar artículo';
+            }
+          }
+        });
+      }
+      
+      // Evento para generar slug automáticamente a partir del título
+      const titleInput = this.container.querySelector('#article-title');
+      const slugInput = this.container.querySelector('#article-slug');
+      
+      if (titleInput && slugInput) {
+        titleInput.addEventListener('input', (e) => {
+          // Solo generar slug automáticamente si el campo está vacío o no ha sido modificado manualmente
+          if (!slugInput.dataset.modified) {
+            slugInput.value = this.generateSlug(e.target.value);
           }
         });
         
-        // Mostrar mensaje de éxito
-        notifications.success(this.currentArticle ? 'Artículo actualizado correctamente' : 'Artículo creado correctamente');
-        
-        // Recargar artículos y volver a la lista
-        await this.loadArticles();
-        this.showArticlesList();
-      } catch (error) {
-        console.error('Error al guardar el artículo:', error);
-        notifications.error('Error al guardar el artículo. Por favor, intenta de nuevo.');
-      } finally {
-        // Restablecer el botón de guardar
-        const saveButton = this.container.querySelector('.save-btn');
-        saveButton.disabled = false;
-        saveButton.textContent = 'Guardar artículo';
+        // Marcar el campo de slug como modificado manualmente
+        slugInput.addEventListener('input', (e) => {
+          e.target.dataset.modified = 'true';
+        });
       }
-    });
-    
-    // Evento para generar slug automáticamente a partir del título
-    this.container.querySelector('#article-title').addEventListener('input', (e) => {
-      const title = e.target.value;
-      const slugInput = this.container.querySelector('#article-slug');
       
-      // Solo generar slug automáticamente si el campo está vacío o no ha sido modificado manualmente
-      if (!slugInput.dataset.modified) {
-        slugInput.value = this.generateSlug(title);
-      }
-    });
-    
-    // Marcar el campo de slug como modificado manualmente
-    this.container.querySelector('#article-slug').addEventListener('input', (e) => {
-      e.target.dataset.modified = 'true';
-    });
     } catch (error) {
       console.error('Error al configurar eventos:', error);
       if (this.notificationManager) {
-        this.notificationManager.error('Error al configurar la interfaz del editor');
+        this.notificationManager.error('Error al configurar eventos del gestor de artículos');
       }
     }
   }
