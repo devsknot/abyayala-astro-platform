@@ -47,6 +47,38 @@ export class ArticleManager {
     }
   }
   
+  // Método de inicialización
+  init() {
+    try {
+      // Crear la estructura del gestor de artículos si no existe
+      if (!this.container.querySelector('.article-manager')) {
+        // Usar el método render para inicializar la interfaz
+        this.render(this.container);
+      } else {
+        // Si ya existe la estructura, obtener referencias a los elementos
+        this.articlesList = this.container.querySelector('.articles-list');
+        this.articlesContainer = this.container.querySelector('.articles-container');
+        this.articleEditor = this.container.querySelector('.article-editor');
+        this.articleForm = this.container.querySelector('.article-form');
+        this.editorContainer = this.container.querySelector('#article-content-editor');
+        this.featuredImagePreview = this.container.querySelector('.featured-image-preview');
+        this.featuredImageInput = this.container.querySelector('#article-image');
+        this.galleryGrid = this.container.querySelector('.gallery-grid');
+        
+        // Configurar eventos
+        this.setupEvents();
+        
+        // Cargar artículos
+        this.loadArticles();
+      }
+    } catch (error) {
+      console.error('Error al inicializar el gestor de artículos:', error);
+      if (this.notificationManager) {
+        this.notificationManager.error('Error al inicializar el gestor de artículos');
+      }
+    }
+  }
+  
   async render(container) {
     // Guardar referencia al contenedor
     this.container = container;
