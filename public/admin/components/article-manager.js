@@ -829,8 +829,12 @@ export class ArticleManager {
       this.showLoading('Cargando artículo...');
       
       // Obtener el artículo de la API
-      const article = await this.contentManager.getArticle(slug);
-      console.log('Artículo recibido de la API:', article);
+      const response = await this.contentManager.getArticle(slug);
+      console.log('Artículo recibido de la API:', response);
+      
+      // La respuesta puede venir en diferentes formatos, manejar ambos casos
+      const article = response.article || response;
+      console.log('Datos del artículo procesados:', article);
       
       if (!article) {
         this.notificationManager.error('No se pudo cargar el artículo');
@@ -863,6 +867,18 @@ export class ArticleManager {
         });
       }
       
+      // Imprimir la estructura del formulario para depuración
+      console.log('Estructura del formulario:', {
+        articleEditor: this.container.querySelector('.article-editor') ? 'Encontrado' : 'No encontrado',
+        articleForm: this.container.querySelector('.article-form') ? 'Encontrado' : 'No encontrado',
+        titleInput: this.container.querySelector('#article-title') ? 'Encontrado' : 'No encontrado',
+        descriptionInput: this.container.querySelector('#article-description') ? 'Encontrado' : 'No encontrado',
+        categorySelect: this.container.querySelector('#article-category') ? 'Encontrado' : 'No encontrado',
+        dateInput: this.container.querySelector('#article-date') ? 'Encontrado' : 'No encontrado',
+        slugInput: this.container.querySelector('#article-slug') ? 'Encontrado' : 'No encontrado',
+        featuredImagePreview: this.container.querySelector('.featured-image-preview') ? 'Encontrado' : 'No encontrado',
+      });
+      
       // Esperar un poco para asegurar que el editor esté inicializado
       setTimeout(() => {
         try {
@@ -882,6 +898,16 @@ export class ArticleManager {
             this.hideLoading();
             return;
           }
+          
+          // Imprimir los valores del artículo para depuración
+          console.log('Valores del artículo a cargar:', {
+            title: article.title,
+            description: article.description,
+            category: article.category,
+            pubDate: article.pubDate,
+            slug: article.slug,
+            featured_image: article.featured_image
+          });
           
           // Asignar valores con comprobación de nulos
           titleInput.value = article.title || '';
@@ -928,17 +954,39 @@ export class ArticleManager {
           
           // Cargar imagen destacada
           const featuredImagePreview = this.container.querySelector('.featured-image-preview');
-          const featuredImageInput = this.container.querySelector('#article-featured-image');
+          console.log('Vista previa de imagen destacada:', featuredImagePreview ? 'Encontrada' : 'No encontrada');
+          
+          // Verificar si existe el input para la imagen destacada
+          let featuredImageInput = this.container.querySelector('#article-featured-image');
+          
+          // Si no existe el input, crearlo
+          if (!featuredImageInput) {
+            console.log('Creando input oculto para la imagen destacada...');
+            const featuredImageContainer = this.container.querySelector('.featured-image-container');
+            if (featuredImageContainer) {
+              featuredImageInput = document.createElement('input');
+              featuredImageInput.type = 'hidden';
+              featuredImageInput.id = 'article-featured-image';
+              featuredImageInput.name = 'featured_image';
+              featuredImageContainer.appendChild(featuredImageInput);
+              console.log('Input oculto para imagen destacada creado');
+            } else {
+              console.error('No se encontró el contenedor para añadir el input de imagen destacada');
+            }
+          }
           
           if (article.featured_image && featuredImagePreview) {
+            console.log('Actualizando vista previa con imagen:', article.featured_image);
             // Actualizar la vista previa de la imagen
             this.updateFeaturedImagePreview(article.featured_image, featuredImagePreview);
             
             // Actualizar el valor del input oculto si existe
             if (featuredImageInput) {
               featuredImageInput.value = article.featured_image;
+              console.log('Valor del input de imagen destacada actualizado:', featuredImageInput.value);
             }
           } else if (featuredImagePreview) {
+            console.log('No hay imagen destacada, reseteando vista previa');
             // Resetear la vista previa
             featuredImagePreview.innerHTML = `<span class="text-gray-500">No hay imagen seleccionada</span>`;
             
@@ -949,22 +997,71 @@ export class ArticleManager {
           }
           
           // Cargar contenido en el editor
+          // Verificar si existe el contenedor del editor
+          const editorContainer = this.container.querySelector('.editor-container');
+          console.log('Contenedor del editor:', editorContainer ? 'Encontrado' : 'No encontrado');
+          
+          // Si no existe el contenedor, crearlo
+          if (!editorContainer) {
+            console.log('Creando contenedor para el editor...');
+            const editorSection = document.createElement('div');
+            editorSection.className = 'form-group mt-4';
+            editorSection.innerHTML = `
+              <label class="form-label">Contenido</label>
+              <div class="editor-container border rounded-lg p-2 min-h-[300px]"></div>
+            `;
+            
+            // Buscar el formulario y añadir el contenedor del editor
+            const form = this.container.querySelector('.article-form');
+            if (form) {
+              form.appendChild(editorSection);
+              console.log('Contenedor del editor creado y añadido al formulario');
+            } else {
+              console.error('No se encontró el formulario para añadir el editor');
+            }
+          }
+          
           // Dar más tiempo al editor para inicializarse
           setTimeout(() => {
             try {
+              // Obtener la referencia actualizada al contenedor del editor
               const editorContainer = this.container.querySelector('.editor-container');
               
-              if (this.editor) {
-                this.editor.setContent(article.content || '');
-              } else if (editorContainer) {
-                console.log('Inicializando editor...');
-                this.editor = new ContentEditor(editorContainer);
-                
-                setTimeout(() => {
-                  this.editor.setContent(article.content || '');
-                }, 500);
+              if (editorContainer) {
+                console.log('Inicializando editor en el contenedor encontrado...');
+                try {
+                  // Intentar inicializar el editor
+                  this.editor = new ContentEditor(editorContainer);
+                  
+                  // Dar más tiempo para que el editor se inicialice completamente
+                  setTimeout(() => {
+                    try {
+                      console.log('Estableciendo contenido en el editor...');
+                      // Verificar si el contenido es válido
+                      const content = article.content || '';
+                      console.log('Contenido a establecer (primeros 100 caracteres):', content.substring(0, 100));
+                      
+                      // Verificar si el editor tiene el método setContent
+                      if (this.editor && typeof this.editor.setContent === 'function') {
+                        this.editor.setContent(content);
+                        console.log('Contenido establecido en el editor correctamente');
+                      } else {
+                        console.error('El editor no tiene el método setContent o no está correctamente inicializado');
+                        // Intentar reinicializar el editor
+                        this.editor = new ContentEditor(editorContainer);
+                        setTimeout(() => {
+                          if (this.editor && typeof this.editor.setContent === 'function') {
+                            this.editor.setContent(content);
+                            console.log('Contenido establecido en el editor después de reinicializar');
+                          }
+                        }, 1000);
+                      }
+                    } catch (contentError) {
+                      console.error('Error al establecer contenido en el editor:', contentError);
+                    }
+                  }, 1000);
               } else {
-                console.error('No se encontró el contenedor del editor');
+                console.error('No se encontró el contenedor del editor después de intentar crearlo');
                 this.notificationManager.warning('No se pudo inicializar el editor');
               }
             } catch (editorError) {
