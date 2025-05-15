@@ -825,13 +825,15 @@ export class ArticleManager {
   
   async editArticle(slug) {
     try {
+      console.log(`Iniciando edición del artículo con slug: ${slug}`);
       this.showLoading('Cargando artículo...');
       
       // Obtener el artículo de la API
       const article = await this.contentManager.getArticle(slug);
+      console.log('Artículo recibido de la API:', article);
       
       if (!article) {
-        notifications.error('No se pudo cargar el artículo');
+        this.notificationManager.error('No se pudo cargar el artículo');
         this.hideLoading();
         return;
       }
@@ -843,7 +845,23 @@ export class ArticleManager {
       this.currentArticle = article;
       
       // Actualizar título del editor
-      this.container.querySelector('.article-editor h3').textContent = 'Editar artículo';
+      const editorTitle = this.container.querySelector('.article-editor h3');
+      if (editorTitle) {
+        editorTitle.textContent = 'Editar artículo';
+      }
+      
+      // Asegurarse de que el botón para volver al listado funcione
+      const backButton = this.container.querySelector('.back-to-list-btn');
+      if (backButton) {
+        // Eliminar eventos anteriores para evitar duplicados
+        const newBackButton = backButton.cloneNode(true);
+        backButton.parentNode.replaceChild(newBackButton, backButton);
+        
+        // Agregar evento para volver al listado
+        newBackButton.addEventListener('click', () => {
+          this.showArticlesList();
+        });
+      }
       
       // Esperar un poco para asegurar que el editor esté inicializado
       setTimeout(() => {
@@ -856,6 +874,14 @@ export class ArticleManager {
           const slugInput = this.container.querySelector('#article-slug');
           const authorSelect = this.container.querySelector('#article-author');
           const tagsInput = this.container.querySelector('#article-tags');
+          
+          // Verificar que todos los elementos existan
+          if (!titleInput || !descriptionInput || !categorySelect || !dateInput || !slugInput) {
+            console.error('No se encontraron todos los elementos del formulario');
+            this.notificationManager.error('Error al cargar el formulario');
+            this.hideLoading();
+            return;
+          }
           
           // Asignar valores con comprobación de nulos
           titleInput.value = article.title || '';
@@ -885,102 +911,190 @@ export class ArticleManager {
           slugInput.dataset.edited = 'true';
           
           // Seleccionar el autor si existe
-          if (article.author_id) {
+          if (authorSelect && article.author_id) {
             authorSelect.value = article.author_id;
-          } else {
+          } else if (authorSelect) {
             authorSelect.value = '';
           }
           
           // Cargar etiquetas
-          if (article.tags && Array.isArray(article.tags)) {
-            tagsInput.value = article.tags.join(', ');
-          } else {
-            tagsInput.value = '';
+          if (tagsInput) {
+            if (article.tags && Array.isArray(article.tags)) {
+              tagsInput.value = article.tags.join(', ');
+            } else {
+              tagsInput.value = '';
+            }
           }
           
           // Cargar imagen destacada
-          if (article.featured_image) {
-            this.featuredImageInput.value = article.featured_image;
-            this.updateFeaturedImagePreview(article.featured_image);
-          } else {
-            this.featuredImageInput.value = '';
-            this.resetFeaturedImagePreview();
+          const featuredImagePreview = this.container.querySelector('.featured-image-preview');
+          const featuredImageInput = this.container.querySelector('#article-featured-image');
+          
+          if (article.featured_image && featuredImagePreview) {
+            // Actualizar la vista previa de la imagen
+            this.updateFeaturedImagePreview(article.featured_image, featuredImagePreview);
+            
+            // Actualizar el valor del input oculto si existe
+            if (featuredImageInput) {
+              featuredImageInput.value = article.featured_image;
+            }
+          } else if (featuredImagePreview) {
+            // Resetear la vista previa
+            featuredImagePreview.innerHTML = `<span class="text-gray-500">No hay imagen seleccionada</span>`;
+            
+            // Limpiar el input oculto si existe
+            if (featuredImageInput) {
+              featuredImageInput.value = '';
+            }
           }
           
           // Cargar contenido en el editor
           // Dar más tiempo al editor para inicializarse
           setTimeout(() => {
             try {
+              const editorContainer = this.container.querySelector('.editor-container');
+              
               if (this.editor) {
                 this.editor.setContent(article.content || '');
-              } else {
-                console.error('Editor no inicializado');
-                notifications.warning('Editor no inicializado correctamente');
-                // Intentar recuperar inicializando el editor
-                this.editor = new ContentEditor(this.container.querySelector('.editor-container'));
+              } else if (editorContainer) {
+                console.log('Inicializando editor...');
+                this.editor = new ContentEditor(editorContainer);
+                
                 setTimeout(() => {
                   this.editor.setContent(article.content || '');
                 }, 500);
+              } else {
+                console.error('No se encontró el contenedor del editor');
+                this.notificationManager.warning('No se pudo inicializar el editor');
               }
             } catch (editorError) {
               console.error('Error al establecer contenido en el editor:', editorError);
-              notifications.error('Error al cargar el contenido en el editor');
+              this.notificationManager.error('Error al cargar el contenido en el editor');
             }
             
             this.hideLoading();
           }, 1000);
         } catch (formError) {
           console.error('Error al cargar datos en el formulario:', formError);
-          notifications.error('Error al cargar los datos del artículo');
+          this.notificationManager.error('Error al cargar los datos del artículo');
           this.hideLoading();
         }
       }, 500);
     } catch (error) {
       console.error('Error al cargar artículo:', error);
-      notifications.error('Error al cargar el artículo');
+      this.notificationManager.error('Error al cargar el artículo');
       this.hideLoading();
     }
   }
 
-  updateFeaturedImagePreview(imagePath) {
+  updateFeaturedImagePreview(imagePath, previewElement) {
     console.log('Actualizando vista previa de imagen destacada:', imagePath);
     
-    // Si no hay ruta de imagen, mostrar mensaje de "No hay imagen seleccionada"
-    if (!imagePath) {
-      this.resetFeaturedImagePreview();
+    // Si no hay ruta de imagen o elemento de vista previa, salir
+    if (!imagePath || !previewElement) {
+      if (previewElement) {
+        previewElement.innerHTML = `<span class="text-gray-500">No hay imagen seleccionada</span>`;
+      }
       return;
     }
     
-    // Crear una instancia del gestor de medios para obtener la URL correcta
-    const mediaManager = new MediaManager();
+    // Usar el gestor de medios para obtener la URL correcta si está disponible
+    let imageUrl = imagePath;
     
-    // Obtener la URL pública de la imagen
-    const imageUrl = mediaManager.getPublicUrl(imagePath);
-    console.log('URL pública generada:', imageUrl);
+    try {
+      if (this.mediaManager) {
+        imageUrl = this.mediaManager.getPublicUrl(imagePath);
+        console.log('URL pública generada:', imageUrl);
+      } else if (!imagePath.startsWith('http') && !imagePath.startsWith('/')) {
+        // Construir URL relativa si es necesario
+        imageUrl = `/${imagePath}`;
+      }
+    } catch (error) {
+      console.error('Error al generar URL de imagen:', error);
+      // Usar la ruta original en caso de error
+      if (!imagePath.startsWith('http') && !imagePath.startsWith('/')) {
+        imageUrl = `/${imagePath}`;
+      }
+    }
     
-    // Actualizar la vista previa con la imagen
-    this.featuredImagePreview.innerHTML = `
-      <div class="relative w-full h-full flex items-center justify-center">
-        <img src="${imageUrl}" alt="Imagen destacada" class="max-h-full max-w-full object-contain" 
-             onerror="this.onerror=null; this.src='/img/placeholder-image.svg'; console.error('Error al cargar imagen destacada, usando placeholder');">
-        <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-          <button type="button" class="remove-image-btn bg-red-500 text-white rounded-full p-2 shadow-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
+    // Actualizar la vista previa
+    previewElement.innerHTML = `
+      <img src="${imageUrl}" alt="Vista previa" class="max-h-full max-w-full object-contain">
+    `;
+  }
+  
+  showArticlesList() {
+    console.log('Volviendo a la lista de artículos');
+    
+    // Ocultar el editor de artículos
+    const articleEditor = this.container.querySelector('.article-editor');
+    if (articleEditor) {
+      articleEditor.classList.add('hidden');
+    }
+    
+    // Mostrar la lista de artículos
+    const articlesList = this.container.querySelector('.articles-list');
+    if (articlesList) {
+      articlesList.classList.remove('hidden');
+    }
+    
+    // Limpiar el artículo actual
+    this.currentArticle = null;
+    
+    // Recargar la lista de artículos para mostrar cambios recientes
+    this.loadArticles();
+  }
+  
+  showArticleEditor() {
+    // Ocultar la lista de artículos
+    const articlesList = this.container.querySelector('.articles-list');
+    if (articlesList) {
+      articlesList.classList.add('hidden');
+    }
+    
+    // Mostrar el editor de artículos
+    const articleEditor = this.container.querySelector('.article-editor');
+    if (articleEditor) {
+      articleEditor.classList.remove('hidden');
+    }
+  }
+
+  // Método para mostrar un indicador de carga
+  showLoading(message = 'Cargando...') {
+    // Crear el elemento de carga si no existe
+    let loadingElement = this.container.querySelector('.loading-overlay');
+    
+    if (!loadingElement) {
+      loadingElement = document.createElement('div');
+      loadingElement.className = 'loading-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+      this.container.appendChild(loadingElement);
+    }
+    
+    // Actualizar el mensaje de carga
+    loadingElement.innerHTML = `
+      <div class="bg-white p-4 rounded-lg shadow-lg text-center">
+        <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500 mx-auto mb-2"></div>
+        <p>${message}</p>
       </div>
     `;
     
-    // Agregar evento para eliminar la imagen
-    const removeButton = this.featuredImagePreview.querySelector('.remove-image-btn');
-    if (removeButton) {
-      removeButton.addEventListener('click', (e) => {
-        e.stopPropagation(); // Evitar que el clic se propague
-        this.resetFeaturedImagePreview();
-      });
+    // Mostrar el indicador de carga
+    loadingElement.style.display = 'flex';
+  }
+  
+  // Método para ocultar el indicador de carga
+  hideLoading() {
+    const loadingElement = this.container.querySelector('.loading-overlay');
+    if (loadingElement) {
+      loadingElement.style.display = 'none';
+    }
+  }
+  
+  // Método para resetear la vista previa de la imagen destacada
+  resetFeaturedImagePreview() {
+    const featuredImagePreview = this.container.querySelector('.featured-image-preview');
+    if (featuredImagePreview) {
+      featuredImagePreview.innerHTML = `<span class="text-gray-500">No hay imagen seleccionada</span>`;
     }
   }
 
