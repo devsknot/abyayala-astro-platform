@@ -119,8 +119,17 @@
         script.onload = function() {
           showDebugInfo('Módulo principal app.js cargado correctamente.');
           updateLoadingStatus('Inicializando aplicación...');
-          // La aplicación se inicializará automáticamente a través de app.js
-          // cuando todos sus imports sean resueltos
+          
+          // Llamar explícitamente a initializeApp después de un breve retraso
+          setTimeout(() => {
+            showDebugInfo('Llamando explícitamente a initializeApp...');
+            if (typeof window.initializeApp === 'function') {
+              window.initializeApp();
+            } else {
+              showDebugInfo('ERROR: La función initializeApp no está disponible');
+              updateLoadingStatus('Error: No se pudo inicializar la aplicación');
+            }
+          }, 500);
         };
         script.onerror = function(err) {
           window.appLoadError = true;

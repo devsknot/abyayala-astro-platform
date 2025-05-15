@@ -27,8 +27,8 @@ const notifications = {
   info: (msg) => { console.info('INFO:', msg); alert('Info: ' + msg); }
 };
 
-// Función principal de inicialización
-async function initializeApp() {
+// Función principal de inicialización (expuesta globalmente)
+window.initializeApp = async function() {
   try {
     showDebugInfo('Iniciando función initializeApp');
     
@@ -107,8 +107,8 @@ async function initializeApp() {
   }
 }
 
-// Iniciar la aplicación cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', initializeApp);
+// Ya no iniciamos la aplicación con DOMContentLoaded
+// La inicialización se maneja desde index.html después de cargar el script
 
 // Renderizar la aplicación completa
 function renderApp(container) {
