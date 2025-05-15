@@ -97,54 +97,48 @@
       }
     }
     
-    // Cargar los scripts principales
+    // Cargar el script principal (app.js) como módulo ES6
     function loadMainScripts() {
-      updateLoadingStatus('Cargando scripts principales...');
+      updateLoadingStatus('Cargando módulo principal app.js...');
       
-      // Lista de scripts a cargar en orden
-      const scripts = [
-        `${window.appBaseUrl}/admin/components/notification.js`,
-        `${window.appBaseUrl}/admin/content-manager.js`,
-        `${window.appBaseUrl}/admin/components/article-manager.js`,
-        `${window.appBaseUrl}/admin/components/media-library.js`,
-        `${window.appBaseUrl}/admin/components/category-manager.js`,
-        `${window.appBaseUrl}/admin/components/bulk-import-manager.js`,
-        `${window.appBaseUrl}/admin/author-manager.js`,
-        `${window.appBaseUrl}/admin/app.js`
-      ];
+      // Establecer una variable global para detectar errores de carga
+      window.appLoadError = false;
       
-      // Cargar scripts secuencialmente
-      let scriptsLoaded = 0;
-      
-      function loadNextScript() {
-        if (scriptsLoaded >= scripts.length) {
-          // Todos los scripts cargados
-          updateLoadingStatus('Scripts cargados. Inicializando aplicación...');
-          return;
+      // Configurar tiempo máximo de carga (20 segundos)
+      const loadingTimeout = setTimeout(() => {
+        if (!window.appInitialized) {
+          updateLoadingStatus('La carga está tardando demasiado tiempo.');
+          showDebugInfo('Posible error de carga de módulos. Verifica la consola para más detalles.');
         }
-        
-        const scriptUrl = scripts[scriptsLoaded];
-        const scriptName = scriptUrl.split('/').pop();
-        updateLoadingStatus(`Cargando ${scriptName}...`);
-        
-        const script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.onload = function() {
-          scriptsLoaded++;
-          showDebugInfo(`Script cargado: ${scriptName}`);
-          loadNextScript(); // Cargar el siguiente script cuando este termine
-        };
-        script.onerror = function() {
-          showDebugInfo(`Error al cargar script: ${scriptName}`);
-          scriptsLoaded++; // Continuar con el siguiente script aunque haya error
-          loadNextScript();
-        };
-        script.src = scriptUrl;
-        document.body.appendChild(script);
-      }
+      }, 20000);
       
-      // Iniciar la carga secuencial
-      loadNextScript();
+      try {
+        // Crear el script que cargará app.js como módulo
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.onload = function() {
+          showDebugInfo('Módulo principal app.js cargado correctamente.');
+          updateLoadingStatus('Inicializando aplicación...');
+          // La aplicación se inicializará automáticamente a través de app.js
+          // cuando todos sus imports sean resueltos
+        };
+        script.onerror = function(err) {
+          window.appLoadError = true;
+          showDebugInfo(`Error al cargar app.js: ${err.message || 'Error desconocido'}`);          
+          updateLoadingStatus('Error al cargar el módulo principal.'); 
+          // Mostrar un mensaje de error más visible
+          document.querySelector('.loading h2').textContent = 'Error al cargar el panel de administración';
+          document.getElementById('loading-status').innerHTML = 'Ha ocurrido un error al cargar los scripts. <a href="javascript:window.location.reload()" class="text-blue-500 underline">Intentar nuevamente</a>';
+        };
+        script.src = `${window.appBaseUrl}/admin/app.js`;
+        document.body.appendChild(script);
+        
+        // Verificar si carga correctamente
+        showDebugInfo('Solicitando carga de: ' + script.src);
+      } catch (err) {
+        showDebugInfo(`Error al iniciar la carga: ${err.message}`);
+        updateLoadingStatus('Error al inicializar: ' + err.message);
+      }
     }
   </script>
 </body>
