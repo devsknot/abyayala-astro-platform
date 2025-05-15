@@ -31,7 +31,8 @@ const normalizeImage = (imagePath: string | undefined): string => {
   // Si no hay imagen o la ruta está causando 404
   if (!imagePath || imagePath.startsWith('media/uploads/') || 
       imagePath.includes('+') || imagePath.includes('%25')) {
-    return '/img/placeholder-image.png';
+    // Usar la imagen del Colectivo (logo sin fondo)
+    return '/images/CAAY Logo sin fondo.png';
   }
   return imagePath;
 };

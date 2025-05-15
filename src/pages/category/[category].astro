@@ -74,6 +74,17 @@ if (newsItems.length > 0) {
   });
 }
 
+// Función para normalizar imágenes
+const normalizeImage = (imagePath: string | undefined): string => {
+  // Si no hay imagen o la ruta está causando 404
+  if (!imagePath || imagePath.startsWith('media/uploads/') || 
+      imagePath.includes('+') || imagePath.includes('%25')) {
+    // Usar la imagen del Colectivo (logo sin fondo)
+    return '/images/CAAY Logo sin fondo.png';
+  }
+  return imagePath;
+};
+
 // Mensaje para mostrar si no hay artículos
 const noArticlesMessage = `No hay artículos disponibles en la categoría ${category.name}. Por favor, vuelva a intentarlo más tarde.`;
 ---
@@ -139,7 +150,7 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
             const category = news.category || news.categorySlug || categorySlug;
             
             // Manejar diferentes formatos de imagen
-            const image = news.featured_image || news.image || news.hero_image || news.thumbnailUrl || '/img/placeholder-image.png';
+            const image = normalizeImage(news.featured_image || news.image || news.hero_image || news.thumbnailUrl);
             
             return (
               <div class="news-item" 
