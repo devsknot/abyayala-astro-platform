@@ -1,104 +1,132 @@
 import type { APIContext } from "astro";
-// Utilizamos solo la base de datos D1 en Cloudflare
-import { db as sqliteDb } from "../../../../utils/db";
-import { getUserInfo } from "../../../../utils/auth";
-import { formatArticleData } from "../../../../utils/content";
+
+// Common headers for CORS and JSON
+const commonHeaders = {
+  'Access-Control-Allow-Origin': '*', // Adjust in production
+  'Content-Type': 'application/json',
+  'Cache-Control': 'no-cache, no-store, must-revalidate'
+};
+
+// Helper para transformar artículo de la DB al formato del frontend
+function formatArticleData(article: any) {
+  if (!article) return null;
+  
+  // Procesamiento seguro de tags
+  let parsedTags = [];
+  if (article.tags) {
+    try {
+      parsedTags = typeof article.tags === 'string' ? JSON.parse(article.tags) : article.tags;
+    } catch (e) {
+      console.error(`Error parsing tags for article ${article.slug}:`, e);
+    }
+  }
+  
+  // Normalizar campos para compatibilidad
+  return {
+    id: article.id,
+    title: article.title,
+    slug: article.slug,
+    description: article.description || '',
+    content: article.content || '',
+    category: article.category || '',
+    pubDate: article.pubDate || article.pub_date || article.date || null,
+    featured_image: article.featured_image || article.image || '',
+    tags: parsedTags,
+    author: article.author || ''
+  };
+}
 
 // Definir una interfaz básica para los artículos
 interface Article {
-  id?: number;
-  slug?: string;
+  id: string;
   title: string;
-  description?: string;
+  slug: string;
+  description: string;
   content?: string;
-  category?: string;
-  pubDate?: string | Date;
-  date?: string | Date;
-  pub_date?: string | Date;
+  category: string;
+  pubDate?: string;
+  date?: string;
+  pub_date?: string;
   featured_image?: string;
   image?: string;
-  [key: string]: any; // Para campos adicionales
+  tags?: string | string[];
+  author?: string;
 }
 
-// Configuración para SSR
+// No prerender este endpoint para permitir búsquedas dinámicas
 export const prerender = false;
 
 // Manejar solicitudes GET para búsquedas de artículos
-export async function GET({ request }: APIContext) {
-  const url = new URL(request.url);
+export async function GET(context: APIContext) {
+  console.log(`[articles/search.ts] GET invoked.`);
+  const url = new URL(context.request.url);
   const query = url.searchParams.get('query') || '';
   const category = url.searchParams.get('category') || '';
   const dateFrom = url.searchParams.get('dateFrom') || '';
   const dateTo = url.searchParams.get('dateTo') || '';
-  const page = url.searchParams.get('page') ? parseInt(url.searchParams.get('page')!) : 1;
-  const pageSize = url.searchParams.get('pageSize') ? parseInt(url.searchParams.get('pageSize')!) : 10;
+  const page = url.searchParams.get('page') ? parseInt(url.searchParams.get('page') || '1') : 1;
+  const pageSize = url.searchParams.get('pageSize') ? parseInt(url.searchParams.get('pageSize') || '10') : 10;
 
-  // Determinar qué base de datos usar
+  // Obtener la conexión a la base de datos desde el entorno
+  const db = context.locals.runtime.env.DB;
   let articles = [];
   let totalItems = 0;
-  let headers = new Headers();
   
   try {
-    // Intentar obtener el usuario para verificar autenticación (opcional)
-    const userInfo = await getUserInfo(request.headers);
-
-    // Se asume que estamos usando SQLite - ajusta según tu base de datos real
-    if (sqliteDb) {
-      // Construir la consulta base
-      let sqlQuery = `SELECT * FROM articles WHERE 1=1`;
-      let params: any[] = [];
-      
-      // Añadir condiciones de filtrado
-      if (query) {
-        sqlQuery += ` AND (title LIKE ? OR description LIKE ? OR content LIKE ?)`;
-        const queryPattern = `%${query}%`;
-        params.push(queryPattern, queryPattern, queryPattern);
-      }
-      
-      if (category) {
-        sqlQuery += ` AND category = ?`;
-        params.push(category);
-      }
-      
-      if (dateFrom) {
-        sqlQuery += ` AND (pubDate >= ? OR date >= ? OR pub_date >= ?)`;
-        params.push(dateFrom, dateFrom, dateFrom);
-      }
-      
-      if (dateTo) {
-        // Ajustar la fecha final para incluir todo el día
-        const adjustedDateTo = new Date(dateTo);
-        adjustedDateTo.setHours(23, 59, 59, 999);
-        const adjustedDateToStr = adjustedDateTo.toISOString();
-        
-        sqlQuery += ` AND (pubDate <= ? OR date <= ? OR pub_date <= ?)`;
-        params.push(adjustedDateToStr, adjustedDateToStr, adjustedDateToStr);
-      }
-      
-      // Contar total de resultados para paginación
+    // Construir el query SQL con los filtros aplicados
+    let sqlQuery = "SELECT * FROM articles WHERE 1=1";
+    const params: any[] = [];
+    
+    if (query) {
+      sqlQuery += " AND (title LIKE ? OR description LIKE ? OR content LIKE ?)";
+      const likeParam = `%${query}%`;
+      params.push(likeParam, likeParam, likeParam);
+    }
+    
+    if (category) {
+      sqlQuery += " AND category = ?";
+      params.push(category);
+    }
+    
+    if (dateFrom) {
+      sqlQuery += " AND (pubDate >= ? OR date >= ? OR pub_date >= ?)";
+      params.push(dateFrom, dateFrom, dateFrom);
+    }
+    
+    if (dateTo) {
+      sqlQuery += " AND (pubDate <= ? OR date <= ? OR pub_date <= ?)";
+      params.push(dateTo, dateTo, dateTo);
+    }
+    
+    // Primero, ejecutar la consulta para contar el total de resultados
+    try {
       const countQuery = sqlQuery.replace('SELECT *', 'SELECT COUNT(*) as count');
+      const countResult = await db.prepare(countQuery).bind(...params).first();
+      totalItems = countResult?.count || 0;
       
-      try {
-        const countResult = await sqliteDb.prepare(countQuery).bind(...params).all();
-        totalItems = countResult.length > 0 ? countResult[0].count : 0;
+      if (totalItems > 0) {
+        // Si hay resultados, ejecutar la consulta principal con paginación
         
         // Agregar ordenación y paginación al query
         sqlQuery += ` ORDER BY pubDate DESC, date DESC, pub_date DESC LIMIT ? OFFSET ?`;
         params.push(pageSize, (page - 1) * pageSize);
         
-        const result = await sqliteDb.prepare(sqlQuery).bind(...params).all();
-        articles = result.map(formatArticleData);
-      } catch (dbError) {
-        console.error('Error al ejecutar consulta en la base de datos:', dbError);
-        // Intento alternativo: usar todos los artículos y filtrar manualmente
-        const allArticles = await sqliteDb.prepare("SELECT * FROM articles").all();
-        const filteredArticles = allArticles.filter((article: Article) => {
+        const result = await db.prepare(sqlQuery).bind(...params).all();
+        articles = result.results?.map(formatArticleData) || [];
+      }
+    } catch (dbError) {
+      console.error('Error al ejecutar consulta en la base de datos:', dbError);
+      
+      // Intento alternativo: usar todos los artículos y filtrar manualmente
+      try {
+        const allArticles = await db.prepare("SELECT * FROM articles").all();
+        const filteredArticles = allArticles.results?.filter((article: Article) => {
           let matchesQuery = true;
           
           if (query) {
             const searchRegex = new RegExp(query, 'i');
-            matchesQuery = searchRegex.test(article.title) || 
-                          searchRegex.test(article.description) || 
+            matchesQuery = searchRegex.test(article.title || '') || 
+                          searchRegex.test(article.description || '') || 
                           searchRegex.test(article.content || '');
           }
           
@@ -125,7 +153,7 @@ export async function GET({ request }: APIContext) {
           }
           
           return matchesQuery && matchesCategory && matchesDateFrom && matchesDateTo;
-        });
+        }) || [];
         
         totalItems = filteredArticles.length;
         
@@ -139,61 +167,52 @@ export async function GET({ request }: APIContext) {
           })
           .slice((page - 1) * pageSize, page * pageSize)
           .map(formatArticleData);
+      } catch (fallbackError) {
+        console.error('Error en el método de respaldo para la búsqueda:', fallbackError);
       }
-    } else {
-      // Fallback si no hay base de datos
-      return new Response(
-        JSON.stringify({
-          error: "No database connection available"
-        }),
-        {
-          status: 500,
-          headers: {
-            "Content-Type": "application/json",
-            "Cache-Control": "no-store, max-age=0"
-          }
-        }
-      );
     }
     
-    // Calcular datos de paginación
+    // Preparar datos para la respuesta con paginación
     const totalPages = Math.ceil(totalItems / pageSize);
-    const hasNextPage = page < totalPages;
-    const hasPrevPage = page > 1;
     
-    // Configurar headers para prevenir caché
-    headers.append("Content-Type", "application/json");
-    headers.append("Cache-Control", "no-store, max-age=0");
-    
-    // Responder con los resultados y metadatos de paginación
-    return new Response(JSON.stringify({
-      articles,
+    // Construir respuesta con formato consistente
+    const responseData = {
+      success: true,
+      articles: articles,
       pagination: {
         page,
         pageSize,
         totalItems,
         totalPages,
-        hasNextPage,
-        hasPrevPage
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    };
+    
+    // Devolver la respuesta exitosa con headers estándar
+    return new Response(JSON.stringify(responseData), {
+      status: 200,
+      headers: commonHeaders
+    });
+  } catch (error: any) {
+    console.error('Error en API de búsqueda de artículos:', error);
+    
+    // Crear respuesta de error
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Error desconocido',
+      articles: [],
+      pagination: {
+        page, 
+        pageSize,
+        totalItems: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false
       }
     }), {
-      headers
+      status: 500,
+      headers: commonHeaders
     });
-  } catch (error) {
-    console.error("Error en el endpoint de búsqueda:", error);
-    
-    return new Response(
-      JSON.stringify({
-        error: "Internal Server Error",
-        details: error instanceof Error ? error.message : "Unknown error"
-      }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-store, max-age=0"
-        }
-      }
-    );
   }
 }
