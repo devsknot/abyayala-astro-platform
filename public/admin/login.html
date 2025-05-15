@@ -82,8 +82,13 @@
           timestamp: Date.now()
         }));
         
+        // Detectar la ruta base para redireccionamiento
+        const basePath = window.location.pathname.includes('/admin') 
+          ? window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/admin') + 7)
+          : '/admin/';
+        
         // Redirigir al panel de administración
-        window.location.href = 'index.html';
+        window.location.href = basePath + 'index.html';
       }, 1500);
     });
   </script>

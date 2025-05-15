@@ -15,6 +15,20 @@
     </div>
   </div>
   
+  <!-- Fix para asegurar que los assets se cargan correctamente independientemente de la ruta -->
+  <script>
+    // Detectar la ruta base y ajustar las referencias a assets si es necesario
+    document.addEventListener('DOMContentLoaded', function() {
+      const basePath = window.location.pathname.includes('/admin') 
+        ? window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/admin') + 7)
+        : '/admin/';
+      
+      // Si no estamos en la URL esperada, redirigir conservando la ruta base
+      if (!window.location.pathname.includes('/admin')) {
+        window.location.href = basePath;
+      }
+    });
+  </script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
