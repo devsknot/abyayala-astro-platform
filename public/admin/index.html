@@ -8,8 +8,8 @@
   <!-- Usar URL dinámica basada en la ubicación actual para el CSS -->
   <script>
     // Establecer la base URL dinámicamente
-    const baseUrl = window.location.origin;
-    document.write(`<link rel="stylesheet" id="style-css" href="${baseUrl}/admin/style.css">`); 
+    window.appBaseUrl = window.location.origin;
+    document.write(`<link rel="stylesheet" id="style-css" href="${window.appBaseUrl}/admin/style.css">`); 
   </script>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -17,55 +17,135 @@
     <div class="loading flex flex-col items-center justify-center min-h-screen">
       <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500 mb-4"></div>
       <h2 class="text-xl font-semibold text-gray-700">Cargando panel de administración...</h2>
+      <div id="loading-status" class="text-sm text-gray-500 mt-2">Inicializando...</div>
+      <div id="debug-info" class="text-xs text-gray-400 mt-4 max-w-lg text-center"></div>
     </div>
   </div>
   
-  <!-- Fix para asegurar que los assets se cargan correctamente independientemente de la ruta -->
+  <!-- Debug helper -->
   <script>
-    // Detectar la ruta base y ajustar las referencias a assets si es necesario
-    document.addEventListener('DOMContentLoaded', function() {
-      const baseUrl = window.location.origin;
-      const basePath = baseUrl + '/admin/'; // Construir ruta absoluta completa
-      
-      // Si no estamos en la URL esperada, redirigir
-      if (!window.location.pathname.includes('/admin')) {
-        window.location.href = basePath;
-        return;
+    // Función para actualizar el estado de carga
+    function updateLoadingStatus(message) {
+      const statusElement = document.getElementById('loading-status');
+      if (statusElement) {
+        statusElement.textContent = message;
       }
-      
-      // Verificar carga de recursos
-      console.log('Verificando carga de recursos para el panel de administración');
-      
+      console.log('[CMS DEBUG]', message);
+    }
+    
+    // Función para mostrar información de depuración
+    function showDebugInfo(message) {
+      const debugElement = document.getElementById('debug-info');
+      if (debugElement) {
+        debugElement.innerHTML += `<div>${message}</div>`;
+      }
+      console.log('[CMS DEBUG]', message);
+    }
+    
+    // Verificar el entorno
+    showDebugInfo(`Entorno: ${window.location.hostname}`);
+    showDebugInfo(`Ruta: ${window.location.pathname}`);
+    showDebugInfo(`Origen: ${window.location.origin}`);
+    
+    // Capturar errores globales
+    window.addEventListener('error', function(event) {
+      showDebugInfo(`Error: ${event.message} en ${event.filename}:${event.lineno}`);
+    });
+  </script>
+  
+  <!-- Verificación de autenticación -->
+  <script>
+    updateLoadingStatus('Verificando autenticación...');
+    
+    // Usar la variable global para la URL base
+    const basePath = window.appBaseUrl + '/admin/'; // Construir ruta absoluta completa
+    
+    // Si no estamos en la URL esperada, redirigir
+    if (!window.location.pathname.includes('/admin')) {
+      updateLoadingStatus('Redirigiendo a ruta correcta...');
+      window.location.href = basePath;
+    } else {
       // Verificar que el usuario esté autenticado
       const authData = localStorage.getItem('abyayala_cms_auth');
       if (!authData) {
-        console.log('No hay sesión activa, redirigiendo a login...');
-        window.location.href = baseUrl + '/admin/login.html';
-        return;
+        updateLoadingStatus('No hay sesión activa, redirigiendo a login...');
+        setTimeout(() => {
+          window.location.href = window.appBaseUrl + '/admin/login.html';
+        }, 1000);
+      } else {
+        try {
+          // Validar que el formato de autenticación sea correcto
+          const auth = JSON.parse(authData);
+          if (!auth.authenticated) {
+            updateLoadingStatus('Sesión inválida, redirigiendo a login...');
+            localStorage.removeItem('abyayala_cms_auth');
+            setTimeout(() => {
+              window.location.href = window.appBaseUrl + '/admin/login.html';
+            }, 1000);
+          } else {
+            // Autenticación válida, cargar el resto de scripts
+            updateLoadingStatus('Autenticación correcta, cargando componentes...');
+            loadMainScripts();
+          }
+        } catch (error) {
+          showDebugInfo(`Error al validar sesión: ${error.message}`);
+          localStorage.removeItem('abyayala_cms_auth');
+          setTimeout(() => {
+            window.location.href = window.appBaseUrl + '/admin/login.html';
+          }, 1000);
+        }
+      }
+    }
+    
+    // Cargar los scripts principales
+    function loadMainScripts() {
+      updateLoadingStatus('Cargando scripts principales...');
+      
+      // Lista de scripts a cargar en orden
+      const scripts = [
+        `${window.appBaseUrl}/admin/components/notification.js`,
+        `${window.appBaseUrl}/admin/content-manager.js`,
+        `${window.appBaseUrl}/admin/components/article-manager.js`,
+        `${window.appBaseUrl}/admin/components/media-library.js`,
+        `${window.appBaseUrl}/admin/components/category-manager.js`,
+        `${window.appBaseUrl}/admin/components/bulk-import-manager.js`,
+        `${window.appBaseUrl}/admin/author-manager.js`,
+        `${window.appBaseUrl}/admin/app.js`
+      ];
+      
+      // Cargar scripts secuencialmente
+      let scriptsLoaded = 0;
+      
+      function loadNextScript() {
+        if (scriptsLoaded >= scripts.length) {
+          // Todos los scripts cargados
+          updateLoadingStatus('Scripts cargados. Inicializando aplicación...');
+          return;
+        }
+        
+        const scriptUrl = scripts[scriptsLoaded];
+        const scriptName = scriptUrl.split('/').pop();
+        updateLoadingStatus(`Cargando ${scriptName}...`);
+        
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.onload = function() {
+          scriptsLoaded++;
+          showDebugInfo(`Script cargado: ${scriptName}`);
+          loadNextScript(); // Cargar el siguiente script cuando este termine
+        };
+        script.onerror = function() {
+          showDebugInfo(`Error al cargar script: ${scriptName}`);
+          scriptsLoaded++; // Continuar con el siguiente script aunque haya error
+          loadNextScript();
+        };
+        script.src = scriptUrl;
+        document.body.appendChild(script);
       }
       
-      try {
-        // Validar que el formato de autenticación sea correcto
-        const auth = JSON.parse(authData);
-        if (!auth.authenticated) {
-          console.log('Sesión inválida, redirigiendo a login...');
-          localStorage.removeItem('abyayala_cms_auth');
-          window.location.href = baseUrl + '/admin/login.html';
-        }
-      } catch (error) {
-        console.error('Error al validar sesión:', error);
-        localStorage.removeItem('abyayala_cms_auth');
-        window.location.href = baseUrl + '/admin/login.html';
-      }
-    });
-  </script>
-  <!-- Usar URL dinámica para el JS principal -->
-  <script>
-    const appJsUrl = window.location.origin + '/admin/app.js';
-    const scriptEl = document.createElement('script');
-    scriptEl.setAttribute('type', 'module');
-    scriptEl.setAttribute('src', appJsUrl);
-    document.body.appendChild(scriptEl);
+      // Iniciar la carga secuencial
+      loadNextScript();
+    }
   </script>
 </body>
 </html>
