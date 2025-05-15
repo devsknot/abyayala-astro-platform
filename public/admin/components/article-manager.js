@@ -14,6 +14,32 @@ export class ArticleManager {
     this.init();
   }
   
+  constructor(contentManager, mediaManager, notificationManager) {
+    this.contentManager = contentManager;
+    this.mediaManager = mediaManager;
+    this.notificationManager = notificationManager;
+    this.container = null;
+    this.articlesContainer = null;
+    this.editor = null;
+    this.currentArticle = null;
+    
+    // Configuración de paginación
+    this.pagination = {
+      page: 1,
+      limit: 10,
+      total: 0,
+      totalPages: 1
+    };
+    
+    // Configuración de filtros
+    this.filters = {
+      search: '',
+      category: '',
+      sortBy: 'pubDate',
+      sortOrder: 'desc'
+    };
+  }
+  
   async init() {
     // Crear la estructura del gestor de artículos
     this.container.innerHTML = `
@@ -24,9 +50,60 @@ export class ArticleManager {
         </div>
         
         <div class="articles-list card mb-6">
+          <div class="mb-4">
+            <div class="flex flex-col md:flex-row gap-4 mb-4">
+              <div class="flex-1">
+                <div class="relative">
+                  <input type="text" class="form-input pl-10 w-full" placeholder="Buscar artículos..." id="search-input">
+                  <div class="absolute left-3 top-3 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div class="w-full md:w-48">
+                <select class="form-input w-full" id="category-filter">
+                  <option value="">Todas las categorías</option>
+                  <option value="agricultura">Agricultura</option>
+                  <option value="comunidad">Comunidad</option>
+                  <option value="sostenibilidad">Sostenibilidad</option>
+                  <option value="politica-agraria">Política Agraria</option>
+                  <option value="tecnologia-rural">Tecnología Rural</option>
+                  <option value="cultura">Cultura</option>
+                  <option value="eventos">Eventos</option>
+                </select>
+              </div>
+              <div class="w-full md:w-48">
+                <select class="form-input w-full" id="sort-filter">
+                  <option value="pubDate-desc">Más recientes primero</option>
+                  <option value="pubDate-asc">Más antiguos primero</option>
+                  <option value="title-asc">Título (A-Z)</option>
+                  <option value="title-desc">Título (Z-A)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
           <h3 class="text-lg font-semibold mb-4">Todos los artículos</h3>
           <div class="articles-container">
             <div class="loading">Cargando artículos...</div>
+          </div>
+          
+          <div class="pagination-controls flex justify-between items-center mt-4 text-sm" style="display: none;">
+            <div class="pagination-info text-gray-600">
+              Mostrando <span class="current-range">1-10</span> de <span class="total-items">0</span> artículos
+            </div>
+            <div class="pagination-buttons flex space-x-2">
+              <button class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" id="prev-page" disabled>
+                Anterior
+              </button>
+              <div class="page-numbers flex space-x-1"></div>
+              <button class="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" id="next-page" disabled>
+                Siguiente
+              </button>
+            </div>
           </div>
         </div>
         
@@ -179,6 +256,10 @@ export class ArticleManager {
     this.container.querySelector('.cancel-btn').addEventListener('click', () => {
       this.showArticlesList();
     });
+    
+    // Eventos para filtros y paginación
+    this.setupFilterEvents();
+    this.setupPaginationEvents();
     
     // Evento para seleccionar imagen destacada
     this.container.querySelector('.select-image-btn').addEventListener('click', () => {
@@ -405,15 +486,147 @@ export class ArticleManager {
     });
   }
   
+  async loadCategories() {
+    try {
+      // Obtener categorías desde la API
+      const categories = await this.contentManager.getCategories();
+      
+      // Obtener el elemento select para el filtro de categorías
+      const categoryFilter = this.container.querySelector('#category-filter');
+      const articleCategorySelect = this.container.querySelector('#article-category');
+      
+      if (categories && categories.length > 0) {
+        // Crear opciones para el filtro de categorías
+        const categoryOptions = categories.map(category => `
+          <option value="${category.slug}">${category.name}</option>
+        `).join('');
+        
+        // Actualizar el filtro de categorías
+        if (categoryFilter) {
+          // Mantener la opción "Todas las categorías"
+          categoryFilter.innerHTML = `
+            <option value="">Todas las categorías</option>
+            ${categoryOptions}
+          `;
+        }
+        
+        // Actualizar también el selector de categorías en el formulario de edición
+        if (articleCategorySelect) {
+          // Mantener la opción "Seleccionar categoría"
+          articleCategorySelect.innerHTML = `
+            <option value="">Seleccionar categoría</option>
+            ${categoryOptions}
+          `;
+        }
+      }
+    } catch (error) {
+      console.error('Error al cargar categorías:', error);
+      // No mostrar error al usuario, simplemente mantener las categorías predeterminadas
+    }
+  }
+  
+  setupFilterEvents() {
+    // Evento para el campo de búsqueda
+    const searchInput = this.container.querySelector('#search-input');
+    if (searchInput) {
+      // Usar debounce para evitar muchas llamadas mientras el usuario escribe
+      let debounceTimeout;
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+          this.filters.search = e.target.value.trim();
+          this.pagination.page = 1; // Volver a la primera página al cambiar el filtro
+          this.loadArticles();
+        }, 300);
+      });
+    }
+    
+    // Evento para el filtro de categoría
+    const categoryFilter = this.container.querySelector('#category-filter');
+    if (categoryFilter) {
+      categoryFilter.addEventListener('change', (e) => {
+        this.filters.category = e.target.value;
+        this.pagination.page = 1; // Volver a la primera página al cambiar el filtro
+        this.loadArticles();
+      });
+    }
+    
+    // Evento para el filtro de ordenación
+    const sortFilter = this.container.querySelector('#sort-filter');
+    if (sortFilter) {
+      sortFilter.addEventListener('change', (e) => {
+        const [sortBy, sortOrder] = e.target.value.split('-');
+        this.filters.sortBy = sortBy;
+        this.filters.sortOrder = sortOrder;
+        this.loadArticles();
+      });
+    }
+  }
+  
+  setupPaginationEvents() {
+    // Evento para el botón de página anterior
+    const prevPageBtn = this.container.querySelector('#prev-page');
+    if (prevPageBtn) {
+      prevPageBtn.addEventListener('click', () => {
+        if (this.pagination.page > 1) {
+          this.pagination.page--;
+          this.loadArticles();
+        }
+      });
+    }
+    
+    // Evento para el botón de página siguiente
+    const nextPageBtn = this.container.querySelector('#next-page');
+    if (nextPageBtn) {
+      nextPageBtn.addEventListener('click', () => {
+        if (this.pagination.page < this.pagination.totalPages) {
+          this.pagination.page++;
+          this.loadArticles();
+        }
+      });
+    }
+  }
+  
   async loadArticles() {
     try {
       // Mostrar indicador de carga
       this.articlesContainer.innerHTML = `<div class="loading">Cargando artículos...</div>`;
       
-      // Obtener artículos
-      const articles = await this.contentManager.getArticles();
+      // Preparar parámetros para la API
+      const params = {
+        page: this.pagination.page,
+        limit: this.pagination.limit,
+        sortBy: this.filters.sortBy,
+        sortOrder: this.filters.sortOrder
+      };
+      
+      // Añadir filtros si están presentes
+      if (this.filters.search) {
+        params.search = this.filters.search;
+      }
+      
+      if (this.filters.category) {
+        params.category = this.filters.category;
+      }
+      
+      // Obtener artículos con paginación y filtros
+      const response = await this.contentManager.getArticles(params);
+      
+      // Actualizar información de paginación
+      if (response.pagination) {
+        this.pagination.total = response.pagination.total || 0;
+        this.pagination.totalPages = response.pagination.totalPages || 1;
+      } else {
+        // Si la API no devuelve información de paginación, calcularla aproximadamente
+        this.pagination.total = response.articles ? response.articles.length : 0;
+        this.pagination.totalPages = 1;
+      }
+      
+      // Actualizar controles de paginación
+      this.updatePaginationControls();
       
       // Renderizar artículos
+      const articles = response.articles || response;
       this.renderArticles(articles);
     } catch (error) {
       console.error('Error al cargar artículos:', error);
@@ -426,32 +639,141 @@ export class ArticleManager {
     }
   }
   
+  updatePaginationControls() {
+    const paginationControls = this.container.querySelector('.pagination-controls');
+    const totalItemsSpan = this.container.querySelector('.total-items');
+    const currentRangeSpan = this.container.querySelector('.current-range');
+    const pageNumbersDiv = this.container.querySelector('.page-numbers');
+    const prevPageBtn = this.container.querySelector('#prev-page');
+    const nextPageBtn = this.container.querySelector('#next-page');
+    
+    // Mostrar controles de paginación solo si hay más de una página
+    if (this.pagination.totalPages <= 1) {
+      paginationControls.style.display = 'none';
+      return;
+    }
+    
+    // Mostrar controles de paginación
+    paginationControls.style.display = 'flex';
+    
+    // Actualizar información de paginación
+    totalItemsSpan.textContent = this.pagination.total;
+    
+    const startItem = (this.pagination.page - 1) * this.pagination.limit + 1;
+    const endItem = Math.min(startItem + this.pagination.limit - 1, this.pagination.total);
+    currentRangeSpan.textContent = `${startItem}-${endItem}`;
+    
+    // Actualizar estado de los botones de navegación
+    prevPageBtn.disabled = this.pagination.page <= 1;
+    nextPageBtn.disabled = this.pagination.page >= this.pagination.totalPages;
+    
+    // Generar botones de página
+    pageNumbersDiv.innerHTML = '';
+    
+    // Determinar qué páginas mostrar
+    let startPage = Math.max(1, this.pagination.page - 2);
+    let endPage = Math.min(this.pagination.totalPages, startPage + 4);
+    
+    // Ajustar si estamos cerca del final
+    if (endPage - startPage < 4) {
+      startPage = Math.max(1, endPage - 4);
+    }
+    
+    // Crear botones para cada página
+    for (let i = startPage; i <= endPage; i++) {
+      const pageButton = document.createElement('button');
+      pageButton.className = `px-3 py-1 border rounded ${
+        i === this.pagination.page 
+          ? 'bg-blue-500 text-white' 
+          : 'hover:bg-gray-100'
+      }`;
+      pageButton.textContent = i;
+      pageButton.addEventListener('click', () => {
+        this.pagination.page = i;
+        this.loadArticles();
+      });
+      pageNumbersDiv.appendChild(pageButton);
+    }
+  }
+  
   renderArticles(articles) {
     if (articles.length === 0) {
-      this.articlesContainer.innerHTML = `<div class="empty-state">No hay artículos. Crea uno nuevo para comenzar.</div>`;
+      this.articlesContainer.innerHTML = `
+        <div class="empty-state bg-gray-50 p-8 text-center rounded-lg border border-gray-200">
+          <p class="text-gray-600 mb-4">No se encontraron artículos con los filtros actuales.</p>
+          <button id="clear-filters-btn" class="text-blue-500 hover:text-blue-700 underline">
+            Limpiar filtros
+          </button>
+        </div>
+      `;
+      
+      // Configurar evento para limpiar filtros
+      const clearFiltersBtn = this.articlesContainer.querySelector('#clear-filters-btn');
+      if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+          // Resetear filtros
+          this.filters.search = '';
+          this.filters.category = '';
+          this.filters.sortBy = 'pubDate';
+          this.filters.sortOrder = 'desc';
+          
+          // Resetear controles de UI
+          const searchInput = this.container.querySelector('#search-input');
+          if (searchInput) searchInput.value = '';
+          
+          const categoryFilter = this.container.querySelector('#category-filter');
+          if (categoryFilter) categoryFilter.value = '';
+          
+          const sortFilter = this.container.querySelector('#sort-filter');
+          if (sortFilter) sortFilter.value = 'pubDate-desc';
+          
+          // Volver a la primera página
+          this.pagination.page = 1;
+          
+          // Recargar artículos
+          this.loadArticles();
+        });
+      }
+      
       return;
     }
     
     // Crear tabla de artículos
-    const articlesTable = `
-      <table class="w-full">
-        <thead>
-          <tr class="border-b">
-            <th class="text-left pb-2">Título</th>
-            <th class="text-left pb-2">Categoría</th>
-            <th class="text-left pb-2">Fecha</th>
-            <th class="text-left pb-2">Acciones</th>
+    const tableHTML = `
+      <table class="min-w-full bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 border-b text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
+            <th class="px-4 py-3 border-b text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slug</th>
+            <th class="px-4 py-3 border-b text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+            <th class="px-4 py-3 border-b text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+            <th class="px-4 py-3 border-b text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y divide-gray-200">
           ${articles.map(article => `
-            <tr class="border-b" data-slug="${article.slug}">
-              <td class="py-2">${article.title}</td>
-              <td class="py-2">${this.getCategoryName(article.category)}</td>
-              <td class="py-2">${this.formatDateShort(article.pubDate)}</td>
-              <td class="py-2">
-                <button type="button" class="text-blue-500 hover:underline mr-2 edit-article-btn" data-slug="${article.slug}">Editar</button>
-                <button type="button" class="text-red-500 hover:underline delete-article-btn" data-slug="${article.slug}">Eliminar</button>
+            <tr data-slug="${article.slug}" class="hover:bg-gray-50">
+              <td class="px-4 py-3 border-b">
+                <div class="text-sm font-medium text-gray-900">${article.title || 'Sin título'}</div>
+              </td>
+              <td class="px-4 py-3 border-b">
+                <div class="text-sm text-gray-500">${article.slug || 'sin-slug'}</div>
+              </td>
+              <td class="px-4 py-3 border-b">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                  ${article.category || 'Sin categoría'}
+                </span>
+              </td>
+              <td class="px-4 py-3 border-b">
+                <div class="text-sm text-gray-500">${this.formatDate(article.pubDate)}</div>
+              </td>
+              <td class="px-4 py-3 border-b text-center">
+                <button class="edit-btn text-blue-500 hover:text-blue-700 mr-2 text-sm font-medium">
+                  Editar
+                </button>
+                <button class="delete-btn text-red-500 hover:text-red-700 text-sm font-medium">
+                  Eliminar
+                </button>
               </td>
             </tr>
           `).join('')}
@@ -459,22 +781,25 @@ export class ArticleManager {
       </table>
     `;
     
-    this.articlesContainer.innerHTML = articlesTable;
+    this.articlesContainer.innerHTML = tableHTML;
     
     // Configurar eventos para los botones de editar y eliminar
-    this.articlesContainer.querySelectorAll('.edit-article-btn').forEach(button => {
-      button.addEventListener('click', async () => {
-        const slug = button.dataset.slug;
-        await this.editArticle(slug);
+    this.articlesContainer.querySelectorAll('.edit-btn').forEach(button => {
+      button.addEventListener('click', (event) => {
+        const slug = event.target.closest('tr').dataset.slug;
+        this.editArticle(slug);
       });
     });
     
-    this.articlesContainer.querySelectorAll('.delete-article-btn').forEach(button => {
-      button.addEventListener('click', async () => {
-        const slug = button.dataset.slug;
-        await this.deleteArticle(slug);
+    this.articlesContainer.querySelectorAll('.delete-btn').forEach(button => {
+      button.addEventListener('click', (event) => {
+        const slug = event.target.closest('tr').dataset.slug;
+        this.deleteArticle(slug);
       });
     });
+    
+    // Actualizar controles de paginación
+    this.updatePaginationControls();
   }
   
   async editArticle(slug) {

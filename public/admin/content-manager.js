@@ -60,10 +60,35 @@ export class ContentManager {
     return headers;
   }
 
-  // Obtener todos los artículos
-  async getArticles() {
+  // Obtener todos los artículos con soporte para paginación y filtros
+  async getArticles(params = {}) {
     try {
-      const response = await fetch(`${this.apiBase}/articles`, {
+      // Construir URL con parámetros de consulta
+      let url = `${this.apiBase}/articles`;
+      
+      // Añadir parámetros de consulta si existen
+      if (Object.keys(params).length > 0) {
+        const queryParams = new URLSearchParams();
+        
+        // Parámetros de paginación
+        if (params.page) queryParams.append('page', params.page);
+        if (params.limit) queryParams.append('limit', params.limit);
+        
+        // Parámetros de ordenación
+        if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+        if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+        
+        // Parámetros de filtrado
+        if (params.search) queryParams.append('search', params.search);
+        if (params.category) queryParams.append('category', params.category);
+        
+        // Añadir parámetros a la URL
+        url = `${url}?${queryParams.toString()}`;
+      }
+      
+      console.log(`ContentManager.getArticles - URL de solicitud: ${url}`);
+      
+      const response = await fetch(url, {
         headers: this.getAuthHeaders()
       });
       
@@ -71,20 +96,48 @@ export class ContentManager {
         const data = await response.json();
         console.log('Respuesta de la API de artículos:', data);
         
-        // Usar el nuevo formato estándar con paginación
+        // Verificar si la respuesta tiene el formato esperado
         if (data.articles && Array.isArray(data.articles)) {
-          return data.articles;
+          // Devolver la respuesta completa con paginación
+          return {
+            articles: data.articles,
+            pagination: data.pagination || {
+              page: params.page || 1,
+              limit: params.limit || 10,
+              total: data.articles.length,
+              totalPages: Math.ceil(data.articles.length / (params.limit || 10))
+            }
+          };
+        } else if (Array.isArray(data)) {
+          // Si la API devuelve directamente un array, crear estructura de paginación
+          return {
+            articles: data,
+            pagination: {
+              page: params.page || 1,
+              limit: params.limit || 10,
+              total: data.length,
+              totalPages: Math.ceil(data.length / (params.limit || 10))
+            }
+          };
         } else {
           console.error('Formato de respuesta inesperado:', data);
-          return [];
+          return {
+            articles: [],
+            pagination: {
+              page: 1,
+              limit: 10,
+              total: 0,
+              totalPages: 0
+            }
+          };
         }
       }
       
       console.error(`Error al obtener artículos: ${response.status}`);
-      return [];
+      return { articles: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
     } catch (error) {
       console.error('Error al conectar con la API:', error);
-      return [];
+      return { articles: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
     }
   }
 
