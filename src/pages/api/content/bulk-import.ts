@@ -11,46 +11,71 @@ const commonHeaders = {
 // === MAIN HANDLER (Exported for Astro) ===
 
 export async function POST(context: APIContext) {
-    console.log(`[bulk-import.ts] POST invoked.`);
+    console.log(`[bulk-import.ts] POST request received`);
     const db = context.locals.runtime.env.DB;
     const env = context.locals.runtime.env;
 
     // Verify Authentication
+    console.log(`[bulk-import.ts] Verifying authentication`);
     const authenticated = await verifyAuthentication(context.request, env);
     if (!authenticated) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        console.warn(`[bulk-import.ts] Authentication failed, unauthorized access attempt`);
+        return new Response(JSON.stringify({
+            success: false,
+            error: 'Unauthorized'
+        }), {
             status: 401,
             headers: commonHeaders
         });
     }
+    console.log(`[bulk-import.ts] Authentication successful`);
 
     try {
         const requestData = await context.request.json();
+        console.log(`[bulk-import.ts] Request data parsed successfully`);
 
         // Validate input structure
         if (!requestData || !requestData.articles || !Array.isArray(requestData.articles) || requestData.articles.length === 0) {
-            return new Response(JSON.stringify({ error: 'Invalid data format. Expected { "articles": [...] }' }), {
+            console.warn(`[bulk-import.ts] Invalid data format received`); 
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Invalid data format. Expected { "articles": [...] }'
+            }), {
                 status: 400,
                 headers: commonHeaders
             });
         }
 
+        console.log(`[bulk-import.ts] Processing ${requestData.articles.length} articles`);
         // Process articles
         const results = await processArticles(db, requestData.articles);
 
-        return new Response(JSON.stringify(results), {
+        console.log(`[bulk-import.ts] Bulk import completed: ${results.processed}/${results.total} articles processed successfully`);
+        // No usar spread operator para evitar duplicar el campo success
+        return new Response(JSON.stringify({
+            success: true,
+            total: results.total,
+            processed: results.processed,
+            successfulArticles: results.success,
+            errors: results.errors,
+            authors: results.authors
+        }), {
             headers: commonHeaders
         });
 
     } catch (error: any) {
-        console.error('Error in bulk import:', error);
+        console.error(`[bulk-import.ts] Error in bulk import:`, error);
         if (error instanceof SyntaxError) {
-             return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+             return new Response(JSON.stringify({
+                 success: false,
+                 error: 'Invalid JSON body'
+             }), {
                 status: 400,
                 headers: commonHeaders
             });
         }
         return new Response(JSON.stringify({
+            success: false,
             error: 'Error processing the request',
             details: error.message
         }), {
@@ -93,6 +118,8 @@ async function verifyAuthentication(request: Request, env: any) {
 
 // Function to process articles
 async function processArticles(db: any, articles: any[]) {
+    console.log(`[bulk-import.ts] Starting to process ${articles.length} articles`);
+    
     const results = {
         total: articles.length,
         processed: 0,
@@ -104,10 +131,14 @@ async function processArticles(db: any, articles: any[]) {
         }
     };
 
-    for (const article of articles) {
+    for (let i = 0; i < articles.length; i++) {
+        const article = articles[i];
+        console.log(`[bulk-import.ts] Processing article ${i+1}/${articles.length}: "${article.title?.substring(0, 30) || 'Sin título'}..."`);
+        
         try {
             // Validate required data
             if (!article.title) {
+                console.warn(`[bulk-import.ts] Article ${i+1} missing title, skipping`);
                 results.errors.push({
                     title: article.title || 'Artículo sin título',
                     error: 'El título es obligatorio'
@@ -119,8 +150,10 @@ async function processArticles(db: any, articles: any[]) {
             let slug: string;
             if (!article.slug) {
                 slug = generateSlug(article.title);
+                console.log(`[bulk-import.ts] Generated slug '${slug}' for article "${article.title}"`); 
             } else {
                 slug = generateSlug(article.slug); // Normalize existing slug
+                console.log(`[bulk-import.ts] Using provided slug '${slug}' for article "${article.title}"`); 
             }
 
             // Check if article with the same slug already exists
@@ -130,6 +163,7 @@ async function processArticles(db: any, articles: any[]) {
                 .first<{ id: number }>();
 
             if (existingArticle) {
+                console.warn(`[bulk-import.ts] Article with slug '${slug}' already exists, skipping`);
                 results.errors.push({
                     title: article.title,
                     slug: slug,
@@ -143,20 +177,42 @@ async function processArticles(db: any, articles: any[]) {
             try {
                 pubDate = article.pubDate ? new Date(article.pubDate) : new Date();
                 if (isNaN(pubDate.getTime())) {
-                     console.warn(`Invalid pubDate for article "${article.title}", using current date.`);
-                     pubDate = new Date();
+                    console.warn(`[bulk-import.ts] Invalid pubDate for article "${article.title}", using current date`);
+                    pubDate = new Date();
+                } else {
+                    console.log(`[bulk-import.ts] Using pubDate: ${pubDate.toISOString()} for article "${article.title}"`);
                 }
             } catch (e) {
-                 console.warn(`Error parsing pubDate for article "${article.title}", using current date.`);
-                 pubDate = new Date();
+                console.warn(`[bulk-import.ts] Error parsing pubDate for article "${article.title}", using current date`);
+                pubDate = new Date();
             }
 
+            // Process category (using category slug instead of category_id)
+            let categoryId: number | bigint | null = null;
+            if (article.category) {
+                console.log(`[bulk-import.ts] Looking for category: ${article.category}`);
+                // Try to find category by slug
+                const existingCategory = await db
+                    .prepare('SELECT id FROM categories WHERE slug = ?')
+                    .bind(article.category)
+                    .first<{ id: number | bigint }>();
+                
+                if (existingCategory) {
+                    categoryId = existingCategory.id;
+                    console.log(`[bulk-import.ts] Found category with id: ${categoryId}`);
+                } else {
+                    console.warn(`[bulk-import.ts] Category '${article.category}' not found, article will have no category`);
+                }
+            } else {
+                console.log(`[bulk-import.ts] No category specified for article "${article.title}"`);
+            }
 
             // Process author
             let authorId: number | bigint | null = null;
             if (article.author) {
                 const authorName = article.author.trim();
                 const authorSlug = generateSlug(authorName);
+                console.log(`[bulk-import.ts] Processing author: ${authorName} (${authorSlug})`);
 
                 // Try to find existing author by slug or name
                 const existingAuthor = await db
@@ -166,51 +222,57 @@ async function processArticles(db: any, articles: any[]) {
 
                 if (existingAuthor) {
                     authorId = existingAuthor.id;
+                    console.log(`[bulk-import.ts] Found existing author: ${authorName} with id ${authorId}`);
                     if (!results.authors.linked.some(a => a.id === authorId)) {
                         results.authors.linked.push({ name: authorName, slug: authorSlug, id: authorId });
                     }
                 } else {
                     // Create new author
                     try {
+                        console.log(`[bulk-import.ts] Creating new author: ${authorName}`);
                         const authorResult = await db
-                            .prepare('INSERT INTO authors (slug, name, bio) VALUES (?, ?, ?)')
+                            .prepare('INSERT INTO authors (slug, name, bio, created_at, updated_at) VALUES (?, ?, ?, datetime("now"), datetime("now"))')
                             .bind(authorSlug, authorName, article.authorBio || `Autor de "${article.title}"`)
                             .run();
 
                         if (authorResult.success && authorResult.meta.last_row_id) {
                             authorId = authorResult.meta.last_row_id;
-                             results.authors.created.push({ name: authorName, slug: authorSlug, id: authorId });
+                            console.log(`[bulk-import.ts] Created author: ${authorName} with id ${authorId}`);
+                            results.authors.created.push({ name: authorName, slug: authorSlug, id: authorId });
                         } else {
-                            console.error(`Failed to create author: ${authorName}`);
+                            console.error(`[bulk-import.ts] Failed to create author: ${authorName}`);
                         }
                     } catch (authorError: any) {
-                         console.error(`Error creating author "${authorName}":`, authorError);
-                         results.errors.push({
-                             title: article.title,
-                             error: `Error al crear/buscar autor "${authorName}": ${authorError.message}`
-                         });
-                         // Decide if you want to continue without author or skip
-                         // continue; // Option to skip article if author creation fails
+                        console.error(`[bulk-import.ts] Error creating author "${authorName}":`, authorError);
+                        results.errors.push({
+                            title: article.title,
+                            error: `Error al crear/buscar autor "${authorName}": ${authorError.message}`
+                        });
+                        // Continuing without author
                     }
                 }
+            } else {
+                console.log(`[bulk-import.ts] No author specified for article "${article.title}"`);
             }
 
             // Insert article into the database
+            console.log(`[bulk-import.ts] Inserting article "${article.title}" into database`);
             const insertResult = await db
                 .prepare(`
                     INSERT INTO articles (
-                        title, slug, content, category_id, author_id, pub_date,
-                        image_url, image_alt, status, meta_description, meta_keywords
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        title, slug, content, category, author_id, pub_date,
+                        featured_image, image_alt, status, meta_description, meta_keywords,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))
                 `)
                 .bind(
                     article.title,
                     slug,
                     article.content || '',
-                    article.category_id || null, // Assuming category_id is provided or null
+                    article.category || null, // Using category slug instead of category_id
                     authorId,
                     pubDate.toISOString(), // Store as ISO string
-                    article.image_url || null,
+                    article.featured_image || article.image_url || null, // Support both field names
                     article.image_alt || '',
                     article.status || 'published', // Default status
                     article.meta_description || null,
@@ -218,19 +280,22 @@ async function processArticles(db: any, articles: any[]) {
                 )
                 .run();
 
-             if (insertResult.success && insertResult.meta.last_row_id) {
-                 results.success.push({ title: article.title, slug: slug, id: insertResult.meta.last_row_id });
-                 results.processed++;
-             } else {
-                  results.errors.push({
-                      title: article.title,
-                      slug: slug,
-                      error: 'Error al insertar el artículo en la base de datos'
-                  });
-             }
+            if (insertResult.success && insertResult.meta.last_row_id) {
+                const articleId = insertResult.meta.last_row_id;
+                console.log(`[bulk-import.ts] Article "${article.title}" inserted successfully with id ${articleId}`);
+                results.success.push({ title: article.title, slug: slug, id: articleId });
+                results.processed++;
+            } else {
+                console.error(`[bulk-import.ts] Failed to insert article "${article.title}" into database`);
+                results.errors.push({
+                    title: article.title,
+                    slug: slug,
+                    error: 'Error al insertar el artículo en la base de datos'
+                });
+            }
 
         } catch (processError: any) {
-            console.error(`Error processing article "${article.title || 'Sin título'}":`, processError);
+            console.error(`[bulk-import.ts] Error processing article "${article.title || 'Sin título'}":`, processError);
             results.errors.push({
                 title: article.title || 'Artículo con error',
                 error: `Error interno: ${processError.message}`
@@ -238,6 +303,10 @@ async function processArticles(db: any, articles: any[]) {
         }
     }
 
+    console.log(`[bulk-import.ts] Completed processing ${results.processed}/${results.total} articles successfully`);
+    console.log(`[bulk-import.ts] Created ${results.authors.created.length} new authors and linked ${results.authors.linked.length} existing authors`);
+    console.log(`[bulk-import.ts] Encountered ${results.errors.length} errors`);
+    
     return results;
 }
 
