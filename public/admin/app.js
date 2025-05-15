@@ -49,16 +49,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Autenticación expirada
         localStorage.removeItem('abyayala_cms_auth');
         notifications.warning('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
-        window.location.href = 'login.html';
+        window.location.href = '/admin/login.html';
       }
     } else {
       // No hay datos de autenticación
-      window.location.href = 'login.html';
+      window.location.href = '/admin/login.html';
     }
   } catch (error) {
     console.error('Error de autenticación:', error);
     notifications.error('Error de autenticación. Por favor, intenta nuevamente.');
-    window.location.href = 'login.html';
+    window.location.href = '/admin/login.html';
   }
 });
 
