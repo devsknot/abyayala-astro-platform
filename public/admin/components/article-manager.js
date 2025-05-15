@@ -6,19 +6,21 @@ import { MediaManager } from '../media-manager.js';
 import { notifications } from './notification.js';
 
 export class ArticleManager {
-  constructor(container) {
-    this.container = container;
-    this.contentManager = new ContentManager();
-    this.currentArticle = null;
-    this.editor = null;
-    this.init();
-  }
-  
-  constructor(contentManager, mediaManager, notificationManager) {
-    this.contentManager = contentManager;
-    this.mediaManager = mediaManager;
-    this.notificationManager = notificationManager;
-    this.container = null;
+  constructor(container, options = {}) {
+    // Si se pasa un contenedor directamente, usar el modo antiguo
+    if (container && typeof container === 'object' && container.nodeType === 1) {
+      this.container = container;
+      this.contentManager = new ContentManager();
+      this.mediaManager = new MediaManager();
+      this.notificationManager = notifications;
+    } else {
+      // Modo nuevo: se pasan los managers como parámetros
+      this.contentManager = options.contentManager || new ContentManager();
+      this.mediaManager = options.mediaManager || new MediaManager();
+      this.notificationManager = options.notificationManager || notifications;
+      this.container = null;
+    }
+    
     this.articlesContainer = null;
     this.editor = null;
     this.currentArticle = null;
@@ -38,9 +40,17 @@ export class ArticleManager {
       sortBy: 'pubDate',
       sortOrder: 'desc'
     };
+    
+    // Inicializar si tenemos un contenedor
+    if (this.container) {
+      this.init();
+    }
   }
   
-  async init() {
+  async render(container) {
+    // Guardar referencia al contenedor
+    this.container = container;
+    
     // Crear la estructura del gestor de artículos
     this.container.innerHTML = `
       <div class="article-manager">
@@ -231,14 +241,25 @@ export class ArticleManager {
     // Configurar eventos
     this.setupEvents();
     
-    // Cargar autores para el selector
-    await this.loadAuthors();
+    // Cargar categorías para los filtros
+    await this.loadCategories();
     
     // Cargar artículos
     await this.loadArticles();
     
-    // Inicializar el editor de contenido
-    this.editor = new ContentEditor(this.editorContainer);
+    // Configurar eventos para filtros y paginación
+    this.setupFilterEvents();
+    this.setupPaginationEvents();
+    
+    // Referencia al contenedor de artículos
+    this.articlesContainer = this.container.querySelector('.articles-container');
+    
+    // Inicializar el editor de contenido si existe el contenedor
+    const editorContainer = this.container.querySelector('.editor-container');
+    if (editorContainer) {
+      this.editorContainer = editorContainer;
+      this.editor = new ContentEditor(this.editorContainer);
+    }
   }
   
   setupEvents() {

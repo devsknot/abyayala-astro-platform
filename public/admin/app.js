@@ -366,6 +366,7 @@ async function loadArticlesManager(container) {
     // Cargar dinámicamente el módulo ArticleManager
     const articleManagerModule = await import('./components/article-manager.js');
     const contentManagerModule = await import('./content-manager.js');
+    const mediaManagerModule = await import('./media-manager.js');
     const notificationsModule = await import('./components/notification.js');
     
     showDebugInfo('Módulos cargados correctamente');
@@ -373,6 +374,7 @@ async function loadArticlesManager(container) {
     // Crear instancia del gestor de artículos
     const ArticleManager = articleManagerModule.ArticleManager;
     const ContentManager = contentManagerModule.ContentManager;
+    const MediaManager = mediaManagerModule.MediaManager;
     const notifications = notificationsModule.notifications;
     
     if (!ArticleManager) {
@@ -383,9 +385,25 @@ async function loadArticlesManager(container) {
     container.innerHTML = '<div id="article-manager-container" class="p-4"></div>';
     const articleContainer = document.getElementById('article-manager-container');
     
-    // Crear instancia y renderizar
-    const articleManager = new ArticleManager(articleContainer);
-    showDebugInfo('Gestor de artículos inicializado correctamente');
+    // Crear instancias de los managers necesarios
+    const contentManager = new ContentManager();
+    const mediaManager = new MediaManager();
+    
+    // Crear instancia y renderizar con el nuevo formato
+    const articleManager = new ArticleManager(null, {
+      contentManager: contentManager,
+      mediaManager: mediaManager,
+      notificationManager: notifications
+    });
+    
+    // Renderizar en el contenedor (método asíncrono)
+    try {
+      await articleManager.render(articleContainer);
+      showDebugInfo('Gestor de artículos inicializado correctamente');
+    } catch (renderError) {
+      showDebugInfo(`Error al renderizar el gestor de artículos: ${renderError.message}`);
+      throw renderError; // Propagar el error para que sea manejado por el catch exterior
+    }
   } catch (error) {
     showDebugInfo(`Error al cargar el gestor de artículos: ${error.message}`);
     container.innerHTML = `
