@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { SITE_TITLE } from '../../consts';
 import DatePicker from '../../components/DatePicker.astro';
 import NewsCard from '../../components/NewsCard.astro';
-import { getAllArticles, getAllCategories } from '../../utils/contentApi.js';
+import { getAllArticles, getAllCategories, searchArticles } from '../../utils/contentApi.js';
 
 // Configuración para SSR
 export const prerender = false;
@@ -15,6 +15,12 @@ const ITEMS_PER_PAGE = 10;
 const url = new URL(Astro.request.url);
 const currentPage = url.searchParams.get('page') || '1';
 const pageNumber = parseInt(currentPage) || 1;
+
+// Verificar si hay parámetros de búsqueda en la URL
+const searchQuery = url.searchParams.get('query') || '';
+const searchCategory = url.searchParams.get('category') || '';
+const searchDateFrom = url.searchParams.get('dateFrom') || '';
+const searchDateTo = url.searchParams.get('dateTo') || '';
 
 // Definir un tipo para la respuesta de la API
 interface ArticleResponse {
@@ -41,11 +47,28 @@ interface ArticleResponse {
   };
 }
 
-// Obtener todas las noticias desde la API con paginación
-const response = await getAllArticles(Astro.url.origin, pageNumber, ITEMS_PER_PAGE) as ArticleResponse;
-
 // Obtener todas las categorías para el filtro
 const categories = await getAllCategories(Astro.url.origin);
+
+// Determinar si se debe usar búsqueda o obtener todos los artículos
+let response;
+
+if (searchQuery || searchCategory || searchDateFrom || searchDateTo) {
+  // Hay parámetros de búsqueda, usar el endpoint de búsqueda
+  const searchParams = {
+    query: searchQuery,
+    category: searchCategory,
+    dateFrom: searchDateFrom,
+    dateTo: searchDateTo
+  };
+  
+  console.log(`[NEWS-PAGE] Realizando búsqueda con parámetros:`, searchParams);
+  response = await searchArticles(searchParams, Astro.url.origin, pageNumber, ITEMS_PER_PAGE) as ArticleResponse;
+} else {
+  // No hay parámetros de búsqueda, usar el endpoint normal
+  console.log(`[NEWS-PAGE] Obteniendo todos los artículos (sin búsqueda)`);
+  response = await getAllArticles(Astro.url.origin, pageNumber, ITEMS_PER_PAGE) as ArticleResponse;
+}
 
 // Desestructurar la respuesta para obtener artículos y datos de paginación
 // Definir un tipo para los artículos
@@ -99,9 +122,16 @@ const initialDateTo = null;
 const initialSearchTerm = "";
 
 // No necesitamos hacer slicing manualmente ya que la API ya nos devuelve los artículos paginados
+// Construir base de URL para parámetros de navegación
+let urlParams = '';
+if (searchQuery) urlParams += `&query=${encodeURIComponent(searchQuery)}`;
+if (searchCategory) urlParams += `&category=${encodeURIComponent(searchCategory)}`;
+if (searchDateFrom) urlParams += `&dateFrom=${encodeURIComponent(searchDateFrom)}`;
+if (searchDateTo) urlParams += `&dateTo=${encodeURIComponent(searchDateTo)}`;
+
 // Preparar URLs para navegación
-const previousPage = pagination.hasPrevPage ? `?page=${pagination.page - 1}` : null;
-const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}` : null;
+const previousPage = pagination.hasPrevPage ? `?page=${pagination.page - 1}${urlParams}` : null;
+const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}${urlParams}` : null;
 
 ---
 
@@ -113,19 +143,7 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}` : null;
         <p class="lead">Explora todas nuestras noticias, desde las más recientes hasta las más antiguas.</p>
       </div>
 
-      <div class="filters-container">
-        <div class="search-container">
-          <input
-            type="text"
-            id="search-input"
-            class="search-input"
-            placeholder="Buscar noticias..."
-          />
-          <button id="search-button" class="search-button">
-            <i class="ri-search-line"></i>
-          </button>
-        </div>
-
+      <div class="category-filters">
         <div class="filter-group">
           <label for="category-filter">Categoría:</label>
           <select id="category-filter" class="filter-select">
@@ -135,21 +153,41 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}` : null;
             ))}
           </select>
         </div>
-
-        <div class="filter-row">
-          <div class="filter-group date-filter">
-            <label for="date-from">Desde:</label>
-            <DatePicker id="date-from" />
-          </div>
-
-          <div class="filter-group date-filter">
-            <label for="date-to">Hasta:</label>
-            <DatePicker id="date-to" />
-          </div>
-
-          <button id="clear-filters" class="clear-filters">
-            Limpiar filtros
+        
+        <div class="filter-group">
+          <label for="time-period">Período:</label>
+          <select id="time-period" class="filter-select">
+            <option value="all">Todos</option>
+            <option value="month">Último mes</option>
+            <option value="quarter">Últimos 3 meses</option>
+            <option value="year">Último año</option>
+          </select>
+        </div>
+        
+        <div class="search-filter">
+          <input type="text" id="search-input" placeholder="Buscar noticias..." />
+          <button type="button" id="search-button" aria-label="Buscar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
           </button>
+        </div>
+        
+        <button id="clear-filters" class="clear-filters-btn">
+          Limpiar filtros
+        </button>
+      </div>
+      
+      <div class="filter-row">
+        <div class="filter-group date-filter">
+          <label for="date-from">Desde:</label>
+          <DatePicker id="date-from" />
+        </div>
+
+        <div class="filter-group date-filter">
+          <label for="date-to">Hasta:</label>
+          <DatePicker id="date-to" />
         </div>
       </div>
 
@@ -251,101 +289,105 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}` : null;
     margin: 0 auto;
   }
   
-  .filters-section {
-    margin: 2rem 0;
-    padding: 1.5rem;
-    background-color: var(--color-card-bg);
+  .category-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--color-bg-alt);
+    padding: 1rem;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+  
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .filter-select {
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+    background-color: white;
+    font-size: 0.9rem;
   }
   
   .search-filter {
-    margin-bottom: 1rem;
-  }
-  
-  .search-input-wrapper {
-    position: relative;
     display: flex;
-    align-items: center;
+    flex: 1;
+    max-width: 300px;
+    position: relative;
   }
   
-  .search-input-wrapper input {
+  .search-filter input {
     width: 100%;
-    padding: 0.75rem 1rem;
-    padding-right: 3rem;
+    padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+    border-radius: 4px;
     border: 1px solid var(--color-border);
-    border-radius: 0.375rem;
-    font-size: 1rem;
-    transition: all 0.2s ease;
+    font-size: 0.9rem;
   }
   
-  .search-input-wrapper input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 0, 102, 204), 0.15);
-  }
-  
-  .search-button {
+  .search-filter button {
     position: absolute;
-    right: 0.75rem;
+    right: 0.5rem;
     top: 50%;
     transform: translateY(-50%);
     background: none;
     border: none;
     color: var(--color-text-muted);
     cursor: pointer;
-    transition: color 0.2s ease;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
-  .search-button:hover {
+  .search-filter button:hover {
     color: var(--color-primary);
   }
   
-  .category-filter {
-    margin-bottom: 1rem;
-  }
-  
-  .category-filter select {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.375rem;
-    font-size: 1rem;
-    background-color: #fff;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  
-  .category-filter select:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 0, 102, 204), 0.15);
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: flex-end;
   }
   
   .date-filter {
-    display: flex;
-    gap: 1rem;
-  }
-  
-  .date-from, .date-to {
     flex: 1;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
   
   .clear-filters-btn {
-    padding: 0.75rem 1rem;
-    background-color: var(--color-secondary-light);
-    color: var(--color-secondary-dark);
-    border: none;
-    border-radius: 0.375rem;
+    padding: 0.5rem 1rem;
+    background-color: #f3f4f6;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
     font-size: 0.9rem;
-    font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
+    transition: all 0.2s;
   }
   
   .clear-filters-btn:hover {
-    background-color: var(--color-secondary-light-hover);
+    background-color: #e5e7eb;
+  }
+  
+  .active-filter {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    background-color: var(--color-primary-light, #e6f0ff);
+    color: var(--color-primary-dark, #00499e);
+    border-radius: 4px;
+    font-size: 0.85rem;
   }
   
   .active-filters {
@@ -505,165 +547,178 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}` : null;
 </style>
 
 <script>
-  // Funcionalidad de filtrado y ordenación
+  // Funcionalidad de búsqueda del lado del servidor
   document.addEventListener('DOMContentLoaded', () => {
-    const sortSelect = document.getElementById('category-filter') as HTMLSelectElement;
+    const categoryFilter = document.getElementById('category-filter') as HTMLSelectElement;
     const searchInput = document.getElementById('search-input') as HTMLInputElement;
     const searchBtn = document.getElementById('search-button');
     const dateFromInput = document.getElementById('date-from') as HTMLInputElement;
     const dateToInput = document.getElementById('date-to') as HTMLInputElement;
-    const clearFiltersBtn = document.getElementById('clear-filters');
-    const newsGrid = document.getElementById('news-grid');
-    const activeFilters = document.getElementById('active-filters');
+    const activeFiltersElement = document.getElementById('active-filters');
     
-    if (!newsGrid || !searchInput || !searchBtn) return;
+    // Obtener parámetros de búsqueda actuales de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentQuery = urlParams.get('query') || '';
+    const currentCategory = urlParams.get('category') || '';
+    const currentDateFrom = urlParams.get('dateFrom') || '';
+    const currentDateTo = urlParams.get('dateTo') || '';
     
-    // Obtener todos los elementos de noticias
-    const newsItems = document.querySelectorAll('.news-item');
+    // Establecer valores en los campos de búsqueda según los parámetros de la URL
+    if (searchInput) searchInput.value = currentQuery;
+    if (categoryFilter) categoryFilter.value = currentCategory;
+    if (dateFromInput && currentDateFrom) dateFromInput.value = currentDateFrom;
+    if (dateToInput && currentDateTo) dateToInput.value = currentDateTo;
     
-    // Función para filtrar y ordenar los elementos
-    const filterAndSortItems = () => {
-      const searchTerm = searchInput.value.toLowerCase().trim();
-      const selectedCategory = sortSelect?.value || '';
-      const dateFrom = dateFromInput?.value ? new Date(dateFromInput.value) : null;
-      const dateTo = dateToInput?.value ? new Date(dateToInput.value) : null;
+    // Definir función para actualizar los filtros activos que se muestran
+    function updateActiveFilters(searchTerm: string, category: string, dateFrom: Date | null, dateTo: Date | null) {
+      if (!activeFiltersElement) return;
       
-      // Crear un array de los elementos para ordenar
-      const itemsArray = Array.from(newsItems);
+      activeFiltersElement.innerHTML = '';
       
-      // Filtrar por término de búsqueda, categoría y fechas
-      let filteredItems = itemsArray.filter(item => {
-        const title = (item as HTMLElement).dataset.title || '';
-        const category = (item as HTMLElement).dataset.category || '';
-        const dateStr = (item as HTMLElement).dataset.date;
-        let passesFilter = true;
+      // Si hay filtros activos, crear las etiquetas
+      if (searchTerm || category || dateFrom || dateTo) {
+        activeFiltersElement.innerHTML = '<h3>Filtros activos:</h3>';
         
-        // Filtrar por término de búsqueda
-        if (searchTerm && !title.includes(searchTerm)) {
-          passesFilter = false;
+        // Crear una etiqueta para cada filtro activo
+        if (searchTerm) {
+          const filterTag = document.createElement('div');
+          filterTag.className = 'filter-tag';
+          filterTag.innerHTML = `
+            <span>Búsqueda: ${searchTerm}</span>
+            <button class="clear-filter" data-type="search">&times;</button>
+          `;
+          activeFiltersElement.appendChild(filterTag);
         }
         
-        // Filtrar por categoría
-        if (selectedCategory && category !== selectedCategory) {
-          passesFilter = false;
+        if (category) {
+          const filterTag = document.createElement('div');
+          filterTag.className = 'filter-tag';
+          filterTag.innerHTML = `
+            <span>Categoría: ${category}</span>
+            <button class="clear-filter" data-type="category">&times;</button>
+          `;
+          activeFiltersElement.appendChild(filterTag);
         }
         
-        // Filtrar por fecha
-        if (dateStr) {
-          const itemDate = new Date(dateStr);
-          
-          if (dateFrom && itemDate < dateFrom) {
-            passesFilter = false;
-          }
-          
-          if (dateTo) {
-            // Ajustar la fecha final para incluir todo el día
-            const adjustedDateTo = new Date(dateTo);
-            adjustedDateTo.setHours(23, 59, 59, 999);
-            
-            if (itemDate > adjustedDateTo) {
-              passesFilter = false;
-            }
-          }
+        if (dateFrom) {
+          const filterTag = document.createElement('div');
+          filterTag.className = 'filter-tag';
+          filterTag.innerHTML = `
+            <span>Desde: ${dateFrom.toLocaleDateString()}</span>
+            <button class="clear-filter" data-type="dateFrom">&times;</button>
+          `;
+          activeFiltersElement.appendChild(filterTag);
         }
         
-        return passesFilter;
-      });
-      
-      // Ocultar todos los elementos
-      itemsArray.forEach(item => {
-        (item as HTMLElement).style.display = 'none';
-      });
-      
-      // Mostrar los elementos filtrados
-      if (filteredItems.length > 0) {
-        filteredItems.forEach(item => {
-          (item as HTMLElement).style.display = '';
+        if (dateTo) {
+          const filterTag = document.createElement('div');
+          filterTag.className = 'filter-tag';
+          filterTag.innerHTML = `
+            <span>Hasta: ${dateTo.toLocaleDateString()}</span>
+            <button class="clear-filter" data-type="dateTo">&times;</button>
+          `;
+          activeFiltersElement.appendChild(filterTag);
+        }
+        
+        // Botón para limpiar todos los filtros
+        const clearAllBtn = document.createElement('button');
+        clearAllBtn.className = 'clear-all-filters-btn';
+        clearAllBtn.textContent = 'Limpiar todos los filtros';
+        activeFiltersElement.appendChild(clearAllBtn);
+        
+        // Evento para limpiar todos los filtros - redirigir a la página sin filtros
+        clearAllBtn.addEventListener('click', () => {
+          // Redirigir a la página de noticias sin filtros
+          window.location.href = window.location.pathname;
         });
         
-        // Eliminar mensaje de no resultados si existe
-        const noResultsEl = document.querySelector('.no-results');
-        if (noResultsEl) {
-          noResultsEl.remove();
-        }
-      } else {
-        // Mostrar mensaje si no hay resultados
-        if (!document.querySelector('.no-results')) {
-          const noResults = document.createElement('div');
-          noResults.className = 'no-results';
-          noResults.innerHTML = '<p>No se encontraron noticias con los criterios seleccionados.</p>';
-          if (newsGrid.parentNode) {
-            newsGrid.parentNode.insertBefore(noResults, newsGrid.nextSibling);
-          }
-        }
+        // Eventos para botones de eliminación de filtros individuales
+        document.querySelectorAll('.clear-filter').forEach(button => {
+          button.addEventListener('click', (e) => {
+            const type = (e.currentTarget as HTMLElement).getAttribute('data-type');
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Eliminar el parámetro específico según el tipo
+            if (type === 'search') {
+              urlParams.delete('query');
+            } else if (type === 'category') {
+              urlParams.delete('category');
+            } else if (type === 'dateFrom') {
+              urlParams.delete('dateFrom');
+            } else if (type === 'dateTo') {
+              urlParams.delete('dateTo');
+            }
+            
+            // Mantener la página 1 al eliminar filtros
+            urlParams.set('page', '1');
+            
+            // Redirigir con los parámetros actualizados
+            const newUrl = urlParams.toString() ? `?${urlParams.toString()}` : window.location.pathname;
+            window.location.href = newUrl;
+          });
+        });
       }
-      
-      // Actualizar filtros activos
-      updateActiveFilters();
-    };
+    }
     
-    // Función para actualizar los filtros activos
-    const updateActiveFilters = () => {
-      if (!activeFilters) return;
-      
-      activeFilters.innerHTML = '';
-      
-      const searchTerm = searchInput.value.trim();
-      const selectedCategory = sortSelect?.value || '';
+    // Actualizar filtros activos con los valores actuales
+    updateActiveFilters(
+      currentQuery,
+      currentCategory,
+      currentDateFrom ? new Date(currentDateFrom) : null,
+      currentDateTo ? new Date(currentDateTo) : null
+    );
+    
+    // Función para realizar la búsqueda del lado del servidor
+    function performServerSearch() {
+      // Obtener valores del formulario
+      const query = searchInput?.value || '';
+      const category = categoryFilter?.value || '';
       const dateFrom = dateFromInput?.value || '';
       const dateTo = dateToInput?.value || '';
       
-      if (searchTerm) {
-        addActiveFilter(`Búsqueda: ${searchTerm}`);
-      }
+      // Construir URL con parámetros de búsqueda
+      const params = new URLSearchParams();
+      // Solo añadir parámetros si tienen valor
+      if (query) params.set('query', query);
+      if (category) params.set('category', category);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
       
-      if (selectedCategory) {
-        const categoryOption = sortSelect.options[sortSelect.selectedIndex];
-        addActiveFilter(`Categoría: ${categoryOption.textContent}`);
-      }
+      // Mantener la página 1 al cambiar filtros
+      params.set('page', '1');
       
-      if (dateFrom) {
-        addActiveFilter(`Desde: ${new Date(dateFrom).toLocaleDateString()}`);
-      }
-      
-      if (dateTo) {
-        addActiveFilter(`Hasta: ${new Date(dateTo).toLocaleDateString()}`);
-      }
-    };
+      // Navegar a la URL con los parámetros
+      window.location.href = `?${params.toString()}`;
+    }
     
-    // Función para añadir un filtro activo
-    const addActiveFilter = (text: string) => {
-      const filter = document.createElement('span');
-      filter.className = 'active-filter';
-      filter.textContent = text;
-      activeFilters?.appendChild(filter);
-    };
+    // Implementar un debounce para la búsqueda
+    let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+    function debouncedSearch() {
+      if (searchTimeout) clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(performServerSearch, 500);
+    }
     
-    // Evento para buscar al hacer clic en el botón
-    searchBtn?.addEventListener('click', filterAndSortItems);
+    // Vincular eventos a los controles de búsqueda
+    searchBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      performServerSearch();
+    });
     
     // Evento para buscar al presionar Enter en el campo de búsqueda
     searchInput?.addEventListener('keyup', (e) => {
       if (e.key === 'Enter') {
-        filterAndSortItems();
+        e.preventDefault();
+        performServerSearch();
       }
     });
     
-    // Eventos para filtrar por categoría
-    sortSelect?.addEventListener('change', filterAndSortItems);
+    // Eventos para selectores
+    categoryFilter?.addEventListener('change', performServerSearch);
     
-    // Eventos para filtrar por fecha
-    dateFromInput?.addEventListener('change', filterAndSortItems);
-    dateToInput?.addEventListener('change', filterAndSortItems);
-    
-    // Evento para limpiar filtros
-    clearFiltersBtn?.addEventListener('click', () => {
-      if (searchInput) searchInput.value = '';
-      if (sortSelect) sortSelect.selectedIndex = 0;
-      if (dateFromInput) dateFromInput.value = '';
-      if (dateToInput) dateToInput.value = '';
-      filterAndSortItems();
-    });
+    // Eventos para los selectores de fecha
+    // Usamos change para evitar demasiadas solicitudes mientras el usuario selecciona
+    dateFromInput?.addEventListener('change', performServerSearch);
+    dateToInput?.addEventListener('change', performServerSearch);
   });
 </script>
 
@@ -671,9 +726,14 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}` : null;
   import DatePicker from '../../scripts/datePicker.js';
   
   document.addEventListener('DOMContentLoaded', () => {
-    // Inicializar selectores de fecha
-    const dateFromPicker = new DatePicker('date-from');
-    const dateToPicker = new DatePicker('date-to');
+    // Obtener parámetros de búsqueda de la URL para inicializar los datepickers
+    const urlParams = new URLSearchParams(window.location.search);
+    const dateFromParam = urlParams.get('dateFrom');
+    const dateToParam = urlParams.get('dateTo');
+    
+    // Inicializar selectores de fecha con valores de la URL si existen
+    const dateFromPicker = new DatePicker('date-from', dateFromParam || '');
+    const dateToPicker = new DatePicker('date-to', dateToParam || '');
     
     // Elementos del DOM
     const searchInput = document.getElementById('search-input') as HTMLInputElement;

@@ -8,6 +8,65 @@
 // console.log('API_BASE_URL configurada con ruta relativa para compatibilidad con SSR');
 
 /**
+ * Busca artículos en toda la base de datos usando criterios específicos
+ * @param {Object} searchParams - Parámetros de búsqueda
+ * @param {string} [searchParams.query=''] - Término de búsqueda
+ * @param {string} [searchParams.category=''] - Categoría para filtrar
+ * @param {string} [searchParams.dateFrom=''] - Fecha inicial (formato YYYY-MM-DD)
+ * @param {string} [searchParams.dateTo=''] - Fecha final (formato YYYY-MM-DD)
+ * @param {string} [origin=''] - El origen de la URL para llamadas SSR
+ * @param {number} [page=1] - Número de página a recuperar
+ * @param {number} [pageSize=10] - Número de artículos por página
+ * @returns {Promise<Object>} Objeto con artículos y datos de paginación
+ */
+export async function searchArticles(searchParams, origin = '', page = 1, pageSize = 10) {
+  // Extraer parámetros de búsqueda
+  const { query = '', category = '', dateFrom = '', dateTo = '' } = searchParams || {};
+  
+  // Construir URL con parámetros de búsqueda y paginación
+  let path = `/api/content/articles/search?page=${page}&pageSize=${pageSize}`;
+  
+  if (query) path += `&query=${encodeURIComponent(query)}`;
+  if (category) path += `&category=${encodeURIComponent(category)}`;
+  if (dateFrom) path += `&dateFrom=${encodeURIComponent(dateFrom)}`;
+  if (dateTo) path += `&dateTo=${encodeURIComponent(dateTo)}`;
+  
+  const fetchUrl = origin ? `${origin}${path}` : path;
+  
+  try {
+    console.log(`Búsqueda de artículos desde: ${fetchUrl}`);
+    
+    const response = await fetch(fetchUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Error en la búsqueda de artículos: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Formato de respuesta con paginación
+    if (data && Array.isArray(data.articles)) {
+      console.log(`Artículos encontrados: ${data.articles.length}, página ${data.pagination?.page || 1} de ${data.pagination?.totalPages || 1}`);
+      return data;
+    } else {
+      console.error('Formato de respuesta inesperado:', data);
+      return { articles: [], pagination: { page, pageSize, totalItems: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false } };
+    }
+  } catch (error) {
+    console.error('Error al buscar artículos:', error);
+    // Devolver estructura vacía en caso de error
+    return { articles: [], pagination: { page, pageSize, totalItems: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false } };
+  }
+}
+
+/**
  * Obtiene todos los artículos con soporte para paginación
  * @param {string} [origin=''] - El origen de la URL para llamadas SSR.
  * @param {number} [page=1] - Número de página a recuperar.

@@ -2,10 +2,20 @@
  * DatePicker - Un selector de calendario simple para Abya Yala
  */
 class DatePicker {
-  constructor(inputId) {
+  constructor(inputId, initialValue = '') {
     this.inputId = inputId;
     this.input = document.getElementById(inputId);
+    if (!this.input) {
+      console.error(`No se encontró el elemento con ID ${inputId}`);
+      return;
+    }
+    
     this.calendarContainer = document.getElementById(`${inputId}-calendar`);
+    if (!this.calendarContainer) {
+      console.error(`No se encontró el contenedor del calendario para ${inputId}`);
+      return;
+    }
+    
     this.toggleButton = this.input.parentElement.querySelector('.date-picker-toggle');
     this.monthYearDisplay = this.calendarContainer.querySelector('.date-picker-month-year');
     this.daysContainer = this.calendarContainer.querySelector('.date-picker-days');
@@ -16,8 +26,14 @@ class DatePicker {
     this.closeButton = this.calendarContainer.querySelector('.date-picker-close');
     
     this.currentDate = new Date();
-    this.selectedDate = null;
-    this.viewDate = new Date();
+    this.selectedDate = initialValue ? new Date(initialValue) : null;
+    this.viewDate = initialValue ? new Date(initialValue) : new Date();
+    
+    // Si se proporciona un valor inicial, establecerlo en el input
+    if (initialValue && !isNaN(this.selectedDate)) {
+      const formattedDate = this.formatDate(this.selectedDate);
+      this.input.value = formattedDate;
+    }
     
     this.monthNames = [
       'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
