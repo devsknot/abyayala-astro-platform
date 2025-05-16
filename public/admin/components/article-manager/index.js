@@ -131,6 +131,7 @@ export class ArticleManager {
               <select id="category-filter">
                 <option value="">Todas las categorías</option>
               </select>
+              <button id="clear-filters" class="text-btn">Limpiar filtros</button>
             </div>
           </div>
           

@@ -56,19 +56,42 @@ export function setupEvents() {
       });
     }
     
+    // Implementar un debounce para la búsqueda
+    let searchTimeout = null;
+    const debouncedSearch = () => {
+      if (searchTimeout) clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const searchInput = this.container.querySelector('#article-search');
+        const categoryFilter = this.container.querySelector('#category-filter');
+        
+        if (searchInput && categoryFilter) {
+          const searchTerm = searchInput.value.trim();
+          const selectedCategory = categoryFilter.value;
+          
+          console.log(`Realizando búsqueda: término="${searchTerm}", categoría="${selectedCategory}"`);
+          this.loadArticles(1, selectedCategory, searchTerm);
+        }
+      }, 500); // 500ms de debounce
+    };
+    
     // Filtro de categorías
     const categoryFilter = this.container.querySelector('#category-filter');
     if (categoryFilter) {
       categoryFilter.addEventListener('change', () => {
-        const selectedCategory = categoryFilter.value;
-        this.loadArticles(1, selectedCategory);
+        console.log('Categoría cambiada:', categoryFilter.value);
+        debouncedSearch();
       });
     }
     
     // Búsqueda de artículos
     const searchBtn = this.container.querySelector('#search-btn');
     if (searchBtn) {
-      searchBtn.addEventListener('click', () => {
+      searchBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        console.log('Botón de búsqueda clickeado');
+        // Cancelar el debounce y ejecutar inmediatamente
+        if (searchTimeout) clearTimeout(searchTimeout);
+        
         const searchInput = this.container.querySelector('#article-search');
         if (searchInput) {
           const searchTerm = searchInput.value.trim();
@@ -77,15 +100,41 @@ export function setupEvents() {
       });
     }
     
-    // Input de búsqueda (al presionar Enter)
+    // Input de búsqueda (al presionar Enter o al escribir)
     const searchInput = this.container.querySelector('#article-search');
     if (searchInput) {
+      // Al presionar Enter
       searchInput.addEventListener('keypress', (event) => {
         if (event.key === 'Enter') {
           event.preventDefault();
+          console.log('Enter presionado en campo de búsqueda');
+          // Cancelar el debounce y ejecutar inmediatamente
+          if (searchTimeout) clearTimeout(searchTimeout);
+          
           const searchTerm = searchInput.value.trim();
           this.loadArticles(1, this.currentCategory, searchTerm);
         }
+      });
+      
+      // Al escribir (con debounce)
+      searchInput.addEventListener('input', () => {
+        console.log('Escribiendo en campo de búsqueda...');
+        debouncedSearch();
+      });
+    }
+    
+    // Botón para limpiar filtros
+    const clearFiltersBtn = this.container.querySelector('#clear-filters');
+    if (clearFiltersBtn) {
+      clearFiltersBtn.addEventListener('click', () => {
+        console.log('Limpiando filtros');
+        
+        // Limpiar campos
+        if (searchInput) searchInput.value = '';
+        if (categoryFilter) categoryFilter.value = '';
+        
+        // Cargar todos los artículos
+        this.loadArticles(1, '', '');
       });
     }
     
