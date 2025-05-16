@@ -226,6 +226,7 @@ export class ArticleManager {
       // Guardar estado actual
       this.currentPage = page;
       this.currentCategory = category;
+      this.currentSearch = search; // Guardar término de búsqueda actual
       
       // Crear objeto de parámetros para la API
       const apiParams = {
@@ -240,6 +241,8 @@ export class ArticleManager {
       
       if (search && search.trim() !== '') {
         apiParams.search = search.trim();
+        // Añadir también como 'q' para mayor compatibilidad con APIs
+        apiParams.q = search.trim();
       }
       
       console.log('Enviando parámetros a API:', apiParams);
@@ -250,14 +253,33 @@ export class ArticleManager {
       console.log('Respuesta de API:', response);
       
       // Extraer datos de la respuesta
-      const articles = response.articles || response;
+      let articles = [];
+      
+      if (response && response.articles && Array.isArray(response.articles)) {
+        articles = response.articles;
+      } else if (response && Array.isArray(response)) {
+        articles = response;
+      } else {
+        console.warn('Formato de respuesta inesperado:', response);
+        articles = [];
+      }
+      
+      console.log(`Se encontraron ${articles.length} artículos`);
+      
+      // Calcular paginación
       const total = response.total || articles.length;
       this.totalPages = response.totalPages || Math.ceil(total / this.pageSize);
       
       // Guardar artículos en el estado
       this.articles = articles;
       
-      // Renderizar artículos
+      // Limpiar el contenedor antes de renderizar
+      const articlesGrid = this.container.querySelector('.articles-grid');
+      if (articlesGrid) {
+        articlesGrid.innerHTML = '';
+      }
+      
+      // Renderizar artículos con información de búsqueda
       this.renderArticles(articles, {
         currentPage: this.currentPage,
         totalPages: this.totalPages,

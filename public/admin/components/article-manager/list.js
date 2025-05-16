@@ -25,11 +25,32 @@ export function renderArticles(articles, options = {}) {
     
     // Si no hay artículos, mostrar mensaje
     if (!articles || articles.length === 0) {
+      // Obtener término de búsqueda si existe
+      const searchTerm = this.currentSearch ? ` con el término "${this.currentSearch}"` : '';
+      const categoryText = category ? ` en la categoría "${category}"` : '';
+      
       articlesGrid.innerHTML = `
         <div class="empty-state">
-          <p>No se encontraron artículos${category ? ' en esta categoría' : ''}.</p>
+          <p>No se encontraron artículos${categoryText}${searchTerm}.</p>
+          ${this.currentSearch || category ? `<button id="clear-search-results" class="secondary-btn">Mostrar todos los artículos</button>` : ''}
         </div>
       `;
+      
+      // Añadir evento al botón para limpiar búsqueda
+      const clearBtn = articlesGrid.querySelector('#clear-search-results');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          // Limpiar campos de búsqueda
+          const searchInput = this.container.querySelector('#article-search');
+          const categoryFilter = this.container.querySelector('#category-filter');
+          
+          if (searchInput) searchInput.value = '';
+          if (categoryFilter) categoryFilter.value = '';
+          
+          // Cargar todos los artículos
+          this.loadArticles(1, '', '');
+        });
+      }
       
       // Ocultar paginación
       const paginationContainer = this.container.querySelector('.pagination');
