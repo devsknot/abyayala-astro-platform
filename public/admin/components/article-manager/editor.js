@@ -347,12 +347,35 @@ export function updateFeaturedImagePreview(imageUrl, previewElement) {
     
     console.log('Actualizando vista previa con URL:', imageUrl);
     
+    // Normalizar la URL de la imagen
+    let normalizedUrl = imageUrl;
+    
+    // Si la URL no comienza con http o /, intentar prepender la ruta base
+    if (normalizedUrl && !normalizedUrl.startsWith('http') && !normalizedUrl.startsWith('/')) {
+      normalizedUrl = '/' + normalizedUrl;
+      console.log('URL normalizada:', normalizedUrl);
+    }
+    
+    // Si la URL contiene api/media pero no comienza con /, añadir /
+    if (normalizedUrl && normalizedUrl.includes('api/media') && !normalizedUrl.startsWith('/')) {
+      normalizedUrl = '/' + normalizedUrl;
+      console.log('URL de API normalizada:', normalizedUrl);
+    }
+    
+    // Si la URL no contiene api/media pero parece ser una ruta de archivo, añadir /api/media/
+    if (normalizedUrl && !normalizedUrl.includes('api/media') && !normalizedUrl.startsWith('http') && 
+        (normalizedUrl.includes('.jpg') || normalizedUrl.includes('.png') || normalizedUrl.includes('.jpeg') || normalizedUrl.includes('.gif'))) {
+      // Eliminar la barra inicial si existe
+      const cleanPath = normalizedUrl.startsWith('/') ? normalizedUrl.substring(1) : normalizedUrl;
+      normalizedUrl = `/api/media/${cleanPath}`;
+      console.log('URL convertida a ruta de API:', normalizedUrl);
+    }
+    
     const maxWidth = 150;
     const maxHeight = 150;
     
     // Crear elemento imagen
     const img = document.createElement('img');
-    img.src = imageUrl;
     img.alt = 'Imagen destacada';
     img.style.maxWidth = `${maxWidth}px`;
     img.style.maxHeight = `${maxHeight}px`;
@@ -360,20 +383,46 @@ export function updateFeaturedImagePreview(imageUrl, previewElement) {
     img.style.display = 'block';
     img.style.margin = '0 auto';
     
+    // Limpiar el contenedor de vista previa
+    previewElement.innerHTML = '';
+    
+    // Mostrar indicador de carga
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'loading-indicator';
+    loadingIndicator.innerHTML = `<span>Cargando imagen...</span>`;
+    previewElement.appendChild(loadingIndicator);
+    
     // Agregar manejador de error para la imagen
     img.onerror = () => {
-      console.warn('Error al cargar la imagen:', imageUrl);
+      console.warn('Error al cargar la imagen:', normalizedUrl);
       previewElement.innerHTML = `
         <div style="text-align: center; color: #e53e3e;">
           <p>Error al cargar la imagen</p>
-          <small>${imageUrl}</small>
+          <small>${normalizedUrl}</small>
+          <p style="font-size: 0.8em; margin-top: 5px;">Intenta con otra imagen o verifica la URL</p>
         </div>
       `;
+      
+      // Intentar con una URL alternativa si parece ser una ruta de archivo
+      if (!normalizedUrl.startsWith('http') && !normalizedUrl.includes('api/media')) {
+        console.log('Intentando con URL alternativa...');
+        setTimeout(() => {
+          const alternativeUrl = `/api/media/${normalizedUrl.replace(/^\//, '')}`;
+          this.updateFeaturedImagePreview(alternativeUrl, previewElement);
+        }, 1000);
+      }
     };
     
-    // Limpiar y agregar la imagen
-    previewElement.innerHTML = '';
-    previewElement.appendChild(img);
+    // Manejador de carga exitosa
+    img.onload = () => {
+      console.log('Imagen cargada correctamente:', normalizedUrl);
+      // Eliminar indicador de carga
+      previewElement.innerHTML = '';
+      previewElement.appendChild(img);
+    };
+    
+    // Establecer la URL de la imagen después de configurar los manejadores
+    img.src = normalizedUrl;
     
     console.log('Vista previa de imagen actualizada');
   } catch (error) {

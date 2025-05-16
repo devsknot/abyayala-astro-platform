@@ -335,15 +335,25 @@ export class MediaManager {
     const cleanFileId = fileId.startsWith('/') ? fileId.substring(1) : fileId;
     console.log('getPublicUrl - cleanFileId:', cleanFileId);
     
-    // En desarrollo local, usar la ruta tal cual
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      console.log('getPublicUrl - Entorno local detectado');
+    // Verificar si la ruta es una ruta de API o una ruta de archivo
+    // Las rutas de API suelen tener 'api/media' en ellas
+    if (cleanFileId.includes('api/media')) {
+      console.log('getPublicUrl - Ruta de API detectada, usando directamente');
       return `/${cleanFileId}`;
     }
     
-    // En producción, usar el dominio personalizado de R2
-    console.log('getPublicUrl - Entorno de producción, usando R2PublicUrl');
-    return `${this.r2PublicUrl}/${cleanFileId}`;
+    // En desarrollo local, usar la ruta completa a través de la API
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.log('getPublicUrl - Entorno local detectado');
+      // Usar la API para acceder al archivo
+      return `/api/media/${cleanFileId}`;
+    }
+    
+    // En producción, intentar primero con la API y luego con R2
+    console.log('getPublicUrl - Entorno de producción');
+    
+    // Usar la API para acceder al archivo
+    return `/api/media/${cleanFileId}`;
   }
   
   // Determinar si un archivo es una imagen
@@ -464,32 +474,96 @@ export class MediaManager {
         // Agregar cada archivo al grid
         files.forEach(file => {
           const isImg = file.type && file.type.startsWith('image');
-          const thumbnail = isImg ? this.generateThumbnailUrl(file.path) : '/admin/assets/document-icon.png';
+          
+          // Generar URL para la miniatura con manejo de errores
+          let thumbnail;
+          try {
+            thumbnail = isImg ? this.generateThumbnailUrl(file.path) : '/admin/assets/document-icon.png';
+            console.log('MediaBrowser - Miniatura generada para:', file.name, thumbnail);
+          } catch (error) {
+            console.error('Error al generar miniatura:', error);
+            thumbnail = '/admin/assets/document-icon.png';
+          }
           
           const mediaItem = document.createElement('div');
           mediaItem.className = 'media-item';
-          mediaItem.innerHTML = `
-            <div class="media-thumbnail">
-              <img src="${thumbnail}" alt="${file.name || 'Archivo'}" />
-            </div>
-            <div class="media-info">
-              <span class="media-name">${file.name || 'Sin nombre'}</span>
-            </div>
-          `;
+          mediaItem.dataset.path = file.path || '';
+          mediaItem.dataset.name = file.name || 'Sin nombre';
+          
+          // Crear elemento de miniatura con manejo de errores
+          const thumbnailContainer = document.createElement('div');
+          thumbnailContainer.className = 'media-thumbnail';
+          
+          const img = document.createElement('img');
+          img.alt = file.name || 'Archivo';
+          img.src = thumbnail;
+          
+          // Manejar errores de carga de imagen
+          img.onerror = () => {
+            console.warn('Error al cargar miniatura:', thumbnail);
+            img.src = '/admin/assets/document-icon.png';
+            img.setAttribute('data-original-src', thumbnail);
+            img.setAttribute('title', 'Error al cargar imagen: ' + thumbnail);
+          };
+          
+          thumbnailContainer.appendChild(img);
+          mediaItem.appendChild(thumbnailContainer);
+          
+          // Agregar información del archivo
+          const infoContainer = document.createElement('div');
+          infoContainer.className = 'media-info';
+          
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'media-name';
+          nameSpan.textContent = file.name || 'Sin nombre';
+          infoContainer.appendChild(nameSpan);
+          
+          mediaItem.appendChild(infoContainer);
           
           // Agregar evento para seleccionar el archivo
           mediaItem.addEventListener('click', () => {
-            // Llamar al callback de selección si existe
-            if (options.onSelect && typeof options.onSelect === 'function') {
-              const fileUrl = this.getPublicUrl(file.path);
-              options.onSelect({
-                ...file,
-                url: fileUrl
-              });
+            try {
+              console.log('MediaBrowser - Archivo seleccionado:', file);
+              
+              // Llamar al callback de selección si existe
+              if (options.onSelect && typeof options.onSelect === 'function') {
+                // Generar URL pública para el archivo
+                const fileUrl = this.getPublicUrl(file.path);
+                console.log('MediaBrowser - URL generada para selección:', fileUrl);
+                
+                // Crear objeto con información completa
+                const mediaInfo = {
+                  ...file,
+                  url: fileUrl,
+                  // Asegurarse de que la URL sea absoluta
+                  absoluteUrl: fileUrl.startsWith('http') ? fileUrl : `${window.location.origin}${fileUrl}`
+                };
+                
+                // Mostrar información completa en consola para depuración
+                console.log('MediaBrowser - Información completa del archivo seleccionado:', mediaInfo);
+                
+                // Llamar al callback con la información
+                options.onSelect(mediaInfo);
+              }
+              
+              // Cerrar el modal
+              mediaBrowser.style.display = 'none';
+            } catch (error) {
+              console.error('Error al seleccionar archivo:', error);
+              
+              // Intentar recuperarse del error
+              if (options.onSelect && typeof options.onSelect === 'function') {
+                // Crear un objeto con la información mínima necesaria
+                options.onSelect({
+                  name: file.name || 'archivo',
+                  path: file.path || '',
+                  url: file.path ? `/api/media/${file.path.replace(/^\//, '')}` : ''
+                });
+              }
+              
+              // Cerrar el modal
+              mediaBrowser.style.display = 'none';
             }
-            
-            // Cerrar el modal
-            mediaBrowser.style.display = 'none';
           });
           
           mediaGrid.appendChild(mediaItem);
