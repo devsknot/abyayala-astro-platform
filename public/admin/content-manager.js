@@ -112,10 +112,15 @@ export class ContentManager {
   // Obtener todos los artículos con soporte para paginación y filtros
   async getArticles(params = {}) {
     try {
-      // Construir URL con parámetros de consulta
-      let url = `${this.apiBase}/articles`;
-      
       console.log('ContentManager.getArticles - Parámetros recibidos:', params);
+      
+      // Determinar si estamos haciendo una búsqueda o simplemente listando artículos
+      const isSearch = (params.search && params.search.trim() !== '') || (params.category && params.category.trim() !== '');
+      
+      // Usar el endpoint de búsqueda si hay parámetros de búsqueda
+      let url = isSearch ? `${this.apiBase}/articles/search` : `${this.apiBase}/articles`;
+      
+      console.log(`ContentManager.getArticles - Usando endpoint: ${isSearch ? 'búsqueda' : 'listado'} (${url})`);
       
       // Añadir parámetros de consulta si existen
       if (Object.keys(params).length > 0) {
@@ -123,8 +128,8 @@ export class ContentManager {
         
         // Parámetros de paginación
         if (params.page) queryParams.append('page', params.page);
-        if (params.limit) queryParams.append('limit', params.limit);
-        if (params.pageSize) queryParams.append('limit', params.pageSize); // Compatibilidad con pageSize
+        if (params.limit) queryParams.append('pageSize', params.limit); // Usar pageSize para el endpoint de búsqueda
+        if (params.pageSize) queryParams.append('pageSize', params.pageSize);
         
         // Parámetros de ordenación
         if (params.sortBy) queryParams.append('sortBy', params.sortBy);
@@ -133,16 +138,12 @@ export class ContentManager {
         // Parámetros de filtrado
         if (params.search && params.search.trim() !== '') {
           console.log('ContentManager.getArticles - Aplicando filtro de búsqueda:', params.search);
-          queryParams.append('search', params.search.trim());
-          // Asegurarnos de que el parámetro de búsqueda se envíe correctamente
-          queryParams.append('q', params.search.trim()); // Alternativa común para búsqueda
+          queryParams.append('query', params.search.trim()); // Usar 'query' para el endpoint de búsqueda
         }
         
         if (params.category && params.category.trim() !== '') {
           console.log('ContentManager.getArticles - Aplicando filtro de categoría:', params.category);
           queryParams.append('category', params.category.trim());
-          // Alternativa para categoría
-          queryParams.append('cat', params.category.trim());
         }
         
         // Añadir parámetros a la URL
