@@ -1,7 +1,13 @@
 // Importar estilos del componente
 const styles = document.createElement('link');
 styles.rel = 'stylesheet';
-styles.href = './components/article-manager/styles.css';
+
+// Obtener la base URL para construir una ruta absoluta que funcione en cualquier entorno
+const baseUrl = window.location.origin;
+const adminPath = window.location.pathname.split('/').filter(Boolean)[0] || 'admin';
+styles.href = `${baseUrl}/${adminPath}/components/article-manager/styles.css`;
+
+console.log(`Cargando estilos desde: ${styles.href}`);
 document.head.appendChild(styles);
 
 import { setupEvents } from './events.js';
