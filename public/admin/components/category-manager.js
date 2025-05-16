@@ -135,9 +135,14 @@ export class CategoryManager {
             </div>
             
             <div class="flex justify-between mt-6">
-              <button type="submit" id="saveCategory" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition duration-300">
-                Guardar Categoría
-              </button>
+              <div>
+                <button type="submit" id="saveCategory" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition duration-300 mr-2">
+                  Guardar Categoría
+                </button>
+                <button type="button" id="cancelEditCategory" class="bg-gray-400 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded-md transition duration-300">
+                  Cancelar
+                </button>
+              </div>
               <button type="button" id="deleteCategory" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-300" style="display: none;">
                 Eliminar Categoría
               </button>
@@ -254,6 +259,15 @@ export class CategoryManager {
     const backToListBtn = this.container.querySelector('.back-to-list-btn');
     if (backToListBtn) {
       backToListBtn.addEventListener('click', () => this.showCategoriesList());
+    }
+    
+    // Botón para cancelar la edición
+    const cancelEditBtn = this.container.querySelector('#cancelEditCategory');
+    if (cancelEditBtn) {
+      cancelEditBtn.addEventListener('click', () => {
+        console.log('Cancelando edición de categoría');
+        this.showCategoriesList();
+      });
     }
     
     // Formulario de categoría
