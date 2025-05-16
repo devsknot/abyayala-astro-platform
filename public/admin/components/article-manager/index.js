@@ -229,7 +229,7 @@ export class ArticleManager {
       // Obtener artículos de la API
       const response = await this.contentManager.getArticles({
         page,
-        pageSize: this.pageSize,
+        limit: this.pageSize, // Usar 'limit' en lugar de 'pageSize' para coincidir con la API
         category,
         search
       });

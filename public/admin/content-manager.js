@@ -115,6 +115,8 @@ export class ContentManager {
       // Construir URL con parámetros de consulta
       let url = `${this.apiBase}/articles`;
       
+      console.log('ContentManager.getArticles - Parámetros recibidos:', params);
+      
       // Añadir parámetros de consulta si existen
       if (Object.keys(params).length > 0) {
         const queryParams = new URLSearchParams();
@@ -128,8 +130,15 @@ export class ContentManager {
         if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
         
         // Parámetros de filtrado
-        if (params.search) queryParams.append('search', params.search);
-        if (params.category) queryParams.append('category', params.category);
+        if (params.search && params.search.trim() !== '') {
+          console.log('ContentManager.getArticles - Aplicando filtro de búsqueda:', params.search);
+          queryParams.append('search', params.search.trim());
+        }
+        
+        if (params.category && params.category.trim() !== '') {
+          console.log('ContentManager.getArticles - Aplicando filtro de categoría:', params.category);
+          queryParams.append('category', params.category.trim());
+        }
         
         // Añadir parámetros a la URL
         url = `${url}?${queryParams.toString()}`;
