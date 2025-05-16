@@ -232,7 +232,103 @@ export class AuthorManager {
     this.renderAuthorsList();
   }
   
-
+  // Renderizar lista de autores
+  renderAuthorsList() {
+    try {
+      console.log('Renderizando lista de autores...');
+      
+      const authorsTableBody = this.container.querySelector('#authorsTableBody');
+      const emptyAuthorsMessage = this.container.querySelector('#emptyAuthorsMessage');
+      
+      if (!authorsTableBody) {
+        console.error('No se encontró el elemento #authorsTableBody');
+        return;
+      }
+      
+      // Limpiar tabla
+      authorsTableBody.innerHTML = '';
+      
+      // Mostrar/ocultar mensaje de lista vacía
+      if (emptyAuthorsMessage) {
+        emptyAuthorsMessage.style.display = this.authors.length === 0 ? 'block' : 'none';
+      }
+      
+      if (this.authors.length === 0) {
+        console.log('No hay autores para mostrar');
+        return;
+      }
+      
+      // Crear fragmento para mejor rendimiento
+      const fragment = document.createDocumentFragment();
+      
+      // Agregar cada autor a la tabla
+      this.authors.forEach(author => {
+        // Verificar que el autor tenga un slug válido
+        if (!author.slug) {
+          console.error('Autor sin slug:', author);
+          // Generar un slug temporal si no existe
+          author.slug = this.generateSlug(author.name || 'autor-sin-nombre');
+        }
+        
+        const row = document.createElement('tr');
+        row.className = 'border-b border-gray-200 hover:bg-gray-50';
+        
+        // Formatear fecha
+        const createdAt = author.created_at ? new Date(author.created_at).toLocaleDateString() : 'N/A';
+        
+        // Truncar biografía para la tabla
+        const bioPreview = author.bio ? (author.bio.length > 100 ? author.bio.substring(0, 100) + '...' : author.bio) : 'Sin biografía';
+        
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="flex items-center">
+              <div class="flex-shrink-0 h-10 w-10">
+                ${author.avatar 
+                  ? `<img class="h-10 w-10 rounded-full object-cover" src="${author.avatar}" alt="${author.name}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(author.name || 'Usuario')}&background=random';">` 
+                  : `<div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>`
+                }
+              </div>
+              <div class="ml-4">
+                <div class="text-sm font-medium text-gray-900">${author.name || 'Sin nombre'}</div>
+                <div class="text-sm text-gray-500">${author.email || 'Sin email'}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="text-sm text-gray-900">${author.slug}</div>
+          </td>
+          <td class="px-6 py-4">
+            <div class="text-sm text-gray-900 line-clamp-2">${bioPreview}</div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            ${createdAt}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+            <button class="text-indigo-600 hover:text-indigo-900 mr-3 edit-author" data-slug="${author.slug}">
+              Editar
+            </button>
+            <button class="text-red-600 hover:text-red-900 delete-author" data-slug="${author.slug}">
+              Eliminar
+            </button>
+          </td>
+        `;
+        
+        fragment.appendChild(row);
+      });
+      
+      // Agregar todos los autores a la tabla
+      authorsTableBody.appendChild(fragment);
+      
+      console.log(`${this.authors.length} autores renderizados correctamente`);
+    } catch (error) {
+      console.error('Error al renderizar lista de autores:', error);
+      notifications.error('Error al mostrar la lista de autores');
+    }
+  }
   
   // Mostrar el editor de autores
   showAuthorEditor() {
