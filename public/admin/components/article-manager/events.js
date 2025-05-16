@@ -94,48 +94,170 @@ export function setupEvents() {
     const selectImageBtn = this.container.querySelector('.select-image-btn');
     if (selectImageBtn && this.mediaManager) {
       selectImageBtn.addEventListener('click', () => {
-        this.mediaManager.openMediaBrowser({
-          onSelect: (media) => {
-            if (media && media.url) {
-              console.log('Imagen seleccionada:', media);
-              
-              // Actualizar la vista previa
-              const featuredImagePreview = this.container.querySelector('.featured-image-preview');
-              if (featuredImagePreview) {
-                this.updateFeaturedImagePreview(media.url, featuredImagePreview);
-              }
-              
-              // Actualizar el valor del input oculto
-              let featuredImageInput = this.container.querySelector('#article-image');
-              if (!featuredImageInput) {
-                featuredImageInput = this.container.querySelector('#article-featured-image');
-              }
-              
-              if (!featuredImageInput) {
-                console.log('Creando input oculto para la imagen destacada...');
-                const featuredImageContainer = this.container.querySelector('.featured-image-container');
-                if (featuredImageContainer) {
-                  featuredImageInput = document.createElement('input');
-                  featuredImageInput.type = 'hidden';
-                  featuredImageInput.id = 'article-featured-image';
-                  featuredImageInput.name = 'featured_image';
-                  featuredImageContainer.appendChild(featuredImageInput);
-                }
-              }
-              
-              if (featuredImageInput) {
-                featuredImageInput.value = media.url;
-              }
-              
-              // Mostrar botón para eliminar
-              const removeImageBtn = this.container.querySelector('.remove-image-btn');
-              if (removeImageBtn) {
-                removeImageBtn.style.display = 'inline-block';
-              }
+        // Comprobar primero si hay un selector de archivos existente
+        let fileInput = document.getElementById('featured-image-file-input');
+        
+        // Si no existe, crear uno nuevo
+        if (!fileInput) {
+          fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.id = 'featured-image-file-input';
+          fileInput.accept = 'image/*';
+          fileInput.style.display = 'none';
+          document.body.appendChild(fileInput);
+          
+          // Manejar la selección de archivos
+          fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+              this.handleImageUpload(file);
             }
-          }
+          });
+        }
+        
+        // Mostrar opciones de selección de imagen
+        const options = [
+          { text: 'Seleccionar desde biblioteca', action: 'library' },
+          { text: 'Subir nueva imagen', action: 'upload' }
+        ];
+        
+        // Crear diálogo de opciones
+        const dialog = document.createElement('div');
+        dialog.className = 'image-selection-dialog';
+        dialog.innerHTML = `
+          <div class="dialog-overlay"></div>
+          <div class="dialog-content">
+            <h4>Seleccionar imagen</h4>
+            <div class="dialog-options">
+              ${options.map(option => `
+                <button class="dialog-option" data-action="${option.action}">
+                  ${option.text}
+                </button>
+              `).join('')}
+            </div>
+            <button class="dialog-close">Cancelar</button>
+          </div>
+        `;
+        
+        // Añadir diálogo al DOM
+        document.body.appendChild(dialog);
+        
+        // Manejar clics en las opciones
+        dialog.querySelectorAll('.dialog-option').forEach(button => {
+          button.addEventListener('click', () => {
+            const action = button.dataset.action;
+            
+            // Cerrar diálogo
+            document.body.removeChild(dialog);
+            
+            if (action === 'library') {
+              // Usar la biblioteca de medios
+              this.mediaManager.openMediaBrowser({
+                onSelect: (media) => {
+                  if (media && media.url) {
+                    this.handleSelectedMedia(media);
+                  }
+                }
+              });
+            } else if (action === 'upload') {
+              // Abrir selector de archivos
+              fileInput.click();
+            }
+          });
+        });
+        
+        // Cerrar diálogo al hacer clic en el botón de cerrar
+        dialog.querySelector('.dialog-close').addEventListener('click', () => {
+          document.body.removeChild(dialog);
+        });
+        
+        // Cerrar diálogo al hacer clic en el overlay
+        dialog.querySelector('.dialog-overlay').addEventListener('click', () => {
+          document.body.removeChild(dialog);
         });
       });
+    }
+    
+    // Método auxiliar para manejar la selección de medios desde la biblioteca
+    this.handleSelectedMedia = (media) => {
+      console.log('Imagen seleccionada desde biblioteca:', media);
+      
+      // Actualizar la vista previa
+      const featuredImagePreview = this.container.querySelector('.featured-image-preview');
+      if (featuredImagePreview) {
+        this.updateFeaturedImagePreview(media.url, featuredImagePreview);
+      }
+      
+      // Actualizar el valor del input oculto
+      let featuredImageInput = this.container.querySelector('#article-image');
+      if (!featuredImageInput) {
+        featuredImageInput = this.container.querySelector('#article-featured-image');
+      }
+      
+      if (!featuredImageInput) {
+        console.log('Creando input oculto para la imagen destacada...');
+        const featuredImageContainer = this.container.querySelector('.featured-image-container');
+        if (featuredImageContainer) {
+          featuredImageInput = document.createElement('input');
+          featuredImageInput.type = 'hidden';
+          featuredImageInput.id = 'article-featured-image';
+          featuredImageInput.name = 'featured_image';
+          featuredImageContainer.appendChild(featuredImageInput);
+        }
+      }
+      
+      if (featuredImageInput) {
+        featuredImageInput.value = media.url;
+      }
+      
+      // Mostrar botón para eliminar
+      const removeImageBtn = this.container.querySelector('.remove-image-btn');
+      if (removeImageBtn) {
+        removeImageBtn.style.display = 'inline-block';
+      }
+    };
+    
+    // Método auxiliar para manejar la carga de imágenes
+    this.handleImageUpload = async (file) => {
+      try {
+        console.log('Subiendo imagen:', file.name);
+        this.showLoading('Subiendo imagen...');
+        
+        // Comprobar si hay un gestor de medios disponible
+        if (!this.mediaManager) {
+          throw new Error('No se encontró el gestor de medios');
+        }
+        
+        // Subir la imagen usando el gestor de medios
+        const response = await this.mediaManager.uploadMedia(file);
+        console.log('Respuesta de carga:', response);
+        
+        if (response && (response.url || response.mediaUrl)) {
+          // Obtener la URL de la imagen subida
+          const imageUrl = response.url || response.mediaUrl;
+          
+          // Manejar la selección de medios con la nueva imagen
+          this.handleSelectedMedia({
+            url: imageUrl,
+            name: file.name,
+            type: file.type
+          });
+          
+          if (this.notificationManager) {
+            this.notificationManager.success('Imagen subida correctamente');
+          }
+        } else {
+          throw new Error('No se recibió una URL válida después de la carga');
+        }
+      } catch (error) {
+        console.error('Error al subir imagen:', error);
+        
+        if (this.notificationManager) {
+          this.notificationManager.error('Error al subir la imagen: ' + (error.message || 'Error desconocido'));
+        }
+      } finally {
+        this.hideLoading();
+      }
     }
     
     // Botón para eliminar imagen destacada
