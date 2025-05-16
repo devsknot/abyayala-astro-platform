@@ -34,7 +34,25 @@ export function setupEvents() {
     if (articleForm) {
       articleForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        await this.saveArticle();
+        
+        // Importar la función saveArticle si no está disponible en this
+        if (typeof this.saveArticle !== 'function') {
+          try {
+            // Importar la función desde este mismo módulo
+            const { saveArticle } = await import('./events.js');
+            
+            // Llamar a la función con el contexto correcto
+            await saveArticle.call(this);
+          } catch (error) {
+            console.error('Error al importar o ejecutar saveArticle:', error);
+            if (this.notificationManager) {
+              this.notificationManager.error('Error al guardar el artículo');
+            }
+          }
+        } else {
+          // Si ya está disponible como método, usarla directamente
+          await this.saveArticle();
+        }
       });
     }
     
