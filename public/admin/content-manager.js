@@ -19,12 +19,22 @@ export class ContentManager {
       'Cache-Control': 'no-cache, no-store, must-revalidate'
     };
     
-    // Obtener datos de autenticación del localStorage (formato usado en app.js)
+    console.log('ContentManager: Verificando autenticación...');
+    
+    // Obtener cookies por si los tokens están ahí (caso común con Cloudflare Access)
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {});
+    
+    // 1. Intentar obtener datos de autenticación del localStorage (formato usado en app.js)
     const authData = localStorage.getItem('abyayala_cms_auth');
     
     if (authData) {
       try {
         const auth = JSON.parse(authData);
+        console.log('ContentManager: Usando datos de autenticación de localStorage');
         
         // Si hay un token en los datos de autenticación, usarlo
         if (auth.token) {
@@ -37,25 +47,64 @@ export class ContentManager {
           headers['CF-Access-Jwt-Assertion'] = auth.cf_access_token;
         }
       } catch (e) {
-        console.error('Error al parsear datos de autenticación:', e);
+        console.error('ContentManager: Error al parsear datos de autenticación:', e);
       }
     }
     
-    // Verificar si hay tokens de Cloudflare Access directamente en localStorage (formato anterior)
+    // 2. Verificar si hay tokens de Cloudflare Access directamente en localStorage (formato anterior)
     const cfAccessToken = localStorage.getItem('cf_access_token');
+    const cfAccessClientId = localStorage.getItem('cf_access_client_id');
+    
     if (cfAccessToken && !headers['CF-Access-Jwt-Assertion']) {
-      headers['CF-Access-Client-Id'] = localStorage.getItem('cf_access_client_id') || '';
+      console.log('ContentManager: Usando tokens de Cloudflare Access de localStorage');
+      headers['CF-Access-Client-Id'] = cfAccessClientId || 'browser-client';
       headers['CF-Access-Jwt-Assertion'] = cfAccessToken;
     }
     
-    // En desarrollo local, usar cabeceras simuladas si no hay otras credenciales
+    // 3. Verificar si hay tokens en cookies
+    if (cookies['CF_Authorization'] && !headers['CF-Access-Jwt-Assertion']) {
+      console.log('ContentManager: Usando token de cookie CF_Authorization');
+      headers['CF-Access-Jwt-Assertion'] = cookies['CF_Authorization'];
+      
+      // Si también hay un client-id en las cookies
+      if (cookies['CF_Access_Client_Id']) {
+        headers['CF-Access-Client-Id'] = cookies['CF_Access_Client_Id'];
+      } else {
+        // Usar un ID genérico para producción
+        headers['CF-Access-Client-Id'] = 'browser-client'; 
+      }
+    }
+    
+    // 4. Verificar si hay un token en la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenParam = urlParams.get('cf_access_token');
+    
+    if (tokenParam && !headers['CF-Access-Jwt-Assertion']) {
+      console.log('ContentManager: Usando token de parámetro URL');
+      headers['CF-Access-Jwt-Assertion'] = tokenParam;
+      headers['CF-Access-Client-Id'] = 'browser-client';
+      
+      // Guardar para futuros usos
+      localStorage.setItem('cf_access_token', tokenParam);
+      localStorage.setItem('cf_access_client_id', 'browser-client');
+    }
+    
+    // 5. En desarrollo local, usar cabeceras simuladas si no hay otras credenciales
     if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && 
         !headers['Authorization'] && !headers['CF-Access-Jwt-Assertion']) {
+      console.log('ContentManager: Usando tokens simulados para desarrollo local');
       headers['CF-Access-Client-Id'] = 'development-client-id';
       headers['CF-Access-Jwt-Assertion'] = 'development-token';
     }
     
-    console.log('Headers de autenticación:', JSON.stringify(headers));
+    // Comprobar si tenemos los headers necesarios
+    if (headers['CF-Access-Jwt-Assertion']) {
+      console.log('ContentManager: Headers de autenticación configurados correctamente');
+    } else {
+      console.warn('ContentManager: No se pudieron configurar headers de autenticación completos');
+    }
+    
+    console.log('ContentManager: Headers de autenticación:', JSON.stringify(headers));
     
     return headers;
   }
@@ -182,7 +231,8 @@ export class ContentManager {
     try {
       console.log('ContentManager.createArticle - Datos del artículo:', articleData);
       
-      const response = await fetch(`${this.apiBase}/articles`, {
+      // Primer intento con los headers actuales
+      let response = await fetch(`${this.apiBase}/articles`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(articleData)
@@ -190,27 +240,126 @@ export class ContentManager {
       
       console.log(`ContentManager.createArticle - Código de respuesta: ${response.status}`);
       
+      // Si la respuesta es exitosa, procesar los datos
       if (response.ok) {
         const data = await response.json();
         console.log('ContentManager.createArticle - Respuesta:', data);
         return data;
       }
       
-      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
-      throw new Error(errorData.error || `Error al crear artículo: ${response.status}`);
+      // En caso de error 401 (No autorizado), intentar refrescar los tokens
+      if (response.status === 401) {
+        console.warn('ContentManager.createArticle - Error de autenticación (401). Intentando refrescar tokens...');
+        
+        // Intentar refrescar tokens
+        const refreshed = await this.refreshAuthTokens();
+        
+        if (refreshed) {
+          console.log('ContentManager.createArticle - Tokens refrescados. Reintentando solicitud...');
+          
+          // Reintentar la solicitud con los nuevos tokens
+          response = await fetch(`${this.apiBase}/articles`, {
+            method: 'POST',
+            headers: this.getAuthHeaders(), // Obtener los headers actualizados
+            body: JSON.stringify(articleData)
+          });
+          
+          console.log(`ContentManager.createArticle - Código de respuesta (reintento): ${response.status}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('ContentManager.createArticle - Respuesta (reintento):', data);
+            return data;
+          }
+        }
+      }
+      
+      // Si llegamos aquí, no se pudo crear el artículo
+      let errorMessage = `Error al crear artículo: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (parseError) {
+        console.warn('ContentManager.createArticle - No se pudo parsear respuesta de error:', parseError);
+      }
+      
+      throw new Error(errorMessage);
     } catch (error) {
       console.error('Error al crear artículo:', error);
       throw error;
     }
   }
 
+  /**
+   * Intenta refrescar los tokens de autenticación
+   * @returns {Promise<boolean>} - true si se refrescaron los tokens, false en caso contrario
+   */
+  async refreshAuthTokens() {
+    try {
+      console.log('ContentManager.refreshAuthTokens - Intentando refrescar tokens...');
+      
+      // Comprobar si tenemos tokens en cookies
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        acc[key] = value;
+        return acc;
+      }, {});
+      
+      if (cookies['CF_Authorization']) {
+        console.log('ContentManager.refreshAuthTokens - Encontrado token en cookies');
+        
+        // Guardar el token en localStorage para futuros usos
+        localStorage.setItem('cf_access_token', cookies['CF_Authorization']);
+        localStorage.setItem('cf_access_client_id', cookies['CF_Access_Client_Id'] || 'browser-client');
+        
+        return true;
+      }
+      
+      // Comprobar si hay un token en la URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenParam = urlParams.get('cf_access_token');
+      
+      if (tokenParam) {
+        console.log('ContentManager.refreshAuthTokens - Encontrado token en URL');
+        
+        // Guardar el token en localStorage
+        localStorage.setItem('cf_access_token', tokenParam);
+        localStorage.setItem('cf_access_client_id', 'browser-client');
+        
+        return true;
+      }
+      
+      // Intentar obtener tokens de la sesión actual (si existe)
+      if (window.sessionStorage) {
+        const sessionToken = sessionStorage.getItem('cf_access_token');
+        if (sessionToken) {
+          console.log('ContentManager.refreshAuthTokens - Encontrado token en sessionStorage');
+          
+          // Guardar en localStorage
+          localStorage.setItem('cf_access_token', sessionToken);
+          localStorage.setItem('cf_access_client_id', sessionStorage.getItem('cf_access_client_id') || 'browser-client');
+          
+          return true;
+        }
+      }
+      
+      console.warn('ContentManager.refreshAuthTokens - No se encontraron nuevos tokens');
+      return false;
+    } catch (error) {
+      console.error('ContentManager.refreshAuthTokens - Error al refrescar tokens:', error);
+      return false;
+    }
+  }
+  
   // Actualizar un artículo existente
   async updateArticle(slug, articleData) {
     try {
       console.log(`ContentManager.updateArticle - Actualizando artículo: ${slug}`);
       console.log('ContentManager.updateArticle - Datos:', articleData);
       
-      const response = await fetch(`${this.apiBase}/articles/${slug}`, {
+      // Primer intento con los headers actuales
+      let response = await fetch(`${this.apiBase}/articles/${slug}`, {
         method: 'PUT',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(articleData)
@@ -218,17 +367,54 @@ export class ContentManager {
       
       console.log(`ContentManager.updateArticle - Código de respuesta: ${response.status}`);
       
+      // Si la respuesta es exitosa, procesar los datos
       if (response.ok) {
         const data = await response.json();
         console.log('ContentManager.updateArticle - Respuesta:', data);
         return data;
       }
       
-      console.error(`Error al actualizar artículo: ${response.status}`);
-      return null;
+      // En caso de error 401 (No autorizado), intentar refrescar los tokens
+      if (response.status === 401) {
+        console.warn('ContentManager.updateArticle - Error de autenticación (401). Intentando refrescar tokens...');
+        
+        // Intentar refrescar tokens
+        const refreshed = await this.refreshAuthTokens();
+        
+        if (refreshed) {
+          console.log('ContentManager.updateArticle - Tokens refrescados. Reintentando solicitud...');
+          
+          // Reintentar la solicitud con los nuevos tokens
+          response = await fetch(`${this.apiBase}/articles/${slug}`, {
+            method: 'PUT',
+            headers: this.getAuthHeaders(), // Obtener los headers actualizados
+            body: JSON.stringify(articleData)
+          });
+          
+          console.log(`ContentManager.updateArticle - Código de respuesta (reintento): ${response.status}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('ContentManager.updateArticle - Respuesta (reintento):', data);
+            return data;
+          }
+        }
+      }
+      
+      // Si llegamos aquí, no se pudo actualizar el artículo
+      let errorMessage = `Error al actualizar artículo: ${response.status}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (parseError) {
+        console.warn('ContentManager.updateArticle - No se pudo parsear respuesta de error:', parseError);
+      }
+      
+      throw new Error(errorMessage);
     } catch (error) {
-      console.error('Error al conectar con la API:', error);
-      return null;
+      console.error('Error al actualizar artículo:', error);
+      throw error;
     }
   }
   
