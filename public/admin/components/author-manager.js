@@ -227,6 +227,9 @@ export class AuthorManager {
         </div>
       </div>
     `;
+    
+    // Renderizar la lista de autores
+    this.renderAuthorsList();
   }
   
 
