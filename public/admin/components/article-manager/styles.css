@@ -161,10 +161,19 @@
 }
 
 /* Lista de artículos */
+.article-manager .articles-container {
+  width: 100%;
+  margin-top: 1.5rem;
+}
+
 .article-manager .articles-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
+  width: 100%;
+  min-height: 200px;
+  position: relative;
+  z-index: 1;
 }
 
 .article-manager .article-card {

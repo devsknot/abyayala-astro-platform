@@ -280,20 +280,35 @@ export class ArticleManager {
       const articlesContainer = this.container.querySelector('.articles-container');
       const articlesGrid = this.container.querySelector('.articles-grid');
       
+      if (articlesContainer) {
+        // Asegurarse de que el contenedor sea visible
+        articlesContainer.style.display = 'block';
+      }
+      
       if (articlesGrid) {
         // Limpiar completamente el grid
         while (articlesGrid.firstChild) {
           articlesGrid.removeChild(articlesGrid.firstChild);
         }
         
-        // Asegurarse de que el grid sea visible
+        // Asegurarse de que el grid sea visible y tenga el estilo correcto
         articlesGrid.style.display = 'grid';
+        articlesGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
+        articlesGrid.style.gap = '1.5rem';
+        articlesGrid.style.width = '100%';
       }
       
       // Asegurarse de que no haya mensajes de carga visibles
       const loadingElement = articlesContainer?.querySelector('.loading');
       if (loadingElement) {
         loadingElement.style.display = 'none';
+      }
+      
+      // Asegurarse de que la sección de lista sea visible
+      const articlesList = this.container.querySelector('.articles-list');
+      if (articlesList) {
+        articlesList.classList.add('active');
+        articlesList.style.display = 'block';
       }
       
       console.log('Contenedor limpiado, renderizando', articles.length, 'artículos');

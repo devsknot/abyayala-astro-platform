@@ -100,6 +100,14 @@ export function renderArticles(articles, options = {}) {
         articleCard.className = 'article-card';
         articleCard.dataset.slug = article.slug;
         
+        // Asegurarse de que la tarjeta sea visible
+        articleCard.style.display = 'block';
+        articleCard.style.border = '1px solid #e2e8f0';
+        articleCard.style.borderRadius = '0.375rem';
+        articleCard.style.overflow = 'hidden';
+        articleCard.style.backgroundColor = 'white';
+        articleCard.style.transition = 'transform 0.2s, box-shadow 0.2s';
+        
         // Crear HTML para el artículo
         articleCard.innerHTML = `
           <div class="article-image">
