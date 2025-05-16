@@ -1,3 +1,9 @@
+// Importar estilos del componente
+const styles = document.createElement('link');
+styles.rel = 'stylesheet';
+styles.href = './components/article-manager/styles.css';
+document.head.appendChild(styles);
+
 import { setupEvents } from './events.js';
 import { renderArticlesList, showArticlesList, showArticleEditor, renderArticles, renderPagination, setupPaginationEvents, setupArticleCardEvents } from './list.js';
 import { editArticle, createArticle, deleteArticle, updateFeaturedImagePreview } from './editor.js';
