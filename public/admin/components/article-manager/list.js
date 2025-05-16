@@ -61,30 +61,55 @@ export function renderArticles(articles, options = {}) {
       return;
     }
     
-    // Renderizar cada artículo
-    const articlesHTML = articles.map(article => {
-      // Formatear fecha
-      let formattedDate = 'Fecha desconocida';
-      if (article.pubDate) {
-        try {
-          const date = new Date(article.pubDate);
-          formattedDate = date.toLocaleDateString();
-        } catch (error) {
-          console.warn('Error al formatear fecha:', error);
+    console.log('Procesando', articles.length, 'artículos para renderizar');
+    
+    // Verificar que articlesGrid exista
+    if (!articlesGrid) {
+      console.error('No se encontró el contenedor .articles-grid');
+      return;
+    }
+    
+    // Limpiar el grid antes de añadir nuevos artículos
+    articlesGrid.innerHTML = '';
+    
+    // Crear un fragmento para mejorar el rendimiento
+    const fragment = document.createDocumentFragment();
+    
+    // Procesar cada artículo
+    articles.forEach(article => {
+      try {
+        // Verificar que el artículo tenga los datos mínimos necesarios
+        if (!article || !article.slug) {
+          console.warn('Artículo inválido:', article);
+          return;
         }
-      }
-      
-      // Crear HTML para cada artículo
-      return `
-        <div class="article-card" data-slug="${article.slug}">
+        
+        // Formatear fecha
+        let formattedDate = 'Fecha desconocida';
+        if (article.pubDate) {
+          try {
+            const date = new Date(article.pubDate);
+            formattedDate = date.toLocaleDateString();
+          } catch (error) {
+            console.warn(`Error al formatear fecha para artículo ${article.slug}:`, error);
+          }
+        }
+        
+        // Crear el elemento del artículo
+        const articleCard = document.createElement('div');
+        articleCard.className = 'article-card';
+        articleCard.dataset.slug = article.slug;
+        
+        // Crear HTML para el artículo
+        articleCard.innerHTML = `
           <div class="article-image">
             ${article.featured_image 
-              ? `<img src="${article.featured_image}" alt="${article.title}">`
+              ? `<img src="${article.featured_image}" alt="${article.title || 'Artículo'}">`
               : `<div class="no-image">Sin imagen</div>`
             }
           </div>
           <div class="article-content">
-            <h4 class="article-title">${article.title}</h4>
+            <h4 class="article-title">${article.title || 'Sin título'}</h4>
             <p class="article-description">${article.description || 'Sin descripción'}</p>
             <div class="article-meta">
               <span class="article-date">${formattedDate}</span>
@@ -96,17 +121,25 @@ export function renderArticles(articles, options = {}) {
               <span class="icon">✏️</span>
               <span>Editar</span>
             </button>
-            <button class="delete-btn" data-slug="${article.slug}" data-title="${article.title}">
-              <span class="icon">🗑️</span>
+            <button class="delete-btn" data-slug="${article.slug}" data-title="${article.title || 'Sin título'}">
+              <span class="icon">🚮</span>
               <span>Eliminar</span>
             </button>
           </div>
-        </div>
-      `;
-    }).join('');
+        `;
+        
+        // Añadir el artículo al fragmento
+        fragment.appendChild(articleCard);
+      } catch (error) {
+        console.error(`Error al procesar artículo:`, error, article);
+      }
+    });
     
-    // Actualizar el contenedor con los artículos
-    articlesGrid.innerHTML = articlesHTML;
+    // Añadir todos los artículos al grid de una sola vez
+    articlesGrid.appendChild(fragment);
+    
+    // Verificar que se hayan añadido artículos
+    console.log(`Se han renderizado ${articlesGrid.children.length} artículos en el grid`);
     
     // Configurar paginación
     renderPagination.call(this, currentPage, totalPages);

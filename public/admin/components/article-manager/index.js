@@ -273,11 +273,30 @@ export class ArticleManager {
       // Guardar artículos en el estado
       this.articles = articles;
       
-      // Limpiar el contenedor antes de renderizar
+      // Forzar la visualización de la lista de artículos
+      this.showArticlesList();
+      
+      // Limpiar completamente el contenedor antes de renderizar
+      const articlesContainer = this.container.querySelector('.articles-container');
       const articlesGrid = this.container.querySelector('.articles-grid');
+      
       if (articlesGrid) {
-        articlesGrid.innerHTML = '';
+        // Limpiar completamente el grid
+        while (articlesGrid.firstChild) {
+          articlesGrid.removeChild(articlesGrid.firstChild);
+        }
+        
+        // Asegurarse de que el grid sea visible
+        articlesGrid.style.display = 'grid';
       }
+      
+      // Asegurarse de que no haya mensajes de carga visibles
+      const loadingElement = articlesContainer?.querySelector('.loading');
+      if (loadingElement) {
+        loadingElement.style.display = 'none';
+      }
+      
+      console.log('Contenedor limpiado, renderizando', articles.length, 'artículos');
       
       // Renderizar artículos con información de búsqueda
       this.renderArticles(articles, {
