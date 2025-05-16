@@ -124,6 +124,7 @@ export class ContentManager {
         // Parámetros de paginación
         if (params.page) queryParams.append('page', params.page);
         if (params.limit) queryParams.append('limit', params.limit);
+        if (params.pageSize) queryParams.append('limit', params.pageSize); // Compatibilidad con pageSize
         
         // Parámetros de ordenación
         if (params.sortBy) queryParams.append('sortBy', params.sortBy);
@@ -133,11 +134,15 @@ export class ContentManager {
         if (params.search && params.search.trim() !== '') {
           console.log('ContentManager.getArticles - Aplicando filtro de búsqueda:', params.search);
           queryParams.append('search', params.search.trim());
+          // Asegurarnos de que el parámetro de búsqueda se envíe correctamente
+          queryParams.append('q', params.search.trim()); // Alternativa común para búsqueda
         }
         
         if (params.category && params.category.trim() !== '') {
           console.log('ContentManager.getArticles - Aplicando filtro de categoría:', params.category);
           queryParams.append('category', params.category.trim());
+          // Alternativa para categoría
+          queryParams.append('cat', params.category.trim());
         }
         
         // Añadir parámetros a la URL

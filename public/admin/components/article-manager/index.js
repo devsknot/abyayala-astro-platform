@@ -226,13 +226,25 @@ export class ArticleManager {
       this.currentPage = page;
       this.currentCategory = category;
       
+      // Crear objeto de parámetros para la API
+      const apiParams = {
+        page: parseInt(page, 10),
+        limit: parseInt(this.pageSize, 10)
+      };
+      
+      // Solo añadir parámetros si tienen valor
+      if (category && category.trim() !== '') {
+        apiParams.category = category.trim();
+      }
+      
+      if (search && search.trim() !== '') {
+        apiParams.search = search.trim();
+      }
+      
+      console.log('Enviando parámetros a API:', apiParams);
+      
       // Obtener artículos de la API
-      const response = await this.contentManager.getArticles({
-        page,
-        limit: this.pageSize, // Usar 'limit' en lugar de 'pageSize' para coincidir con la API
-        category,
-        search
-      });
+      const response = await this.contentManager.getArticles(apiParams);
       
       console.log('Respuesta de API:', response);
       
