@@ -88,10 +88,10 @@ export function renderArticles(articles, options = {}) {
     articlesGrid.innerHTML = articlesHTML;
     
     // Configurar paginación
-    this.renderPagination(currentPage, totalPages);
+    renderPagination.call(this, currentPage, totalPages);
     
     // Configurar eventos para los botones de cada artículo
-    this.setupArticleCardEvents();
+    setupArticleCardEvents.call(this);
     
   } catch (error) {
     console.error('Error al renderizar artículos:', error);
@@ -104,7 +104,7 @@ export function renderArticles(articles, options = {}) {
 /**
  * Configura los eventos para las tarjetas de artículos
  */
-function setupArticleCardEvents() {
+export function setupArticleCardEvents() {
   try {
     // Botones de editar artículo
     const editButtons = this.container.querySelectorAll('.edit-btn');
@@ -154,7 +154,7 @@ function setupArticleCardEvents() {
  * @param {number} currentPage - Página actual
  * @param {number} totalPages - Total de páginas
  */
-function renderPagination(currentPage, totalPages) {
+export function renderPagination(currentPage, totalPages) {
   try {
     const paginationContainer = this.container.querySelector('.pagination');
     if (!paginationContainer) {
@@ -220,7 +220,7 @@ function renderPagination(currentPage, totalPages) {
  * @param {number} currentPage - Página actual
  * @param {number} totalPages - Total de páginas
  */
-function setupPaginationEvents(currentPage, totalPages) {
+export function setupPaginationEvents(currentPage, totalPages) {
   try {
     // Botón de página anterior
     const prevButton = this.container.querySelector('.pagination-btn.prev');
