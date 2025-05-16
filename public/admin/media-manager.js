@@ -494,19 +494,73 @@ export class MediaManager {
           const thumbnailContainer = document.createElement('div');
           thumbnailContainer.className = 'media-thumbnail';
           
-          const img = document.createElement('img');
-          img.alt = file.name || 'Archivo';
-          img.src = thumbnail;
+          // Crear un div con el nombre del archivo como alternativa a la imagen
+          const fallbackDiv = document.createElement('div');
+          fallbackDiv.className = 'media-fallback';
+          fallbackDiv.style.width = '100%';
+          fallbackDiv.style.height = '100%';
+          fallbackDiv.style.display = 'flex';
+          fallbackDiv.style.alignItems = 'center';
+          fallbackDiv.style.justifyContent = 'center';
+          fallbackDiv.style.backgroundColor = '#f0f4f8';
+          fallbackDiv.style.color = '#4a5568';
+          fallbackDiv.style.fontSize = '0.8rem';
+          fallbackDiv.style.padding = '8px';
+          fallbackDiv.style.textAlign = 'center';
+          fallbackDiv.style.wordBreak = 'break-word';
           
-          // Manejar errores de carga de imagen
-          img.onerror = () => {
-            console.warn('Error al cargar miniatura:', thumbnail);
-            img.src = '/admin/assets/document-icon.png';
-            img.setAttribute('data-original-src', thumbnail);
-            img.setAttribute('title', 'Error al cargar imagen: ' + thumbnail);
-          };
+          // Determinar el tipo de archivo para mostrar un icono adecuado
+          let fileType = 'archivo';
+          if (file.path) {
+            if (file.path.endsWith('.jpg') || file.path.endsWith('.jpeg') || file.path.endsWith('.png') || file.path.endsWith('.gif')) {
+              fileType = 'imagen';
+            } else if (file.path.endsWith('.pdf')) {
+              fileType = 'PDF';
+            } else if (file.path.endsWith('.doc') || file.path.endsWith('.docx')) {
+              fileType = 'documento';
+            }
+          }
           
-          thumbnailContainer.appendChild(img);
+          fallbackDiv.innerHTML = `
+            <div>
+              <div style="font-size: 1.5rem; margin-bottom: 5px;">📄</div>
+              <div>${fileType}</div>
+              <div style="font-size: 0.7rem; margin-top: 5px;">${file.name || 'Sin nombre'}</div>
+            </div>
+          `;
+          
+          // Primero agregar el fallback
+          thumbnailContainer.appendChild(fallbackDiv);
+          
+          // Luego intentar cargar la imagen
+          if (isImg) {
+            const img = document.createElement('img');
+            img.alt = file.name || 'Archivo';
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
+            img.style.position = 'absolute';
+            img.style.top = '0';
+            img.style.left = '0';
+            img.style.backgroundColor = '#fff';
+            
+            // Manejar errores de carga de imagen
+            img.onerror = () => {
+              console.warn('Error al cargar miniatura:', thumbnail);
+              // No hacer nada más, ya tenemos el fallback visible
+              img.style.display = 'none';
+            };
+            
+            // Si la imagen carga correctamente, ocultar el fallback
+            img.onload = () => {
+              fallbackDiv.style.display = 'none';
+            };
+            
+            // Establecer el src después de configurar los handlers
+            img.src = thumbnail;
+            thumbnailContainer.appendChild(img);
+          }
+          
           mediaItem.appendChild(thumbnailContainer);
           
           // Agregar información del archivo
