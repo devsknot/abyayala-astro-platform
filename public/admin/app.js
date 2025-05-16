@@ -516,8 +516,13 @@ async function loadCategoriesManager(container) {
     container.innerHTML = '<div id="category-manager-container" class="p-4"></div>';
     const categoryContainer = document.getElementById('category-manager-container');
     
-    // Crear instancia y renderizar
-    const categoryManager = new CategoryManager(categoryContainer);
+    // Crear instancia del ContentManager
+    const contentManager = new ContentManager();
+    
+    // Crear instancia del CategoryManager y renderizar
+    const categoryManager = new CategoryManager(contentManager);
+    await categoryManager.init('category-manager-container');
+    
     showDebugInfo('Gestor de categorías inicializado correctamente');
   } catch (error) {
     showDebugInfo(`Error al cargar el gestor de categorías: ${error.message}`);
