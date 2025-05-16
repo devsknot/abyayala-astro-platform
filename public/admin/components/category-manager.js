@@ -154,21 +154,31 @@ export class CategoryManager {
       return '';
     }
     
-    return this.categories.map(category => `
-      <tr class="hover:bg-gray-50" data-slug="${category.slug}">
-        <td class="py-3 px-4 border-b">${category.name}</td>
-        <td class="py-3 px-4 border-b">${category.slug}</td>
-        <td class="py-3 px-4 border-b">${category.description || '-'}</td>
-        <td class="py-3 px-4 border-b text-center">
-          <button class="edit-category bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded-md text-xs mr-2 transition duration-300">
-            Editar
-          </button>
-          <button class="delete-category bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded-md text-xs transition duration-300">
-            Eliminar
-          </button>
-        </td>
-      </tr>
-    `).join('');
+    console.log('Renderizando tabla de categorías:', this.categories);
+    
+    return this.categories.map(category => {
+      // Validar que la categoría tenga un slug válido
+      if (!category.slug) {
+        console.error('Categoría sin slug:', category);
+        category.slug = this.generateSlug(category.name || 'categoria');
+      }
+      
+      return `
+        <tr class="hover:bg-gray-50" data-slug="${category.slug}" data-id="${category.id || ''}">
+          <td class="py-3 px-4 border-b">${category.name || 'Sin nombre'}</td>
+          <td class="py-3 px-4 border-b">${category.slug}</td>
+          <td class="py-3 px-4 border-b">${category.description || '-'}</td>
+          <td class="py-3 px-4 border-b text-center">
+            <button class="edit-category bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded-md text-xs mr-2 transition duration-300" data-slug="${category.slug}">
+              Editar
+            </button>
+            <button class="delete-category bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded-md text-xs transition duration-300" data-slug="${category.slug}">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
   }
 
   // Mostrar el editor de categorías
@@ -263,23 +273,41 @@ export class CategoryManager {
       });
     }
     
-    // Botones de editar y eliminar
-    const editButtons = this.container.querySelectorAll('.edit-category');
-    const deleteButtons = this.container.querySelectorAll('.delete-category');
-    
-    editButtons.forEach(button => {
-      button.addEventListener('click', (e) => {
-        const slug = e.target.closest('tr').dataset.slug;
-        this.editCategory(slug);
+    // Delegación de eventos para botones de editar y eliminar
+    const categoriesTable = this.container.querySelector('#categoriesTableBody');
+    if (categoriesTable) {
+      categoriesTable.addEventListener('click', (e) => {
+        // Si se hizo clic en un botón de editar
+        if (e.target.classList.contains('edit-category') || e.target.closest('.edit-category')) {
+          const button = e.target.classList.contains('edit-category') ? e.target : e.target.closest('.edit-category');
+          const slug = button.dataset.slug;
+          
+          if (!slug) {
+            console.error('No se encontró el slug en el botón de editar');
+            notifications.error('Error al editar: No se pudo identificar la categoría');
+            return;
+          }
+          
+          console.log(`Editando categoría con slug: ${slug}`);
+          this.editCategory(slug);
+        }
+        
+        // Si se hizo clic en un botón de eliminar
+        if (e.target.classList.contains('delete-category') || e.target.closest('.delete-category')) {
+          const button = e.target.classList.contains('delete-category') ? e.target : e.target.closest('.delete-category');
+          const slug = button.dataset.slug;
+          
+          if (!slug) {
+            console.error('No se encontró el slug en el botón de eliminar');
+            notifications.error('Error al eliminar: No se pudo identificar la categoría');
+            return;
+          }
+          
+          console.log(`Confirmando eliminación de categoría con slug: ${slug}`);
+          this.confirmDeleteCategory(slug);
+        }
       });
-    });
-    
-    deleteButtons.forEach(button => {
-      button.addEventListener('click', (e) => {
-        const slug = e.target.closest('tr').dataset.slug;
-        this.confirmDeleteCategory(slug);
-      });
-    });
+    }
   }
 
   // Generar slug a partir del nombre
