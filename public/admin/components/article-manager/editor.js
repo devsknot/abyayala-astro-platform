@@ -168,8 +168,13 @@ export function setDateInputValue(dateInput, pubDate) {
  */
 export function loadFeaturedImage(featuredImage) {
   try {
+    console.log('Cargando imagen destacada:', featuredImage);
+    
     const featuredImagePreview = this.container.querySelector('.featured-image-preview');
-    if (!featuredImagePreview) return;
+    if (!featuredImagePreview) {
+      console.warn('No se encontró el contenedor para la vista previa de la imagen');
+      return;
+    }
     
     // Verificar si existe el input para la imagen destacada
     let featuredImageInput = this.container.querySelector('#article-image');
@@ -179,6 +184,7 @@ export function loadFeaturedImage(featuredImage) {
     
     // Si no existe el input, intentamos encontrar el contenedor y lo creamos
     if (!featuredImageInput) {
+      console.log('Creando input para la imagen destacada...');
       const featuredImageContainer = this.container.querySelector('.featured-image-container');
       if (featuredImageContainer) {
         featuredImageInput = document.createElement('input');
@@ -186,24 +192,41 @@ export function loadFeaturedImage(featuredImage) {
         featuredImageInput.id = 'article-featured-image';
         featuredImageInput.name = 'featured_image';
         featuredImageContainer.appendChild(featuredImageInput);
+        console.log('Input para la imagen destacada creado');
+      } else {
+        console.warn('No se encontró el contenedor para añadir el input de imagen');
       }
     }
     
+    // Botón para eliminar imagen
+    const removeImageBtn = this.container.querySelector('.remove-image-btn');
+    
     if (featuredImage && featuredImagePreview) {
+      console.log('Actualizando vista previa de la imagen destacada');
+      
+      // Comprobar si la URL de la imagen es válida
+      // Si la URL no comienza con http o /, intentar prepender la ruta base
+      let imageUrl = featuredImage;
+      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+        imageUrl = '/' + imageUrl;
+      }
+      
       // Actualizar la vista previa de la imagen
-      this.updateFeaturedImagePreview(featuredImage, featuredImagePreview);
+      this.updateFeaturedImagePreview(imageUrl, featuredImagePreview);
       
       // Actualizar el valor del input oculto si existe
       if (featuredImageInput) {
         featuredImageInput.value = featuredImage;
+        console.log('Valor del input actualizado:', featuredImageInput.value);
       }
       
       // Mostrar botón para eliminar
-      const removeImageBtn = this.container.querySelector('.remove-image-btn');
       if (removeImageBtn) {
         removeImageBtn.style.display = 'inline-block';
       }
     } else if (featuredImagePreview) {
+      console.log('No hay imagen destacada, reseteando vista previa');
+      
       // Resetear la vista previa
       featuredImagePreview.innerHTML = `<span class="text-gray-500">No hay imagen seleccionada</span>`;
       
@@ -213,7 +236,6 @@ export function loadFeaturedImage(featuredImage) {
       }
       
       // Ocultar botón para eliminar
-      const removeImageBtn = this.container.querySelector('.remove-image-btn');
       if (removeImageBtn) {
         removeImageBtn.style.display = 'none';
       }
@@ -237,25 +259,74 @@ export function initializeEditor(content) {
       return;
     }
     
-    // Intentar inicializar el editor
-    this.editor = new ContentEditor(editorContainer);
+    // Limpiar cualquier contenido previo del editor
+    editorContainer.innerHTML = '';
     
-    // Esperar a que el editor esté listo y establecer el contenido
-    setTimeout(() => {
-      try {
-        if (this.editor && typeof this.editor.setContent === 'function') {
-          this.editor.setContent(content);
-          console.log('Contenido establecido en el editor correctamente');
-        } else {
-          console.error('El editor no tiene el método setContent o no está correctamente inicializado');
+    // Importar dinámicamente el editor
+    import('../content-editor.js')
+      .then(module => {
+        try {
+          const ContentEditor = module.ContentEditor;
+          
+          // Inicializar el editor con el nuevo módulo
+          this.editor = new ContentEditor(editorContainer);
+          
+          // Establecer el contenido
+          if (this.editor && typeof this.editor.setContent === 'function') {
+            this.editor.setContent(content);
+            console.log('Contenido establecido en el editor correctamente');
+          } else {
+            console.error('El editor no tiene el método setContent');
+          }
+        } catch (initError) {
+          console.error('Error al instanciar el editor:', initError);
+          
+          // Fallback a un textarea simple si falla la inicialización
+          const textarea = document.createElement('textarea');
+          textarea.className = 'editor-fallback';
+          textarea.style.width = '100%';
+          textarea.style.minHeight = '300px';
+          textarea.style.padding = '10px';
+          textarea.style.border = '1px solid #ddd';
+          textarea.value = content || '';
+          
+          editorContainer.innerHTML = '';
+          editorContainer.appendChild(textarea);
+          
+          // Crear un editor simple
+          this.editor = {
+            setContent: (c) => { textarea.value = c || ''; },
+            getContent: () => textarea.value,
+            destroy: () => { editorContainer.innerHTML = ''; }
+          };
         }
-      } catch (error) {
-        console.error('Error al establecer contenido en el editor:', error);
-      } finally {
+        
         this.hideLoading();
-      }
-    }, 1000);
-    
+      })
+      .catch(importError => {
+        console.error('Error al importar el editor:', importError);
+        
+        // Fallback a un textarea simple si falla la importación
+        const textarea = document.createElement('textarea');
+        textarea.className = 'editor-fallback';
+        textarea.style.width = '100%';
+        textarea.style.minHeight = '300px';
+        textarea.style.padding = '10px';
+        textarea.style.border = '1px solid #ddd';
+        textarea.value = content || '';
+        
+        editorContainer.innerHTML = '';
+        editorContainer.appendChild(textarea);
+        
+        // Crear un editor simple
+        this.editor = {
+          setContent: (c) => { textarea.value = c || ''; },
+          getContent: () => textarea.value,
+          destroy: () => { editorContainer.innerHTML = ''; }
+        };
+        
+        this.hideLoading();
+      });
   } catch (error) {
     console.error('Error al inicializar editor:', error);
     if (this.notificationManager) {
@@ -274,16 +345,44 @@ export function updateFeaturedImagePreview(imageUrl, previewElement) {
   try {
     if (!previewElement) return;
     
+    console.log('Actualizando vista previa con URL:', imageUrl);
+    
     const maxWidth = 150;
     const maxHeight = 150;
     
-    previewElement.innerHTML = `
-      <img src="${imageUrl}" alt="Imagen destacada" style="max-width: ${maxWidth}px; max-height: ${maxHeight}px; object-fit: contain;">
-    `;
+    // Crear elemento imagen
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.alt = 'Imagen destacada';
+    img.style.maxWidth = `${maxWidth}px`;
+    img.style.maxHeight = `${maxHeight}px`;
+    img.style.objectFit = 'contain';
+    img.style.display = 'block';
+    img.style.margin = '0 auto';
+    
+    // Agregar manejador de error para la imagen
+    img.onerror = () => {
+      console.warn('Error al cargar la imagen:', imageUrl);
+      previewElement.innerHTML = `
+        <div style="text-align: center; color: #e53e3e;">
+          <p>Error al cargar la imagen</p>
+          <small>${imageUrl}</small>
+        </div>
+      `;
+    };
+    
+    // Limpiar y agregar la imagen
+    previewElement.innerHTML = '';
+    previewElement.appendChild(img);
     
     console.log('Vista previa de imagen actualizada');
   } catch (error) {
     console.error('Error al actualizar vista previa de imagen:', error);
+    
+    // Mostrar mensaje de error en la vista previa
+    if (previewElement) {
+      previewElement.innerHTML = `<span class="text-gray-500">Error al cargar la imagen</span>`;
+    }
   }
 }
 
