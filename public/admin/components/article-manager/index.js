@@ -12,7 +12,7 @@ document.head.appendChild(styles);
 
 import { setupEvents } from './events.js';
 import { renderArticlesList, showArticlesList, showArticleEditor, renderArticles, renderPagination, setupPaginationEvents, setupArticleCardEvents } from './list.js';
-import { editArticle, createArticle, deleteArticle, updateFeaturedImagePreview } from './editor.js';
+import { editArticle, createArticle, deleteArticle, updateFeaturedImagePreview, setupEditorInterface, loadArticleDataIntoForm, setDateInputValue, loadFeaturedImage, initializeEditor } from './editor.js';
 import { loadCategories } from './categories.js';
 import { showLoading, hideLoading } from './ui.js';
 
@@ -57,6 +57,11 @@ export class ArticleManager {
     this.updateFeaturedImagePreview = updateFeaturedImagePreview.bind(this);
     this.showLoading = showLoading.bind(this);
     this.hideLoading = hideLoading.bind(this);
+    this.setupEditorInterface = setupEditorInterface.bind(this);
+    this.loadArticleDataIntoForm = loadArticleDataIntoForm.bind(this);
+    this.setDateInputValue = setDateInputValue.bind(this);
+    this.loadFeaturedImage = loadFeaturedImage.bind(this);
+    this.initializeEditor = initializeEditor.bind(this);
     this.setupEvents = setupEvents.bind(this);
   }
 
