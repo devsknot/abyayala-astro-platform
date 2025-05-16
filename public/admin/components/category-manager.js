@@ -157,22 +157,24 @@ export class CategoryManager {
     console.log('Renderizando tabla de categorías:', this.categories);
     
     return this.categories.map(category => {
-      // Validar que la categoría tenga un slug válido
-      if (!category.slug) {
-        console.error('Categoría sin slug:', category);
-        category.slug = this.generateSlug(category.name || 'categoria');
+      // En la base de datos, el campo 'id' se usa como slug
+      // Asegurarse de que usamos el id como slug para mantener la consistencia
+      const categorySlug = category.id || '';
+      
+      if (!categorySlug) {
+        console.error('Categoría sin ID/slug:', category);
       }
       
       return `
-        <tr class="hover:bg-gray-50" data-slug="${category.slug}" data-id="${category.id || ''}">
+        <tr class="hover:bg-gray-50" data-slug="${categorySlug}">
           <td class="py-3 px-4 border-b">${category.name || 'Sin nombre'}</td>
-          <td class="py-3 px-4 border-b">${category.slug}</td>
+          <td class="py-3 px-4 border-b">${categorySlug}</td>
           <td class="py-3 px-4 border-b">${category.description || '-'}</td>
           <td class="py-3 px-4 border-b text-center">
-            <button class="edit-category bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded-md text-xs mr-2 transition duration-300" data-slug="${category.slug}">
+            <button class="edit-category bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded-md text-xs mr-2 transition duration-300" data-slug="${categorySlug}">
               Editar
             </button>
-            <button class="delete-category bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded-md text-xs transition duration-300" data-slug="${category.slug}">
+            <button class="delete-category bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded-md text-xs transition duration-300" data-slug="${categorySlug}">
               Eliminar
             </button>
           </td>
@@ -328,15 +330,16 @@ export class CategoryManager {
     const slugInput = this.container.querySelector('#categorySlug');
     const descriptionInput = this.container.querySelector('#categoryDescription');
     
+    // En la base de datos, el campo 'id' se usa como el identificador/slug
     const categoryData = {
       name: nameInput.value.trim(),
-      slug: slugInput.value.trim(),
+      id: slugInput.value.trim(), // Usar como ID en lugar de slug
       description: descriptionInput.value.trim()
     };
     
     // Validar datos
-    if (!categoryData.name || !categoryData.slug) {
-      notifications.error('El nombre y el slug son obligatorios');
+    if (!categoryData.name || !categoryData.id) {
+      notifications.error('El nombre y el ID/slug son obligatorios');
       return;
     }
     
@@ -346,10 +349,12 @@ export class CategoryManager {
       
       if (this.currentEditingCategory) {
         // Actualizar categoría existente
-        await this.contentManager.updateCategory(this.currentEditingCategory.slug, categoryData);
+        console.log(`Actualizando categoría con ID: ${this.currentEditingCategory.id}`, categoryData);
+        await this.contentManager.updateCategory(this.currentEditingCategory.id, categoryData);
         notifications.success('Categoría actualizada correctamente');
       } else {
         // Crear nueva categoría
+        console.log('Creando nueva categoría:', categoryData);
         await this.contentManager.createCategory(categoryData);
         notifications.success('Categoría creada correctamente');
       }
@@ -360,6 +365,7 @@ export class CategoryManager {
       this.attachEventListeners();
       this.showCategoriesList();
     } catch (error) {
+      console.error('Error al guardar categoría:', error);
       notifications.error(error.message);
     } finally {
       this.isLoading = false;
@@ -370,8 +376,13 @@ export class CategoryManager {
   // Editar categoría
   async editCategory(slug) {
     try {
-      const category = this.categories.find(c => c.slug === slug);
+      console.log(`Buscando categoría con ID/slug: ${slug}`);
+      
+      // En la base de datos, el campo 'id' se usa como slug
+      const category = this.categories.find(c => c.id === slug);
+      
       if (!category) {
+        console.error(`Categoría con ID/slug '${slug}' no encontrada`);
         notifications.error('Categoría no encontrada');
         return;
       }
@@ -393,8 +404,8 @@ export class CategoryManager {
       const slugInput = this.container.querySelector('#categorySlug');
       const descriptionInput = this.container.querySelector('#categoryDescription');
       
-      if (nameInput) nameInput.value = category.name;
-      if (slugInput) slugInput.value = category.slug;
+      if (nameInput) nameInput.value = category.name || '';
+      if (slugInput) slugInput.value = category.id || ''; // Usar el ID como slug
       if (descriptionInput) descriptionInput.value = category.description || '';
       
       // Mostrar botón de eliminar
@@ -404,16 +415,22 @@ export class CategoryManager {
         deleteButton.addEventListener('click', () => this.confirmDeleteCategory(slug));
       }
       
-      console.log(`Categoría '${category.name}' cargada para edición`);
+      console.log(`Categoría '${category.name}' (ID: ${category.id}) cargada para edición`);
     } catch (error) {
+      console.error(`Error al cargar la categoría: ${error.message}`);
       notifications.error(`Error al cargar la categoría: ${error.message}`);
     }
   }
 
   // Confirmar eliminación de categoría
   async confirmDeleteCategory(slug) {
-    const category = this.categories.find(c => c.slug === slug);
+    console.log(`Confirmando eliminación de categoría con ID/slug: ${slug}`);
+    
+    // En la base de datos, el campo 'id' se usa como slug
+    const category = this.categories.find(c => c.id === slug);
+    
     if (!category) {
+      console.error(`Categoría con ID/slug '${slug}' no encontrada para eliminar`);
       notifications.error('Categoría no encontrada');
       return;
     }
