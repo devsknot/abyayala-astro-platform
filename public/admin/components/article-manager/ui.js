@@ -1,10 +1,35 @@
 /**
  * Muestra el indicador de carga con un mensaje personalizado
  * @param {string} message - Mensaje a mostrar (opcional)
+ * @param {boolean} useGlobalOverlay - Si se debe usar un overlay global (opcional, por defecto true)
  */
-export function showLoading(message = 'Cargando...') {
+export function showLoading(message = 'Cargando...', useGlobalOverlay = true) {
   try {
-    // Crear o actualizar el overlay de carga
+    // Actualizar cualquier elemento de carga local en el contenedor
+    if (this.container) {
+      const loadingElement = this.container.querySelector('.loading');
+      if (loadingElement) {
+        loadingElement.innerHTML = message;
+        loadingElement.style.display = 'flex';
+      }
+
+      // También actualizar el contenedor de artículos si existe
+      const articlesContainer = this.container.querySelector('.articles-container');
+      if (articlesContainer) {
+        articlesContainer.classList.add('is-loading');
+      }
+
+      // Ocultar la grilla de artículos durante la carga
+      const articlesGrid = this.container.querySelector('.articles-grid');
+      if (articlesGrid) {
+        articlesGrid.style.display = 'none';
+      }
+    }
+
+    // Si no queremos usar el overlay global, terminamos aquí
+    if (!useGlobalOverlay) return;
+    
+    // Crear o actualizar el overlay de carga global
     let loadingOverlay = document.querySelector('.loading-overlay');
     
     if (!loadingOverlay) {
@@ -22,6 +47,8 @@ export function showLoading(message = 'Cargando...') {
     // Mostrar overlay
     loadingOverlay.style.display = 'flex';
     document.body.classList.add('loading');
+
+    console.log(`Indicador de carga mostrado: ${message}`);
   } catch (error) {
     console.error('Error al mostrar indicador de carga:', error);
   }
@@ -29,10 +56,36 @@ export function showLoading(message = 'Cargando...') {
 
 /**
  * Oculta el indicador de carga
+ * @param {boolean} hideGlobalOverlay - Si se debe ocultar el overlay global (opcional, por defecto true)
  */
-export function hideLoading() {
+export function hideLoading(hideGlobalOverlay = true) {
   try {
-    // Buscar overlay de carga
+    console.log('Ocultando indicador de carga...');
+
+    // Actualizar cualquier elemento de carga local en el contenedor
+    if (this.container) {
+      const loadingElement = this.container.querySelector('.loading');
+      if (loadingElement) {
+        loadingElement.style.display = 'none';
+      }
+
+      // También actualizar el contenedor de artículos si existe
+      const articlesContainer = this.container.querySelector('.articles-container');
+      if (articlesContainer) {
+        articlesContainer.classList.remove('is-loading');
+      }
+
+      // Mostrar la grilla de artículos después de la carga
+      const articlesGrid = this.container.querySelector('.articles-grid');
+      if (articlesGrid) {
+        articlesGrid.style.display = 'grid';
+      }
+    }
+
+    // Si no queremos ocultar el overlay global, terminamos aquí
+    if (!hideGlobalOverlay) return;
+    
+    // Buscar overlay de carga global
     const loadingOverlay = document.querySelector('.loading-overlay');
     
     // Ocultar si existe
