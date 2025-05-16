@@ -147,6 +147,9 @@ function renderApp(container) {
             <a href="#categories" data-view="categories" class="sidebar-link">
               <span class="mr-2">🏷️</span> Categorías
             </a>
+            <a href="#authors" data-view="authors" class="sidebar-link">
+              <span class="mr-2">👤</span> Autores
+            </a>
             <a href="#settings" data-view="settings" class="sidebar-link">
               <span class="mr-2">⚙️</span> Configuración
             </a>
@@ -284,6 +287,10 @@ function setupEvents(container) {
               case 'categories':
                 showDebugInfo('Cargando gestor de categorías...');
                 loadCategoriesManager(mainContent);
+                break;
+              case 'authors':
+                showDebugInfo('Cargando gestor de autores...');
+                loadAuthorsManager(mainContent);
                 break;
               case 'settings':
                 showDebugInfo('Cargando configuración...');
@@ -532,6 +539,82 @@ async function loadCategoriesManager(container) {
           <p class="text-red-700">Error al cargar el gestor de categorías: ${error.message}</p>
           <button class="mt-2 px-4 py-2 bg-red-500 text-white rounded" onclick="window.location.reload()">Reintentar</button>
         </div>
+      </div>
+    `;
+  }
+}
+
+// Cargar el gestor de autores
+function loadAuthorsManager(container) {
+  try {
+    showDebugInfo('Iniciando carga del gestor de autores');
+    
+    // Mostrar indicador de carga
+    container.innerHTML = `
+      <div class="loading-indicator flex justify-center items-center py-8">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
+      </div>
+    `;
+    
+    // Importar dinámicamente el ContentManager y AuthorManager
+    import('./content-manager.js')
+      .then(module => {
+        showDebugInfo('ContentManager importado correctamente');
+        const ContentManager = module.ContentManager;
+        
+        // Crear instancia del ContentManager
+        const contentManager = new ContentManager();
+        
+        // Importar el AuthorManager
+        import('./components/author-manager.js')
+          .then(authorModule => {
+            showDebugInfo('AuthorManager importado correctamente');
+            const AuthorManager = authorModule.AuthorManager;
+            
+            // Crear el contenedor para el gestor de autores
+            container.innerHTML = `<div id="author-manager-container"></div>`;
+            
+            // Inicializar el gestor de autores
+            const authorManager = new AuthorManager(contentManager);
+            authorManager.init('author-manager-container')
+              .then(() => {
+                showDebugInfo('Gestor de autores inicializado correctamente');
+              })
+              .catch(error => {
+                showDebugInfo(`Error al inicializar el gestor de autores: ${error.message}`);
+                container.innerHTML = `
+                  <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <strong class="font-bold">Error:</strong>
+                    <span class="block sm:inline">No se pudo cargar el gestor de autores. ${error.message}</span>
+                  </div>
+                `;
+              });
+          })
+          .catch(error => {
+            showDebugInfo(`Error al importar AuthorManager: ${error.message}`);
+            container.innerHTML = `
+              <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <strong class="font-bold">Error:</strong>
+                <span class="block sm:inline">No se pudo cargar el módulo de autores. ${error.message}</span>
+              </div>
+            `;
+          });
+      })
+      .catch(error => {
+        showDebugInfo(`Error al importar ContentManager: ${error.message}`);
+        container.innerHTML = `
+          <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong class="font-bold">Error:</strong>
+            <span class="block sm:inline">No se pudo cargar el gestor de contenido. ${error.message}</span>
+          </div>
+        `;
+      });
+  } catch (error) {
+    showDebugInfo(`Error al cargar el gestor de autores: ${error.message}`);
+    container.innerHTML = `
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <strong class="font-bold">Error:</strong>
+        <span class="block sm:inline">Error inesperado al cargar el gestor de autores. ${error.message}</span>
       </div>
     `;
   }
