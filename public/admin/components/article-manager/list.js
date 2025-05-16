@@ -324,15 +324,21 @@ export function setupPaginationEvents(currentPage, totalPages) {
  */
 export function showArticlesList() {
   try {
+    console.log('Mostrando lista de artículos...');
+    
     const articlesList = this.container.querySelector('.articles-list');
     const articleEditor = this.container.querySelector('.article-editor');
     
+    // Mostrar la lista de artículos
     if (articlesList) {
       articlesList.classList.add('active');
+      articlesList.style.display = 'block';
     }
     
+    // Ocultar completamente el editor
     if (articleEditor) {
       articleEditor.classList.remove('active');
+      articleEditor.style.display = 'none';
     }
     
     // Resetear el artículo actual
@@ -343,6 +349,8 @@ export function showArticlesList() {
       this.editor.destroy();
       this.editor = null;
     }
+    
+    console.log('Lista de artículos mostrada correctamente');
   } catch (error) {
     console.error('Error al mostrar lista de artículos:', error);
   }
@@ -353,16 +361,31 @@ export function showArticlesList() {
  */
 export function showArticleEditor() {
   try {
+    console.log('Mostrando editor de artículos...');
+    
     const articlesList = this.container.querySelector('.articles-list');
     const articleEditor = this.container.querySelector('.article-editor');
     
+    // Ocultar completamente la lista de artículos
     if (articlesList) {
       articlesList.classList.remove('active');
+      articlesList.style.display = 'none';
     }
     
+    // Mostrar el editor
     if (articleEditor) {
       articleEditor.classList.add('active');
+      articleEditor.style.display = 'block';
+      
+      // Asegurarse de que el editor esté visible y tenga el estilo correcto
+      articleEditor.style.width = '100%';
+      articleEditor.style.marginTop = '0';
+      
+      // Hacer scroll al inicio del editor
+      articleEditor.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+    
+    console.log('Editor de artículos mostrado correctamente');
   } catch (error) {
     console.error('Error al mostrar editor de artículos:', error);
   }
