@@ -16,13 +16,66 @@ export class MediaManager {
     
     // Si estamos en un entorno con Cloudflare Access
     const cfAccessToken = localStorage.getItem('cf_access_token');
-    if (cfAccessToken) {
-      headers['CF-Access-Client-Id'] = localStorage.getItem('cf_access_client_id');
+    const cfAccessClientId = localStorage.getItem('cf_access_client_id');
+    
+    // Obtener cookies por si los tokens están ahí (caso común con Cloudflare Access)
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {});
+    
+    console.log('MediaManager: Verificando autenticación...');
+    
+    // Intentar obtener los tokens de diferentes fuentes
+    if (cfAccessToken && cfAccessClientId) {
+      console.log('MediaManager: Usando tokens de localStorage');
+      headers['CF-Access-Client-Id'] = cfAccessClientId;
       headers['CF-Access-Jwt-Assertion'] = cfAccessToken;
+    } else if (cookies['CF_Authorization']) {
+      // Cloudflare a veces almacena el token JWT en una cookie llamada CF_Authorization
+      console.log('MediaManager: Usando token de cookie CF_Authorization');
+      headers['CF-Access-Jwt-Assertion'] = cookies['CF_Authorization'];
+      
+      // Si también hay un client-id en las cookies
+      if (cookies['CF_Access_Client_Id']) {
+        headers['CF-Access-Client-Id'] = cookies['CF_Access_Client_Id'];
+      } else {
+        // Usar un ID genérico para producción
+        headers['CF-Access-Client-Id'] = 'browser-client'; 
+      }
     } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       // En desarrollo local, usar cabeceras simuladas
+      console.log('MediaManager: Usando tokens simulados para desarrollo local');
       headers['CF-Access-Client-Id'] = 'development-client-id';
       headers['CF-Access-Jwt-Assertion'] = 'development-token';
+    } else {
+      // En entorno de producción sin tokens, intentar una estrategia alternativa
+      console.log('MediaManager: No se encontraron tokens de autenticación. Usando estrategia de fallback');
+      
+      // Usar el token de autenticación de la sesión actual si existe
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenParam = urlParams.get('cf_access_token');
+      
+      if (tokenParam) {
+        console.log('MediaManager: Usando token de parámetro URL');
+        headers['CF-Access-Jwt-Assertion'] = tokenParam;
+        headers['CF-Access-Client-Id'] = 'browser-client';
+        
+        // Guardar para futuros usos
+        localStorage.setItem('cf_access_token', tokenParam);
+        localStorage.setItem('cf_access_client_id', 'browser-client');
+      } else {
+        // En última instancia, indicar que se requiere autenticación
+        console.warn('MediaManager: No se encontraron tokens de autenticación válidos');
+      }
+    }
+    
+    // Comprobar si tenemos los headers necesarios
+    if (headers['CF-Access-Jwt-Assertion']) {
+      console.log('MediaManager: Headers de autenticación configurados correctamente');
+    } else {
+      console.warn('MediaManager: No se pudieron configurar headers de autenticación');
     }
     
     // Si no es FormData, añadir Content-Type
@@ -37,20 +90,161 @@ export class MediaManager {
   // Obtener todos los archivos multimedia
   async getMediaFiles() {
     try {
-      const response = await fetch(`${this.apiBase}/list`, {
+      console.log('MediaManager: Solicitando lista de archivos multimedia...');
+      
+      // Intentar primero con el endpoint principal
+      let response = await fetch(`${this.apiBase}/list`, {
         headers: this.getAuthHeaders()
       });
       
+      // Si la respuesta es exitosa, procesar los datos
       if (response.ok) {
         const data = await response.json();
-        return data.files || [];
+        const files = data.files || [];
+        console.log('MediaManager: Archivos multimedia cargados correctamente:', files.length);
+        
+        // Guardar en cache para uso futuro
+        if (files.length > 0) {
+          this.saveMediaFilesToCache(files);
+        }
+        
+        return files;
       }
       
-      console.warn(`API no disponible (${response.status}). No se pueden cargar los archivos multimedia.`);
+      // En caso de error 401 (No autorizado), intentar refrescar los tokens si es posible
+      if (response.status === 401) {
+        console.warn('MediaManager: Error de autenticación (401). Intentando refrescar tokens...');
+        
+        // Intentar obtener tokens de la sesión actual
+        const sessionInfo = this.attemptToRefreshTokens();
+        
+        // Si se obtuvieron nuevos tokens, intentar de nuevo
+        if (sessionInfo && sessionInfo.token) {
+          console.log('MediaManager: Tokens refrescados. Reintentando solicitud...');
+          
+          // Guardar los nuevos tokens
+          localStorage.setItem('cf_access_token', sessionInfo.token);
+          if (sessionInfo.clientId) {
+            localStorage.setItem('cf_access_client_id', sessionInfo.clientId);
+          }
+          
+          // Reintentar la solicitud con los nuevos tokens
+          response = await fetch(`${this.apiBase}/list`, {
+            headers: this.getAuthHeaders()
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('MediaManager: Archivos multimedia cargados correctamente después de refrescar tokens:', data.files?.length || 0);
+            return data.files || [];
+          }
+        }
+      }
+      
+      // Si llegamos aquí, no se pudieron cargar los archivos
+      console.warn(`MediaManager: API no disponible (${response.status}). No se pueden cargar los archivos multimedia.`);
+      
+      // Intentar cargar desde storage local en última instancia
+      const cachedFiles = this.getCachedMediaFiles();
+      if (cachedFiles && cachedFiles.length > 0) {
+        console.log('MediaManager: Usando archivos en caché:', cachedFiles.length);
+        return cachedFiles;
+      }
+      
       return [];
     } catch (apiError) {
-      console.error('Error al conectar con la API:', apiError);
+      console.error('MediaManager: Error al conectar con la API:', apiError);
+      
+      // En caso de error de red, intentar usar el cache local
+      const cachedFiles = this.getCachedMediaFiles();
+      if (cachedFiles && cachedFiles.length > 0) {
+        console.log('MediaManager: Usando archivos en caché debido a error de red:', cachedFiles.length);
+        return cachedFiles;
+      }
+      
       return [];
+    }
+  }
+  
+  // Intentar refrescar los tokens de autenticación
+  attemptToRefreshTokens() {
+    try {
+      // Comprobar si tenemos tokens en cookies
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        acc[key] = value;
+        return acc;
+      }, {});
+      
+      if (cookies['CF_Authorization']) {
+        return {
+          token: cookies['CF_Authorization'],
+          clientId: cookies['CF_Access_Client_Id'] || 'browser-client',
+          source: 'cookie'
+        };
+      }
+      
+      // Comprobar si hay un token en la URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenParam = urlParams.get('cf_access_token');
+      if (tokenParam) {
+        return {
+          token: tokenParam,
+          clientId: 'browser-client',
+          source: 'url'
+        };
+      }
+      
+      // No se encontraron tokens válidos
+      return null;
+    } catch (error) {
+      console.error('MediaManager: Error al intentar refrescar tokens:', error);
+      return null;
+    }
+  }
+  
+  // Obtener archivos multimedia en caché si existen
+  getCachedMediaFiles() {
+    try {
+      const cachedFilesJson = localStorage.getItem('media_files_cache');
+      if (!cachedFilesJson) return null;
+      
+      const cachedData = JSON.parse(cachedFilesJson);
+      
+      // Verificar si el caché está expirado (más de 24 horas)
+      const cacheTime = new Date(cachedData.timestamp);
+      const now = new Date();
+      const diffHours = Math.abs(now - cacheTime) / 36e5; // Convertir a horas
+      
+      if (diffHours > 24) {
+        console.log('MediaManager: Cache expirado, eliminando...');
+        localStorage.removeItem('media_files_cache');
+        return null;
+      }
+      
+      return cachedData.files;
+    } catch (error) {
+      console.error('MediaManager: Error al leer cache:', error);
+      // En caso de error, eliminar el cache corrupto
+      localStorage.removeItem('media_files_cache');
+      return null;
+    }
+  }
+  
+  // Guardar archivos multimedia en cache
+  saveMediaFilesToCache(files) {
+    try {
+      if (!files || !Array.isArray(files)) return;
+      
+      const cacheData = {
+        files: files,
+        timestamp: new Date().toISOString()
+      };
+      
+      localStorage.setItem('media_files_cache', JSON.stringify(cacheData));
+      console.log('MediaManager: Archivos guardados en cache:', files.length);
+    } catch (error) {
+      console.error('MediaManager: Error al guardar en cache:', error);
     }
   }
 
