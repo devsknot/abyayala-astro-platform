@@ -367,10 +367,11 @@ async function loadArticlesManager(container) {
     let articleManagerModule, contentManagerModule, mediaManagerModule, notificationsModule;
     
     try {
-      articleManagerModule = await import('./components/article-manager.js');
-      showDebugInfo('Módulo article-manager.js cargado correctamente');
+      // Importar el nuevo módulo modular
+      articleManagerModule = await import('./components/article-manager/index.js');
+      showDebugInfo('Módulo article-manager/index.js cargado correctamente');
     } catch (importError) {
-      showDebugInfo(`Error al cargar el módulo article-manager.js: ${importError.message}`);
+      showDebugInfo(`Error al cargar el módulo article-manager/index.js: ${importError.message}`);
       throw new Error(`Error al importar ArticleManager: ${importError.message}`);
     }
     
@@ -416,10 +417,10 @@ async function loadArticlesManager(container) {
     const contentManager = new ContentManager();
     const mediaManager = new MediaManager();
     
-    // Crear instancia y renderizar con el nuevo formato - con mejor manejo de errores
+    // Crear instancia del ArticleManager modular
     let articleManager;
     try {
-      articleManager = new ArticleManager(null, {
+      articleManager = new ArticleManager(articleContainer, {
         contentManager: contentManager,
         mediaManager: mediaManager,
         notificationManager: notifications
@@ -430,13 +431,13 @@ async function loadArticlesManager(container) {
       throw new Error(`Error al instanciar ArticleManager: ${constructorError.message}`);
     }
     
-    // Renderizar en el contenedor (método asíncrono) con mejor manejo de errores
+    // Inicializar el gestor de artículos
     try {
-      await articleManager.render(articleContainer);
+      await articleManager.init();
       showDebugInfo('Gestor de artículos inicializado correctamente');
-    } catch (renderError) {
-      showDebugInfo(`Error al renderizar el gestor de artículos: ${renderError.message}`);
-      throw new Error(`Error al renderizar ArticleManager: ${renderError.message}`);
+    } catch (initError) {
+      showDebugInfo(`Error al inicializar el gestor de artículos: ${initError.message}`);
+      throw new Error(`Error al inicializar ArticleManager: ${initError.message}`);
     }
   } catch (error) {
     showDebugInfo(`Error al cargar el gestor de artículos: ${error.message}`);
