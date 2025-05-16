@@ -377,6 +377,177 @@ export class MediaManager {
   }
   
   /**
+   * Renderiza una lista de archivos multimedia en el grid
+   * @param {Array} files - Lista de archivos a renderizar
+   * @param {HTMLElement} mediaGrid - Elemento donde renderizar los archivos
+   * @param {Object} options - Opciones de configuración
+   */
+  renderMediaItems(files, mediaGrid, options = {}) {
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      mediaGrid.innerHTML = '<p class="no-media">No hay archivos multimedia disponibles.</p>';
+      return;
+    }
+    
+    // Agregar cada archivo al grid
+    files.forEach(file => {
+      const isImg = file.type && file.type.startsWith('image');
+      
+      // Generar URL para la miniatura con manejo de errores
+      let thumbnail;
+      try {
+        thumbnail = isImg ? this.generateThumbnailUrl(file.path) : '/admin/assets/document-icon.png';
+        console.log('MediaBrowser - Miniatura generada para:', file.name, thumbnail);
+      } catch (error) {
+        console.error('Error al generar miniatura:', error);
+        thumbnail = '/admin/assets/document-icon.png';
+      }
+      
+      const mediaItem = document.createElement('div');
+      mediaItem.className = 'media-item';
+      mediaItem.dataset.path = file.path || '';
+      mediaItem.dataset.name = file.name || 'Sin nombre';
+      
+      // Crear elemento de miniatura con manejo de errores
+      const thumbnailContainer = document.createElement('div');
+      thumbnailContainer.className = 'media-thumbnail';
+      
+      // Crear un div con el nombre del archivo como alternativa a la imagen
+      const fallbackDiv = document.createElement('div');
+      fallbackDiv.className = 'media-fallback';
+      fallbackDiv.style.width = '100%';
+      fallbackDiv.style.height = '100%';
+      fallbackDiv.style.display = 'flex';
+      fallbackDiv.style.alignItems = 'center';
+      fallbackDiv.style.justifyContent = 'center';
+      fallbackDiv.style.backgroundColor = '#f0f4f8';
+      fallbackDiv.style.color = '#4a5568';
+      fallbackDiv.style.fontSize = '0.8rem';
+      fallbackDiv.style.padding = '8px';
+      fallbackDiv.style.textAlign = 'center';
+      fallbackDiv.style.wordBreak = 'break-word';
+      
+      // Determinar el tipo de archivo para mostrar un icono adecuado
+      let fileType = 'archivo';
+      if (file.path) {
+        if (file.path.endsWith('.jpg') || file.path.endsWith('.jpeg') || file.path.endsWith('.png') || file.path.endsWith('.gif')) {
+          fileType = 'imagen';
+        } else if (file.path.endsWith('.pdf')) {
+          fileType = 'PDF';
+        } else if (file.path.endsWith('.doc') || file.path.endsWith('.docx')) {
+          fileType = 'documento';
+        }
+      }
+      
+      fallbackDiv.innerHTML = `
+        <div>
+          <div style="font-size: 1.5rem; margin-bottom: 5px;">📄</div>
+          <div>${fileType}</div>
+          <div style="font-size: 0.7rem; margin-top: 5px;">${file.name || 'Sin nombre'}</div>
+        </div>
+      `;
+      
+      // Primero agregar el fallback
+      thumbnailContainer.appendChild(fallbackDiv);
+      
+      // Luego intentar cargar la imagen
+      if (isImg) {
+        const img = document.createElement('img');
+        img.alt = file.name || 'Archivo';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        img.style.position = 'absolute';
+        img.style.top = '0';
+        img.style.left = '0';
+        img.style.backgroundColor = '#fff';
+        
+        // Manejar errores de carga de imagen
+        img.onerror = () => {
+          console.warn('Error al cargar miniatura:', thumbnail);
+          // No hacer nada más, ya tenemos el fallback visible
+          img.style.display = 'none';
+        };
+        
+        // Si la imagen carga correctamente, ocultar el fallback
+        img.onload = () => {
+          fallbackDiv.style.display = 'none';
+        };
+        
+        // Establecer el src después de configurar los handlers
+        img.src = thumbnail;
+        thumbnailContainer.appendChild(img);
+      }
+      
+      mediaItem.appendChild(thumbnailContainer);
+      
+      // Agregar información del archivo
+      const infoContainer = document.createElement('div');
+      infoContainer.className = 'media-info';
+      
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'media-name';
+      nameSpan.textContent = file.name || 'Sin nombre';
+      infoContainer.appendChild(nameSpan);
+      
+      mediaItem.appendChild(infoContainer);
+      
+      // Agregar evento para seleccionar el archivo
+      mediaItem.addEventListener('click', () => {
+        try {
+          console.log('MediaBrowser - Archivo seleccionado:', file);
+          
+          // Llamar al callback de selección si existe
+          if (options.onSelect && typeof options.onSelect === 'function') {
+            // Generar URL pública para el archivo
+            const fileUrl = this.getPublicUrl(file.path);
+            console.log('MediaBrowser - URL generada para selección:', fileUrl);
+            
+            // Crear objeto con información completa
+            const mediaInfo = {
+              ...file,
+              url: fileUrl,
+              // Asegurarse de que la URL sea absoluta
+              absoluteUrl: fileUrl.startsWith('http') ? fileUrl : `${window.location.origin}${fileUrl}`
+            };
+            
+            // Mostrar información completa en consola para depuración
+            console.log('MediaBrowser - Información completa del archivo seleccionado:', mediaInfo);
+            
+            // Llamar al callback con la información
+            options.onSelect(mediaInfo);
+          }
+          
+          // Cerrar el modal
+          const mediaBrowser = document.getElementById('media-browser-modal');
+          if (mediaBrowser) {
+            mediaBrowser.style.display = 'none';
+          }
+        } catch (error) {
+          console.error('Error al seleccionar archivo:', error);
+          
+          // Intentar recuperarse del error
+          if (options.onSelect && typeof options.onSelect === 'function') {
+            // Crear un objeto con la información mínima necesaria
+            options.onSelect({
+              name: file.name || 'archivo',
+              path: file.path || '',
+              url: file.path ? `/api/media/${file.path.replace(/^\//, '')}` : ''
+            });
+          }
+          
+          // Cerrar el modal
+          const mediaBrowser = document.getElementById('media-browser-modal');
+          if (mediaBrowser) {
+            mediaBrowser.style.display = 'none';
+          }
+        }
+      });
+      
+      mediaGrid.appendChild(mediaItem);
+    });
+  }
+  
+  /**
    * Sube un archivo multimedia y devuelve la información del archivo subido
    * @param {File} file - Archivo a subir
    * @returns {Promise<Object>} - Objeto con la URL y otra información del archivo
@@ -436,6 +607,9 @@ export class MediaManager {
               <button class="close-modal">&times;</button>
             </div>
             <div class="modal-body">
+              <div class="search-container">
+                <input type="text" class="search-input" placeholder="Buscar imágenes...">
+              </div>
               <div class="media-browser-loading">Cargando archivos...</div>
               <div class="media-browser-grid"></div>
             </div>
@@ -455,14 +629,62 @@ export class MediaManager {
       // Obtener el grid donde se mostrarán los archivos
       const mediaGrid = mediaBrowser.querySelector('.media-browser-grid');
       const loadingElement = mediaBrowser.querySelector('.media-browser-loading');
+      const searchInput = mediaBrowser.querySelector('.search-input');
       
       // Limpiar el grid
       mediaGrid.innerHTML = '';
       mediaGrid.style.display = 'none';
       loadingElement.style.display = 'block';
       
+      // Almacenar los archivos para la búsqueda
+      let allMediaFiles = [];
+      
+      // Función para renderizar los archivos filtrados
+      const renderFilteredFiles = (query = '') => {
+        // Filtrar archivos por nombre
+        const filteredFiles = allMediaFiles.filter(file => {
+          if (!query) return true;
+          
+          const searchTerms = query.toLowerCase().split(' ');
+          const fileName = (file.name || '').toLowerCase();
+          const filePath = (file.path || '').toLowerCase();
+          
+          // Comprobar si todos los términos de búsqueda están en el nombre o ruta
+          return searchTerms.every(term => 
+            fileName.includes(term) || filePath.includes(term)
+          );
+        });
+        
+        // Limpiar el grid
+        mediaGrid.innerHTML = '';
+        
+        // Mostrar mensaje si no hay resultados
+        if (filteredFiles.length === 0) {
+          mediaGrid.innerHTML = `<p class="no-media">No se encontraron archivos${query ? ' para "' + query + '"' : ''}.</p>`;
+          return;
+        }
+        
+        // Renderizar los archivos filtrados
+        this.renderMediaItems(filteredFiles, mediaGrid, options);
+      };
+      
+      // Agregar evento de búsqueda al input
+      if (searchInput) {
+        // Limpiar eventos anteriores
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+        
+        // Agregar nuevo evento de búsqueda
+        newSearchInput.addEventListener('input', (e) => {
+          const query = e.target.value.trim();
+          renderFilteredFiles(query);
+        });
+      }
+      
       // Cargar los archivos multimedia
       this.getMediaFiles().then(files => {
+        // Guardar todos los archivos para la búsqueda
+        allMediaFiles = files || [];
         loadingElement.style.display = 'none';
         mediaGrid.style.display = 'grid';
         
@@ -471,157 +693,8 @@ export class MediaManager {
           return;
         }
         
-        // Agregar cada archivo al grid
-        files.forEach(file => {
-          const isImg = file.type && file.type.startsWith('image');
-          
-          // Generar URL para la miniatura con manejo de errores
-          let thumbnail;
-          try {
-            thumbnail = isImg ? this.generateThumbnailUrl(file.path) : '/admin/assets/document-icon.png';
-            console.log('MediaBrowser - Miniatura generada para:', file.name, thumbnail);
-          } catch (error) {
-            console.error('Error al generar miniatura:', error);
-            thumbnail = '/admin/assets/document-icon.png';
-          }
-          
-          const mediaItem = document.createElement('div');
-          mediaItem.className = 'media-item';
-          mediaItem.dataset.path = file.path || '';
-          mediaItem.dataset.name = file.name || 'Sin nombre';
-          
-          // Crear elemento de miniatura con manejo de errores
-          const thumbnailContainer = document.createElement('div');
-          thumbnailContainer.className = 'media-thumbnail';
-          
-          // Crear un div con el nombre del archivo como alternativa a la imagen
-          const fallbackDiv = document.createElement('div');
-          fallbackDiv.className = 'media-fallback';
-          fallbackDiv.style.width = '100%';
-          fallbackDiv.style.height = '100%';
-          fallbackDiv.style.display = 'flex';
-          fallbackDiv.style.alignItems = 'center';
-          fallbackDiv.style.justifyContent = 'center';
-          fallbackDiv.style.backgroundColor = '#f0f4f8';
-          fallbackDiv.style.color = '#4a5568';
-          fallbackDiv.style.fontSize = '0.8rem';
-          fallbackDiv.style.padding = '8px';
-          fallbackDiv.style.textAlign = 'center';
-          fallbackDiv.style.wordBreak = 'break-word';
-          
-          // Determinar el tipo de archivo para mostrar un icono adecuado
-          let fileType = 'archivo';
-          if (file.path) {
-            if (file.path.endsWith('.jpg') || file.path.endsWith('.jpeg') || file.path.endsWith('.png') || file.path.endsWith('.gif')) {
-              fileType = 'imagen';
-            } else if (file.path.endsWith('.pdf')) {
-              fileType = 'PDF';
-            } else if (file.path.endsWith('.doc') || file.path.endsWith('.docx')) {
-              fileType = 'documento';
-            }
-          }
-          
-          fallbackDiv.innerHTML = `
-            <div>
-              <div style="font-size: 1.5rem; margin-bottom: 5px;">📄</div>
-              <div>${fileType}</div>
-              <div style="font-size: 0.7rem; margin-top: 5px;">${file.name || 'Sin nombre'}</div>
-            </div>
-          `;
-          
-          // Primero agregar el fallback
-          thumbnailContainer.appendChild(fallbackDiv);
-          
-          // Luego intentar cargar la imagen
-          if (isImg) {
-            const img = document.createElement('img');
-            img.alt = file.name || 'Archivo';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'contain';
-            img.style.position = 'absolute';
-            img.style.top = '0';
-            img.style.left = '0';
-            img.style.backgroundColor = '#fff';
-            
-            // Manejar errores de carga de imagen
-            img.onerror = () => {
-              console.warn('Error al cargar miniatura:', thumbnail);
-              // No hacer nada más, ya tenemos el fallback visible
-              img.style.display = 'none';
-            };
-            
-            // Si la imagen carga correctamente, ocultar el fallback
-            img.onload = () => {
-              fallbackDiv.style.display = 'none';
-            };
-            
-            // Establecer el src después de configurar los handlers
-            img.src = thumbnail;
-            thumbnailContainer.appendChild(img);
-          }
-          
-          mediaItem.appendChild(thumbnailContainer);
-          
-          // Agregar información del archivo
-          const infoContainer = document.createElement('div');
-          infoContainer.className = 'media-info';
-          
-          const nameSpan = document.createElement('span');
-          nameSpan.className = 'media-name';
-          nameSpan.textContent = file.name || 'Sin nombre';
-          infoContainer.appendChild(nameSpan);
-          
-          mediaItem.appendChild(infoContainer);
-          
-          // Agregar evento para seleccionar el archivo
-          mediaItem.addEventListener('click', () => {
-            try {
-              console.log('MediaBrowser - Archivo seleccionado:', file);
-              
-              // Llamar al callback de selección si existe
-              if (options.onSelect && typeof options.onSelect === 'function') {
-                // Generar URL pública para el archivo
-                const fileUrl = this.getPublicUrl(file.path);
-                console.log('MediaBrowser - URL generada para selección:', fileUrl);
-                
-                // Crear objeto con información completa
-                const mediaInfo = {
-                  ...file,
-                  url: fileUrl,
-                  // Asegurarse de que la URL sea absoluta
-                  absoluteUrl: fileUrl.startsWith('http') ? fileUrl : `${window.location.origin}${fileUrl}`
-                };
-                
-                // Mostrar información completa en consola para depuración
-                console.log('MediaBrowser - Información completa del archivo seleccionado:', mediaInfo);
-                
-                // Llamar al callback con la información
-                options.onSelect(mediaInfo);
-              }
-              
-              // Cerrar el modal
-              mediaBrowser.style.display = 'none';
-            } catch (error) {
-              console.error('Error al seleccionar archivo:', error);
-              
-              // Intentar recuperarse del error
-              if (options.onSelect && typeof options.onSelect === 'function') {
-                // Crear un objeto con la información mínima necesaria
-                options.onSelect({
-                  name: file.name || 'archivo',
-                  path: file.path || '',
-                  url: file.path ? `/api/media/${file.path.replace(/^\//, '')}` : ''
-                });
-              }
-              
-              // Cerrar el modal
-              mediaBrowser.style.display = 'none';
-            }
-          });
-          
-          mediaGrid.appendChild(mediaItem);
-        });
+        // Usar el método renderMediaItems para renderizar los archivos
+        this.renderMediaItems(files, mediaGrid, options);
       }).catch(error => {
         console.error('Error al cargar archivos multimedia:', error);
         loadingElement.style.display = 'none';
