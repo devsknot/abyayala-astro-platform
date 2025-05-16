@@ -400,11 +400,20 @@ export async function saveArticle() {
     
     // Determinar si es crear o actualizar
     let response;
-    if (this.currentArticle && this.currentArticle.id) {
+    if (this.currentArticle) {
       // Actualizar artículo existente
-      console.log(`Actualizando artículo con ID: ${this.currentArticle.id}`);
-      articleData.id = this.currentArticle.id;
-      response = await this.contentManager.updateArticle(articleData);
+      console.log(`Actualizando artículo existente:`, this.currentArticle);
+      
+      // Usar el slug original para la actualización
+      const originalSlug = this.currentArticle.slug;
+      
+      // Asegurarse de que tenemos el ID si está disponible
+      if (this.currentArticle.id) {
+        articleData.id = this.currentArticle.id;
+      }
+      
+      console.log(`Actualizando artículo con slug: ${originalSlug}`);
+      response = await this.contentManager.updateArticle(originalSlug, articleData);
       
       if (response) {
         this.notificationManager.success('Artículo actualizado con éxito');
