@@ -69,17 +69,53 @@ export class CategoryManager {
     
     this.container.innerHTML = `
       <div class="bg-white shadow-md rounded-lg p-6">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800">Gestión de Categorías</h2>
+        <!-- Header con título y botón -->
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-800">Gestión de Categorías</h2>
+          <button id="createCategoryBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition duration-300">
+            Crear Nueva Categoría
+          </button>
+        </div>
         
         <!-- Indicador de carga -->
         <div class="loading-indicator flex justify-center items-center py-8" style="display: none;">
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
         </div>
         
-        <!-- Formulario para crear/editar categorías -->
-        <div class="category-form mb-8 bg-gray-50 p-4 rounded-md">
-          <h3 class="text-lg font-semibold mb-4 category-form-title">Crear Nueva Categoría</h3>
-          <form id="categoryForm">
+        <!-- Vista de lista de categorías -->
+        <div class="categories-list active">
+          <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-200">
+              <thead>
+                <tr>
+                  <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Nombre</th>
+                  <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Slug</th>
+                  <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Descripción</th>
+                  <th class="py-3 px-4 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="categoriesTableBody">
+                ${this.renderCategoriesTable()}
+              </tbody>
+            </table>
+          </div>
+          ${this.categories.length === 0 ? '<p class="text-gray-500 text-center py-4">No hay categorías disponibles</p>' : ''}
+        </div>
+        
+        <!-- Vista de formulario para crear/editar categorías -->
+        <div class="category-editor" style="display: none;">
+          <div class="mb-4">
+            <button class="back-to-list-btn flex items-center text-blue-600 hover:text-blue-800 transition duration-300">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+              </svg>
+              Volver a la lista
+            </button>
+          </div>
+          
+          <h3 class="text-xl font-bold mb-4 category-form-title">Crear Nueva Categoría</h3>
+          
+          <form id="categoryForm" class="bg-gray-50 p-6 rounded-md shadow-sm">
             <input type="hidden" id="categoryId" value="">
             
             <div class="mb-4">
@@ -98,36 +134,15 @@ export class CategoryManager {
               <textarea id="categoryDescription" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" rows="3"></textarea>
             </div>
             
-            <div class="flex justify-between">
+            <div class="flex justify-between mt-6">
               <button type="submit" id="saveCategory" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition duration-300">
                 Guardar Categoría
               </button>
-              <button type="button" id="cancelEdit" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md transition duration-300" style="display: none;">
-                Cancelar
+              <button type="button" id="deleteCategory" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition duration-300" style="display: none;">
+                Eliminar Categoría
               </button>
             </div>
           </form>
-        </div>
-        
-        <!-- Lista de categorías -->
-        <div class="category-list">
-          <h3 class="text-lg font-semibold mb-4">Categorías Existentes</h3>
-          <div class="overflow-x-auto">
-            <table class="min-w-full bg-white border border-gray-200">
-              <thead>
-                <tr>
-                  <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Nombre</th>
-                  <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Slug</th>
-                  <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Descripción</th>
-                  <th class="py-3 px-4 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="categoriesTableBody">
-                ${this.renderCategoriesTable()}
-              </tbody>
-            </table>
-          </div>
-          ${this.categories.length === 0 ? '<p class="text-gray-500 text-center py-4">No hay categorías disponibles</p>' : ''}
         </div>
       </div>
     `;
@@ -156,20 +171,83 @@ export class CategoryManager {
     `).join('');
   }
 
+  // Mostrar el editor de categorías
+  showCategoryEditor() {
+    try {
+      console.log('Mostrando editor de categorías...');
+      
+      const categoriesList = this.container.querySelector('.categories-list');
+      const categoryEditor = this.container.querySelector('.category-editor');
+      
+      // Ocultar la lista de categorías
+      if (categoriesList) {
+        categoriesList.classList.remove('active');
+        categoriesList.style.display = 'none';
+      }
+      
+      // Mostrar el editor
+      if (categoryEditor) {
+        categoryEditor.style.display = 'block';
+        categoryEditor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      
+      console.log('Editor de categorías mostrado correctamente');
+    } catch (error) {
+      console.error('Error al mostrar editor de categorías:', error);
+    }
+  }
+  
+  // Mostrar la lista de categorías
+  showCategoriesList() {
+    try {
+      console.log('Mostrando lista de categorías...');
+      
+      const categoriesList = this.container.querySelector('.categories-list');
+      const categoryEditor = this.container.querySelector('.category-editor');
+      
+      // Mostrar la lista de categorías
+      if (categoriesList) {
+        categoriesList.classList.add('active');
+        categoriesList.style.display = 'block';
+      }
+      
+      // Ocultar el editor
+      if (categoryEditor) {
+        categoryEditor.style.display = 'none';
+      }
+      
+      // Resetear el formulario
+      this.resetForm();
+      
+      console.log('Lista de categorías mostrada correctamente');
+    } catch (error) {
+      console.error('Error al mostrar lista de categorías:', error);
+    }
+  }
+  
   // Adjuntar event listeners
   attachEventListeners() {
     if (!this.container) return;
+    
+    // Botón para crear nueva categoría
+    const createCategoryBtn = this.container.querySelector('#createCategoryBtn');
+    if (createCategoryBtn) {
+      createCategoryBtn.addEventListener('click', () => {
+        this.resetForm();
+        this.showCategoryEditor();
+      });
+    }
+    
+    // Botón para volver a la lista
+    const backToListBtn = this.container.querySelector('.back-to-list-btn');
+    if (backToListBtn) {
+      backToListBtn.addEventListener('click', () => this.showCategoriesList());
+    }
     
     // Formulario de categoría
     const categoryForm = this.container.querySelector('#categoryForm');
     if (categoryForm) {
       categoryForm.addEventListener('submit', (e) => this.handleSaveCategory(e));
-    }
-    
-    // Botón cancelar edición
-    const cancelButton = this.container.querySelector('#cancelEdit');
-    if (cancelButton) {
-      cancelButton.addEventListener('click', () => this.resetForm());
     }
     
     // Generar slug automáticamente desde el nombre
@@ -248,11 +326,11 @@ export class CategoryManager {
         notifications.success('Categoría creada correctamente');
       }
       
-      // Recargar categorías y resetear formulario
+      // Recargar categorías y volver a la lista
       await this.loadCategories();
-      this.resetForm();
       this.render();
       this.attachEventListeners();
+      this.showCategoriesList();
     } catch (error) {
       notifications.error(error.message);
     } finally {
@@ -273,6 +351,9 @@ export class CategoryManager {
       // Guardar la categoría que estamos editando
       this.currentEditingCategory = category;
       
+      // Mostrar el editor de categorías
+      this.showCategoryEditor();
+      
       // Actualizar título del formulario
       const formTitle = this.container.querySelector('.category-form-title');
       if (formTitle) {
@@ -288,14 +369,14 @@ export class CategoryManager {
       if (slugInput) slugInput.value = category.slug;
       if (descriptionInput) descriptionInput.value = category.description || '';
       
-      // Mostrar botón cancelar
-      const cancelButton = this.container.querySelector('#cancelEdit');
-      if (cancelButton) {
-        cancelButton.style.display = 'block';
+      // Mostrar botón de eliminar
+      const deleteButton = this.container.querySelector('#deleteCategory');
+      if (deleteButton) {
+        deleteButton.style.display = 'block';
+        deleteButton.addEventListener('click', () => this.confirmDeleteCategory(slug));
       }
       
-      // Hacer scroll al formulario
-      this.container.querySelector('.category-form').scrollIntoView({ behavior: 'smooth' });
+      console.log(`Categoría '${category.name}' cargada para edición`);
     } catch (error) {
       notifications.error(`Error al cargar la categoría: ${error.message}`);
     }
@@ -360,13 +441,17 @@ export class CategoryManager {
       formTitle.textContent = 'Crear Nueva Categoría';
     }
     
-    // Ocultar botón cancelar
-    const cancelButton = this.container.querySelector('#cancelEdit');
-    if (cancelButton) {
-      cancelButton.style.display = 'none';
+    // Ocultar botón de eliminar
+    const deleteButton = this.container.querySelector('#deleteCategory');
+    if (deleteButton) {
+      deleteButton.style.display = 'none';
+      // Eliminar event listeners anteriores
+      deleteButton.replaceWith(deleteButton.cloneNode(true));
     }
     
     // Limpiar categoría en edición
     this.currentEditingCategory = null;
+    
+    console.log('Formulario de categoría reseteado');
   }
 }
