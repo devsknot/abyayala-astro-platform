@@ -65,67 +65,106 @@ function transformArticleForFrontend(article: any) {
 
 // Handle GET requests (all articles or specific one)
 export async function GET(context: APIContext) {
+    // ========== CONFIGURACIÓN DE SEGURIDAD PARA DEPURACIÓN ==========
+    // Capturar errores no controlados globalmente
     try {
-        // Obtener el slug de los parámetros
-        // En rutas [...slug], el parámetro viene como un array, así que necesitamos procesarlo
+        // ========== EXTRACCIÓN Y VALIDACIÓN DEL SLUG ==========
+        // Extraer el parámetro slug
         let slugParam = context.params.slug;
-        console.log(`[articles/...slug.ts] GET invoked. Raw slug param:`, slugParam);
+        console.log(`[articles/API] GET request received. Raw slug:`, slugParam);
         
-        // Acceder a la base de datos desde el contexto
-        // @ts-ignore - Ignorar errores de TypeScript relacionados con context.locals.runtime
-        const db = context.locals.runtime?.env?.DB;
-        // @ts-ignore
-        const env = context.locals.runtime?.env;
+        // Capturar la URL completa para diagnóstico
+        const requestUrl = context.request.url;
+        console.log(`[articles/API] Request URL: ${requestUrl}`);
         
+        // ========== ACCESO A LA BASE DE DATOS ==========
+        // @ts-ignore - Evitar errores de TypeScript con la propiedad runtime
+        const db = context.locals?.runtime?.env?.DB;
+        
+        // Si no hay conexión a la base de datos, devolver un error claro
         if (!db) {
-            console.error('[articles/...slug.ts] Database connection not available');
+            console.error('[articles/API] DATABASE CONNECTION ERROR: context.locals.runtime.env.DB is undefined');
+            console.log('[articles/API] Context structure:', JSON.stringify(context.locals || {}));
             return new Response(JSON.stringify({
                 success: false,
-                error: 'Database connection not available'
+                error: 'Database connection error',
+                details: 'The server could not establish a connection to the database.'
             }), {
-                status: 500,
-                headers: commonHeaders
+                status: 503, // Service Unavailable es más apropiado para problemas de DB
+                headers: {
+                    ...commonHeaders,
+                    'Cache-Control': 'no-store'
+                }
             });
         }
         
-        // Verificar si es una solicitud de búsqueda
-        const url = new URL(context.request.url);
+        // ========== DETECCIÓN DE TIPO DE SOLICITUD ==========
+        // Verificar si es una búsqueda usando la URL
+        const url = new URL(requestUrl);
         if (url.pathname.includes('/search')) {
-            console.log('[articles/...slug.ts] Handling search request');
+            console.log('[articles/API] Detected search request');
             return handleGetArticles(db, commonHeaders, context.request);
         }
         
-        // Procesar el parámetro slug que puede venir como array en rutas [...slug]
+        // ========== PROCESAMIENTO DE PARÁMETRO SLUG ==========
+        // Procesar el parámetro slug que puede venir en diferentes formatos
+        // Caso 1: Array (rutas tipo [...slug])
         if (Array.isArray(slugParam)) {
-            console.log(`[articles/...slug.ts] Slug is an array with ${slugParam.length} elements:`, slugParam);
-            // Si es un array vacío, obtener todos los artículos
+            console.log(`[articles/API] Slug is an array: [${slugParam.join(', ')}]`);
+            
+            // Array vacío = listar todos los artículos
             if (slugParam.length === 0) {
-                console.log('[articles/...slug.ts] Empty slug array, getting all articles');
+                console.log('[articles/API] Empty slug array, returning all articles');
                 return handleGetArticles(db, commonHeaders, context.request);
             }
-            // Si tiene elementos, usar el primero como slug
+            
+            // Usar el primer elemento como slug
             slugParam = slugParam[0];
-            console.log(`[articles/...slug.ts] Using first element as slug: ${slugParam}`);
+            console.log(`[articles/API] Using first array element as slug: '${slugParam}'`);
         }
         
-        // Si tenemos un slug válido, obtener el artículo específico
-        if (slugParam && typeof slugParam === 'string' && slugParam.trim() !== '') {
-            console.log(`[articles/...slug.ts] Processing request for article with slug: ${slugParam}`);
-            return handleGetArticle(slugParam, db, commonHeaders);
-        } else {
-            // Si no hay slug válido, obtener todos los artículos
-            console.log('[articles/...slug.ts] No valid slug provided, getting all articles');
+        // Caso 2: String vacío o no definido
+        if (!slugParam || (typeof slugParam === 'string' && slugParam.trim() === '')) {
+            console.log('[articles/API] No valid slug provided, returning all articles');
             return handleGetArticles(db, commonHeaders, context.request);
         }
+        
+        // Caso 3: Slug válido como string
+        if (typeof slugParam === 'string' && slugParam.trim() !== '') {
+            slugParam = slugParam.trim();
+            console.log(`[articles/API] Processing request for article with slug: '${slugParam}'`);
+            return handleGetArticle(slugParam, db, commonHeaders);
+        }
+        
+        // Caso 4: Formato no reconocido (fallback)
+        console.warn(`[articles/API] Unrecognized slug format: ${typeof slugParam}`);
+        return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid slug format',
+            receivedValue: slugParam
+        }), {
+            status: 400,
+            headers: commonHeaders
+        });
+        
     } catch (error: any) {
-        console.error('[articles/...slug.ts] Unexpected error in GET handler:', error);
+        // ========== MANEJO DE ERRORES GLOBAL ==========
+        console.error('[articles/API] CRITICAL ERROR in GET handler:', error);
+        console.error('[articles/API] Error stack:', error.stack);
+        
         return new Response(JSON.stringify({ 
             success: false,
-            error: error.message || 'Server Error',
+            error: 'Server encountered an unexpected error',
+            errorType: error.name,
+            errorMessage: error.message,
+            // Solo incluir detalles técnicos en desarrollo
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         }), {
             status: 500,
-            headers: commonHeaders
+            headers: {
+                ...commonHeaders,
+                'Cache-Control': 'no-store'
+            }
         });
     }
 }
@@ -347,98 +386,214 @@ async function handleGetArticles(db: any, headers: HeadersInit, request?: Reques
 
 // Get a specific article by slug
 async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
-    console.log(`[articles/...slug.ts] Retrieving article by slug: ${slug}`);
+    console.log(`[articles/API] handleGetArticle called with slug: '${slug}'`);
+    
+    // ========== VALIDACIÓN DEL SLUG ==========
     try {
-        // Validar el slug
-        if (!slug || typeof slug !== 'string') {
-            console.error(`[articles/...slug.ts] Invalid slug parameter: ${slug}`);
+        // Validar el parámetro slug exhaustivamente
+        if (!slug) {
+            console.error(`[articles/API] VALIDATION ERROR: slug is ${slug}`);
             return new Response(JSON.stringify({ 
                 success: false,
-                error: 'Invalid slug parameter',
-                debug: { slugType: typeof slug, slugValue: slug }
+                error: 'Missing slug parameter',
+                details: 'The slug parameter is required to fetch an article'
             }), { 
                 status: 400, 
                 headers
             });
         }
-
-        console.log(`[articles/...slug.ts] Executing DB query for slug: ${slug}`);
         
-        // Intentar obtener el artículo de la base de datos
+        if (typeof slug !== 'string') {
+            console.error(`[articles/API] VALIDATION ERROR: slug is not a string but ${typeof slug}`);
+            return new Response(JSON.stringify({ 
+                success: false,
+                error: 'Invalid slug format',
+                details: `Expected string but received ${typeof slug}`,
+                debug: { receivedValue: String(slug) }
+            }), { 
+                status: 400, 
+                headers
+            });
+        }
+        
+        // Asegurar que el slug está limpio
+        const cleanSlug = slug.trim();
+        if (cleanSlug === '') {
+            console.error(`[articles/API] VALIDATION ERROR: slug is empty string`);
+            return new Response(JSON.stringify({ 
+                success: false,
+                error: 'Empty slug parameter',
+                details: 'The slug parameter cannot be an empty string'
+            }), { 
+                status: 400, 
+                headers
+            });
+        }
+        
+        // ========== EJECUCIÓN DE CONSULTA A LA BASE DE DATOS ==========
         try {
-            const { results } = await db.prepare(`
-                SELECT a.*,
-                       aut.id as author_id,
-                       aut.name as author_name,
-                       aut.slug as author_slug,
-                       aut.avatar as author_avatar
-                FROM articles a
-                LEFT JOIN authors aut ON a.author_id = aut.id
-                WHERE a.slug = ?
-            `).bind(slug).all();
-
-            console.log(`[articles/...slug.ts] Query results for slug ${slug}:`, 
-                       results ? `Found ${results.length} results` : 'No results');
-
-            if (!results || results.length === 0) {
-                console.log(`[articles/...slug.ts] No article found with slug: ${slug}`);
+            console.log(`[articles/API] Executing database query for article with slug: '${cleanSlug}'`);
+            
+            // Verificar que db es válido
+            if (!db || typeof db.prepare !== 'function') {
+                console.error(`[articles/API] DB ERROR: Invalid database connection object`);  
                 return new Response(JSON.stringify({ 
                     success: false,
-                    error: 'Article not found' 
+                    error: 'Database connection error',
+                    details: 'Could not execute query due to invalid database connection'
                 }), { 
-                    status: 404, 
+                    status: 503, 
                     headers: {
                         ...headers,
-                        'Cache-Control': 'no-cache, no-store, must-revalidate'
+                        'Cache-Control': 'no-store'
                     }
                 });
             }
-
-            // Transformar el artículo para el frontend
+            
+            // Ejecutar la consulta SQL
             try {
-                const article = transformArticleForFrontend(results[0]);
-                console.log(`[articles/...slug.ts] Article transformed successfully: ${article.title}`);
+                console.log(`[articles/API] Preparing SQL query for slug: '${cleanSlug}'`);
+                const statement = db.prepare(`
+                    SELECT a.*,
+                           aut.id as author_id,
+                           aut.name as author_name,
+                           aut.slug as author_slug,
+                           aut.avatar as author_avatar
+                    FROM articles a
+                    LEFT JOIN authors aut ON a.author_id = aut.id
+                    WHERE a.slug = ?
+                `);
                 
-                return new Response(JSON.stringify({
-                    success: true,
-                    article
-                }), { 
-                    headers: {
-                        ...headers,
-                        'Cache-Control': 'no-cache, no-store, must-revalidate'
-                    }
+                console.log(`[articles/API] Binding parameter: '${cleanSlug}'`);
+                const boundStatement = statement.bind(cleanSlug);
+                
+                console.log(`[articles/API] Executing query for slug: '${cleanSlug}'`);
+                const { results } = await boundStatement.all();
+                
+                console.log(`[articles/API] Query results:`, results ? 
+                    `Found ${results.length} results` : 'No results');
+                
+                if (!results || results.length === 0) {
+                    console.log(`[articles/API] No article found with slug: '${cleanSlug}'`);
+                    return new Response(JSON.stringify({ 
+                        success: false,
+                        error: 'Article not found',
+                        details: `No article exists with the slug '${cleanSlug}'`
+                    }), { 
+                        status: 404, 
+                        headers: {
+                            ...headers,
+                            'Cache-Control': 'no-cache, max-age=0'
+                        }
+                    });
+                }
+                
+                // ========== TRANSFORMACIÓN DE DATOS ==========
+                try {
+                    console.log(`[articles/API] Transforming article data for frontend`);
+                    
+                    // Guardar datos crudos para debugging
+                    const rawData = results[0];
+                    console.log(`[articles/API] Raw article data:`, {
+                        slug: rawData.slug,
+                        title: rawData.title,
+                        hasContent: Boolean(rawData.content),
+                        contentLength: rawData.content ? rawData.content.length : 0,
+                        author_id: rawData.author_id
+                    });
+                    
+                    const article = transformArticleForFrontend(rawData);
+                    
+                    console.log(`[articles/API] Article transformed successfully: '${article.title}'`);
+                    
+                    // Retornar el artículo transformado
+                    return new Response(JSON.stringify({
+                        success: true,
+                        article
+                    }), { 
+                        headers: {
+                            ...headers,
+                            'Cache-Control': 'private, max-age=60' // Cache por 1 minuto
+                        }
+                    });
+                } catch (transformError: any) {
+                    // Error en la transformación de datos
+                    console.error(`[articles/API] DATA TRANSFORM ERROR:`, transformError);
+                    console.error(`[articles/API] Transform error details:`, {
+                        message: transformError.message,
+                        stack: transformError.stack,
+                        raw_data_sample: results[0] ? JSON.stringify(results[0]).substring(0, 200) + '...' : 'No data'
+                    });
+                    
+                    return new Response(JSON.stringify({ 
+                        success: false,
+                        error: 'Error transforming article data',
+                        details: transformError.message || 'Unknown transformation error',
+                        errorType: transformError.name || 'TransformError'
+                    }), { 
+                        status: 500, 
+                        headers: {
+                            ...headers,
+                            'Cache-Control': 'no-store'
+                        }
+                    });
+                }
+            } catch (sqlError: any) {
+                // Error en la ejecución de la consulta SQL
+                console.error(`[articles/API] SQL EXECUTION ERROR for slug '${cleanSlug}':`, sqlError);
+                console.error(`[articles/API] SQL error details:`, {
+                    message: sqlError.message,
+                    code: sqlError.code || 'Unknown',
+                    stack: sqlError.stack
                 });
-            } catch (transformError: any) {
-                console.error(`[articles/...slug.ts] Error transforming article:`, transformError);
+                
                 return new Response(JSON.stringify({ 
                     success: false,
-                    error: 'Error transforming article data',
-                    message: transformError.message
+                    error: 'Database query failed',
+                    details: sqlError.message || 'Error executing SQL query',
+                    errorCode: sqlError.code || 'UNKNOWN_SQL_ERROR'
                 }), { 
                     status: 500, 
-                    headers 
+                    headers: {
+                        ...headers,
+                        'Cache-Control': 'no-store'
+                    }
                 });
             }
         } catch (dbError: any) {
-            console.error(`[articles/...slug.ts] Database error for slug ${slug}:`, dbError);
+            // Erro general de base de datos
+            console.error(`[articles/API] DATABASE ERROR for slug '${cleanSlug}':`, dbError);
+            console.error(`[articles/API] DB operation stack:`, dbError.stack);
+            
             return new Response(JSON.stringify({ 
                 success: false,
-                error: 'Database query failed',
-                message: dbError.message
+                error: 'Database operation failed',
+                details: dbError.message || 'Unknown database error',
+                errorType: dbError.name || 'DBError'
             }), { 
                 status: 500, 
-                headers 
+                headers: {
+                    ...headers,
+                    'Cache-Control': 'no-store'
+                }
             });
         }
     } catch (error: any) {
-        console.error(`[articles/...slug.ts] Unexpected error for slug ${slug}:`, error);
+        // Error no controlado
+        console.error(`[articles/API] UNHANDLED ERROR in handleGetArticle for slug '${slug}':`, error);
+        console.error(`[articles/API] Error stack:`, error.stack);
+        
         return new Response(JSON.stringify({ 
             success: false,
-            error: 'Failed to fetch article',
-            message: error.message || 'Unknown error'
+            error: 'Server encountered an unexpected error',
+            details: error.message || 'Unknown error while processing article request',
+            errorType: error.name || 'UnhandledError'
         }), { 
             status: 500, 
-            headers 
+            headers: {
+                ...headers,
+                'Cache-Control': 'no-store'
+            }
         });
     }
 }
