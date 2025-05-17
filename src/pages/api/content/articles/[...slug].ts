@@ -65,31 +65,64 @@ function transformArticleForFrontend(article: any) {
 
 // Handle GET requests (all articles or specific one)
 export async function GET(context: APIContext) {
-    console.log(`[articles/...slug.ts] GET invoked. Slug: ${context.params.slug}`);
-    const slugParam = context.params.slug;
-    const db = context.locals.runtime.env.DB;
-    const env = context.locals.runtime.env;
-
     try {
+        // Obtener el slug de los parámetros
+        // En rutas [...slug], el parámetro viene como un array, así que necesitamos procesarlo
+        let slugParam = context.params.slug;
+        console.log(`[articles/...slug.ts] GET invoked. Raw slug param:`, slugParam);
+        
+        // Acceder a la base de datos desde el contexto
+        // @ts-ignore - Ignorar errores de TypeScript relacionados con context.locals.runtime
+        const db = context.locals.runtime?.env?.DB;
+        // @ts-ignore
+        const env = context.locals.runtime?.env;
+        
+        if (!db) {
+            console.error('[articles/...slug.ts] Database connection not available');
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Database connection not available'
+            }), {
+                status: 500,
+                headers: commonHeaders
+            });
+        }
+        
         // Verificar si es una solicitud de búsqueda
         const url = new URL(context.request.url);
         if (url.pathname.includes('/search')) {
+            console.log('[articles/...slug.ts] Handling search request');
             return handleGetArticles(db, commonHeaders, context.request);
         }
         
-        // Si no es búsqueda y tenemos un slug, obtener el artículo específico
-        if (slugParam) {
-            console.log(`Procesando solicitud para artículo con slug: ${slugParam}`);
+        // Procesar el parámetro slug que puede venir como array en rutas [...slug]
+        if (Array.isArray(slugParam)) {
+            console.log(`[articles/...slug.ts] Slug is an array with ${slugParam.length} elements:`, slugParam);
+            // Si es un array vacío, obtener todos los artículos
+            if (slugParam.length === 0) {
+                console.log('[articles/...slug.ts] Empty slug array, getting all articles');
+                return handleGetArticles(db, commonHeaders, context.request);
+            }
+            // Si tiene elementos, usar el primero como slug
+            slugParam = slugParam[0];
+            console.log(`[articles/...slug.ts] Using first element as slug: ${slugParam}`);
+        }
+        
+        // Si tenemos un slug válido, obtener el artículo específico
+        if (slugParam && typeof slugParam === 'string' && slugParam.trim() !== '') {
+            console.log(`[articles/...slug.ts] Processing request for article with slug: ${slugParam}`);
             return handleGetArticle(slugParam, db, commonHeaders);
         } else {
-            // Si no hay slug, obtener todos los artículos
+            // Si no hay slug válido, obtener todos los artículos
+            console.log('[articles/...slug.ts] No valid slug provided, getting all articles');
             return handleGetArticles(db, commonHeaders, context.request);
         }
     } catch (error: any) {
-        console.error('Error in GET /api/content/articles:', error);
+        console.error('[articles/...slug.ts] Unexpected error in GET handler:', error);
         return new Response(JSON.stringify({ 
             success: false,
-            error: error.message || 'Server Error' 
+            error: error.message || 'Server Error',
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         }), {
             status: 500,
             headers: commonHeaders

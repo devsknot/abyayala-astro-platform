@@ -12,20 +12,58 @@ const commonHeaders = {
 
 // Handle GET requests (all authors or specific one)
 export async function GET(context: APIContext) {
-    console.log(`[authors/...slug.ts] GET invoked. Slug: ${context.params.slug}`);
-    const slug = context.params.slug;
-    const db = context.locals.runtime.env.DB;
-    const env = context.locals.runtime.env; // For auth check
-
     try {
-        if (slug) {
-            return handleGetAuthor(slug, db, commonHeaders);
+        // Obtener el slug de los parámetros
+        // En rutas [...slug], el parámetro viene como un array, así que necesitamos procesarlo
+        let slugParam = context.params.slug;
+        console.log(`[authors/...slug.ts] GET invoked. Raw slug param:`, slugParam);
+        
+        // Acceder a la base de datos desde el contexto
+        // @ts-ignore - Ignorar errores de TypeScript relacionados con context.locals.runtime
+        const db = context.locals.runtime?.env?.DB;
+        // @ts-ignore
+        const env = context.locals.runtime?.env; // For auth check
+        
+        if (!db) {
+            console.error('[authors/...slug.ts] Database connection not available');
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Database connection not available'
+            }), {
+                status: 500,
+                headers: commonHeaders
+            });
+        }
+        
+        // Procesar el parámetro slug que puede venir como array en rutas [...slug]
+        if (Array.isArray(slugParam)) {
+            console.log(`[authors/...slug.ts] Slug is an array with ${slugParam.length} elements:`, slugParam);
+            // Si es un array vacío, obtener todos los autores
+            if (slugParam.length === 0) {
+                console.log('[authors/...slug.ts] Empty slug array, getting all authors');
+                return handleGetAuthors(db, commonHeaders);
+            }
+            // Si tiene elementos, usar el primero como slug
+            slugParam = slugParam[0];
+            console.log(`[authors/...slug.ts] Using first element as slug: ${slugParam}`);
+        }
+        
+        // Si tenemos un slug válido, obtener el autor específico
+        if (slugParam && typeof slugParam === 'string' && slugParam.trim() !== '') {
+            console.log(`[authors/...slug.ts] Processing request for author with slug: ${slugParam}`);
+            return handleGetAuthor(slugParam, db, commonHeaders);
         } else {
+            // Si no hay slug válido, obtener todos los autores
+            console.log('[authors/...slug.ts] No valid slug provided, getting all authors');
             return handleGetAuthors(db, commonHeaders);
         }
     } catch (error: any) {
-        console.error('Error in GET /api/content/authors:', error);
-        return new Response(JSON.stringify({ error: error.message || 'Server Error' }), {
+        console.error('[authors/...slug.ts] Unexpected error in GET handler:', error);
+        return new Response(JSON.stringify({ 
+            success: false,
+            error: error.message || 'Server Error',
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }), {
             status: 500,
             headers: commonHeaders
         });
