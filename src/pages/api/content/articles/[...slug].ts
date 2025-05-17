@@ -47,14 +47,23 @@ function transformArticleForFrontend(article: any) {
 // Handle GET requests (all articles or specific one)
 export async function GET(context: APIContext) {
     console.log(`[articles/...slug.ts] GET invoked. Slug: ${context.params.slug}`);
-    const slug = context.params.slug;
+    const slugParam = context.params.slug;
     const db = context.locals.runtime.env.DB;
     const env = context.locals.runtime.env;
 
     try {
-        if (slug) {
-            return handleGetArticle(slug, db, commonHeaders);
+        // Verificar si es una solicitud de búsqueda
+        const url = new URL(context.request.url);
+        if (url.pathname.includes('/search')) {
+            return handleGetArticles(db, commonHeaders, context.request);
+        }
+        
+        // Si no es búsqueda y tenemos un slug, obtener el artículo específico
+        if (slugParam) {
+            console.log(`Procesando solicitud para artículo con slug: ${slugParam}`);
+            return handleGetArticle(slugParam, db, commonHeaders);
         } else {
+            // Si no hay slug, obtener todos los artículos
             return handleGetArticles(db, commonHeaders, context.request);
         }
     } catch (error: any) {
