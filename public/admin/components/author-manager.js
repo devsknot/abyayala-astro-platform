@@ -157,7 +157,7 @@ export class AuthorManager {
                 <div class="mb-4">
                   <label for="authorSlug" class="block text-sm font-medium text-gray-700 mb-1">Slug</label>
                   <input type="text" id="authorSlug" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
-                  <p class="text-xs text-gray-500 mt-1">Identificador único para la URL (solo letras, números y guiones)</p>
+                  <p class="text-xs text-gray-500 mt-1" id="slugHelpText">Identificador único para la URL (solo letras, números y guiones)</p>
                 </div>
                 
                 <div class="mb-4">
@@ -565,6 +565,15 @@ export class AuthorManager {
       if (this.currentEditingAuthor) {
         // Actualizar autor existente
         console.log(`Actualizando autor con slug: ${this.currentEditingAuthor.slug}`, authorData);
+        
+        // Verificar si se está intentando cambiar el slug
+        if (this.currentEditingAuthor.slug !== authorData.slug) {
+          // Mostrar advertencia y restaurar el slug original
+          console.warn('No se puede cambiar el slug de un autor existente. Se usará el slug original.');
+          notifications.warning('No se puede cambiar el slug de un autor existente. Se usará el slug original.');
+          authorData.slug = this.currentEditingAuthor.slug;
+        }
+        
         await this.contentManager.updateAuthor(this.currentEditingAuthor.slug, authorData);
         notifications.success('Autor actualizado correctamente');
       } else {
@@ -621,7 +630,16 @@ export class AuthorManager {
       const avatarInput = this.container.querySelector('#authorAvatar');
       
       if (nameInput) nameInput.value = author.name || '';
-      if (slugInput) slugInput.value = author.slug || '';
+      if (slugInput) {
+        slugInput.value = author.slug || '';
+        // Deshabilitar el campo de slug para evitar intentos de cambio
+        slugInput.disabled = true;
+        // Agregar un mensaje informativo
+        const slugHelpText = this.container.querySelector('#slugHelpText');
+        if (slugHelpText) {
+          slugHelpText.innerHTML = '<span class="text-yellow-600">El slug no se puede modificar en autores existentes</span>';
+        }
+      }
       if (emailInput) emailInput.value = author.email || '';
       if (bioInput) bioInput.value = author.bio || '';
       if (avatarInput) avatarInput.value = author.avatar || '';
@@ -730,6 +748,17 @@ export class AuthorManager {
     const formTitle = this.container.querySelector('.author-form-title');
     if (formTitle) {
       formTitle.textContent = 'Crear Nuevo Autor';
+    }
+    
+    // Habilitar campo de slug para nuevos autores
+    const slugInput = this.container.querySelector('#authorSlug');
+    const slugHelpText = this.container.querySelector('#slugHelpText');
+    if (slugInput) {
+      slugInput.disabled = false;
+    }
+    if (slugHelpText) {
+      slugHelpText.innerHTML = 'Identificador único para la URL (solo letras, números y guiones)';
+      slugHelpText.className = 'text-xs text-gray-500 mt-1';
     }
     
     // Ocultar botón de eliminar

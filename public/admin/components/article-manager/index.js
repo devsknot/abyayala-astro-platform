@@ -14,6 +14,7 @@ import { setupEvents, saveArticle } from './events.js';
 import { renderArticlesList, showArticlesList, showArticleEditor, renderArticles, renderPagination, setupPaginationEvents, setupArticleCardEvents } from './list.js';
 import { editArticle, createArticle, deleteArticle, updateFeaturedImagePreview, setupEditorInterface, loadArticleDataIntoForm, setDateInputValue, loadFeaturedImage, initializeEditor } from './editor.js';
 import { loadCategories } from './categories.js';
+import { loadAuthors } from './authors.js';
 import { showLoading, hideLoading } from './ui.js';
 
 /**
@@ -46,6 +47,7 @@ export class ArticleManager {
     // Bindings
     this.render = this.render.bind(this);
     this.loadArticles = this.loadArticles.bind(this);
+    this.loadAuthors = loadAuthors.bind(this);
     this.renderArticles = renderArticles.bind(this);
     this.renderArticlesList = renderArticlesList.bind(this);
     this.showArticlesList = showArticlesList.bind(this);
@@ -86,6 +88,9 @@ export class ArticleManager {
       
       // Cargar categorías
       await this.loadCategories();
+      
+      // Cargar autores
+      await this.loadAuthors();
       
       // Configurar eventos
       this.setupEvents();
@@ -173,11 +178,22 @@ export class ArticleManager {
               </div>
             </div>
             
-            <div class="form-group">
-              <label class="form-label" for="article-slug">Slug</label>
-              <input type="text" id="article-slug" name="slug">
-              <small class="form-text text-muted">Identificador único para la URL del artículo</small>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="article-author">Autor</label>
+                <select id="article-author" name="author_id">
+                  <option value="">Seleccionar autor</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" for="article-slug">Slug</label>
+                <input type="text" id="article-slug" name="slug">
+                <small class="form-text text-muted">Identificador único para la URL del artículo</small>
+              </div>
             </div>
+            
+
             
             <div class="form-group">
               <label class="form-label" for="article-tags">Etiquetas</label>
