@@ -10,35 +10,54 @@ const commonHeaders = {
 
 // Helper to transform DB article structure to frontend structure
 function transformArticleForFrontend(article: any) {
-    if (!article) return null;
+    if (!article) {
+        console.warn('[transformArticleForFrontend] Received null or undefined article');
+        return null;
+    }
+    
+    console.log(`[transformArticleForFrontend] Processing article: ${article.slug}`);
     
     // Procesamiento seguro de tags
-    let parsedTags = [];
+    let parsedTags: any[] = [];
     if (article.tags) {
         try {
-            parsedTags = JSON.parse(article.tags);
+            // Si ya es un array, usarlo directamente
+            if (Array.isArray(article.tags)) {
+                parsedTags = article.tags;
+            } else {
+                // Intentar parsear como JSON
+                parsedTags = JSON.parse(article.tags);
+            }
         } catch (e) {
-            console.error(`Error parsing tags for article ${article.slug}:`, e);
+            console.error(`[transformArticleForFrontend] Error parsing tags for article ${article.slug}:`, e);
+            // Si hay error, intentar dividir por comas como fallback
+            if (typeof article.tags === 'string') {
+                parsedTags = article.tags.split(',').map(tag => tag.trim()).filter(Boolean);
+            }
         }
     }
 
-    return {
-        slug: article.slug,
-        title: article.title,
-        description: article.description,
-        content: article.content,
-        pubDate: article.pub_date, // Transform pub_date to pubDate
+    // Asegurarse de que todos los campos requeridos existan
+    const transformedArticle = {
+        slug: article.slug || '',
+        title: article.title || 'Sin título',
+        description: article.description || '',
+        content: article.content || '',
+        pubDate: article.pub_date || new Date().toISOString(), // Transform pub_date to pubDate
         category: article.category || '', // Usar solo category (singular)
-        featured_image: article.featured_image,
+        featured_image: article.featured_image || '',
         author_info: article.author_id ? { // Use author_info for structured data
             id: article.author_id,
-            name: article.author_name,
-            slug: article.author_slug,
-            avatar: article.author_avatar
+            name: article.author_name || 'Autor desconocido',
+            slug: article.author_slug || '',
+            avatar: article.author_avatar || ''
         } : null,
         tags: parsedTags,
-        updated_at: article.updated_at || article.pub_date // Incluir fecha de actualización
+        updated_at: article.updated_at || article.pub_date || new Date().toISOString() // Incluir fecha de actualización
     };
+    
+    console.log(`[transformArticleForFrontend] Article transformed successfully: ${transformedArticle.title}`);
+    return transformedArticle;
 }
 
 
@@ -297,47 +316,93 @@ async function handleGetArticles(db: any, headers: HeadersInit, request?: Reques
 async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
     console.log(`[articles/...slug.ts] Retrieving article by slug: ${slug}`);
     try {
-        const { results } = await db.prepare(`
-            SELECT a.*,
-                   aut.id as author_id,
-                   aut.name as author_name,
-                   aut.slug as author_slug,
-                   aut.avatar as author_avatar
-            FROM articles a
-            LEFT JOIN authors aut ON a.author_id = aut.id
-            WHERE a.slug = ?
-        `).bind(slug).all();
-
-        if (!results || results.length === 0) {
-            console.log(`[articles/...slug.ts] No article found with slug: ${slug}`);
+        // Validar el slug
+        if (!slug || typeof slug !== 'string') {
+            console.error(`[articles/...slug.ts] Invalid slug parameter: ${slug}`);
             return new Response(JSON.stringify({ 
                 success: false,
-                error: 'Article not found' 
+                error: 'Invalid slug parameter',
+                debug: { slugType: typeof slug, slugValue: slug }
             }), { 
-                status: 404, 
-                headers: {
-                    ...headers,
-                    'Cache-Control': 'no-cache, no-store, must-revalidate'
-                }
+                status: 400, 
+                headers
             });
         }
 
-        const article = transformArticleForFrontend(results[0]);
-        return new Response(JSON.stringify({
-            success: true,
-            article
-        }), { 
-            headers: {
-                ...headers,
-                'Cache-Control': 'no-cache, no-store, must-revalidate'
+        console.log(`[articles/...slug.ts] Executing DB query for slug: ${slug}`);
+        
+        // Intentar obtener el artículo de la base de datos
+        try {
+            const { results } = await db.prepare(`
+                SELECT a.*,
+                       aut.id as author_id,
+                       aut.name as author_name,
+                       aut.slug as author_slug,
+                       aut.avatar as author_avatar
+                FROM articles a
+                LEFT JOIN authors aut ON a.author_id = aut.id
+                WHERE a.slug = ?
+            `).bind(slug).all();
+
+            console.log(`[articles/...slug.ts] Query results for slug ${slug}:`, 
+                       results ? `Found ${results.length} results` : 'No results');
+
+            if (!results || results.length === 0) {
+                console.log(`[articles/...slug.ts] No article found with slug: ${slug}`);
+                return new Response(JSON.stringify({ 
+                    success: false,
+                    error: 'Article not found' 
+                }), { 
+                    status: 404, 
+                    headers: {
+                        ...headers,
+                        'Cache-Control': 'no-cache, no-store, must-revalidate'
+                    }
+                });
             }
-        });
+
+            // Transformar el artículo para el frontend
+            try {
+                const article = transformArticleForFrontend(results[0]);
+                console.log(`[articles/...slug.ts] Article transformed successfully: ${article.title}`);
+                
+                return new Response(JSON.stringify({
+                    success: true,
+                    article
+                }), { 
+                    headers: {
+                        ...headers,
+                        'Cache-Control': 'no-cache, no-store, must-revalidate'
+                    }
+                });
+            } catch (transformError: any) {
+                console.error(`[articles/...slug.ts] Error transforming article:`, transformError);
+                return new Response(JSON.stringify({ 
+                    success: false,
+                    error: 'Error transforming article data',
+                    message: transformError.message
+                }), { 
+                    status: 500, 
+                    headers 
+                });
+            }
+        } catch (dbError: any) {
+            console.error(`[articles/...slug.ts] Database error for slug ${slug}:`, dbError);
+            return new Response(JSON.stringify({ 
+                success: false,
+                error: 'Database query failed',
+                message: dbError.message
+            }), { 
+                status: 500, 
+                headers 
+            });
+        }
     } catch (error: any) {
-        console.error(`Error fetching article with slug ${slug}:`, error);
+        console.error(`[articles/...slug.ts] Unexpected error for slug ${slug}:`, error);
         return new Response(JSON.stringify({ 
             success: false,
             error: 'Failed to fetch article',
-            message: error.message || 'Unknown database error'
+            message: error.message || 'Unknown error'
         }), { 
             status: 500, 
             headers 
