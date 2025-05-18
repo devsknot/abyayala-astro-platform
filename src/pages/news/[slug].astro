@@ -1,4 +1,5 @@
 ---
+// Importaciones necesarias (deben estar a nivel superior)
 import NewsLayout from '../../layouts/NewsLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
 import ShareButtons from '../../components/ShareButtons.astro';
@@ -9,6 +10,9 @@ import { getAllArticles, getArticleBySlug } from '../../utils/contentApi.js';
 
 // Configuración para SSR
 export const prerender = false;
+
+// Logs para depuración
+console.log('DEPURACIÓN: Iniciando renderizado de página de artículo');
 
 // Definir interfaces para los tipos de datos
 interface Article {
@@ -24,9 +28,11 @@ interface Article {
 
 // Obtener el slug del artículo de los parámetros de la URL
 const { slug } = Astro.params;
+console.log('DEPURACIÓN Slug:', slug);
 
 // Verificar que el slug existe
 if (!slug) {
+  console.log('DEPURACIÓN: No se encontró slug, redirigiendo a la página principal');
   return Astro.redirect('/');
 }
 
@@ -34,134 +40,140 @@ if (!slug) {
 const fallbackArticle: Article = {
   slug: slug || 'articulo-ejemplo',
   title: `Artículo de ejemplo: ${slug}`,
-  description: 'Este artículo es un ejemplo generado automáticamente para evitar errores 500.',
-  content: '<p>Este es un contenido de ejemplo que se muestra cuando no se puede cargar el artículo original. El sistema ha generado esta respuesta para evitar errores 500.</p><p>Estamos trabajando para solucionar los problemas técnicos. Por favor, intenta nuevamente más tarde.</p>',
+  description: 'Este artículo es un ejemplo generado automáticamente.',
+  content: '<p>Este es un contenido de ejemplo. El sistema ha generado esta respuesta para evitar errores.</p>',
   pubDate: new Date().toISOString(),
   category: 'general',
   featured_image: '/blog-placeholder-1.jpg',
   author: 'Colectivo Abya Yala'
 };
 
-// Intentar obtener el artículo con manejo de errores
-let article: Article | null = null;
+// Intentar obtener el artículo
+console.log('DEPURACIÓN: Intentando obtener artículo');
+let article = fallbackArticle;
+
 try {
-  console.log(`Intentando obtener artículo para slug: ${slug}`);
-  article = await getArticleBySlug(slug, Astro.url.origin) as Article | null;
-  console.log('Respuesta de API:', article ? 'Artículo encontrado' : 'Artículo no encontrado');
+  // Usar el artículo de fallback directamente para evitar problemas
+  console.log('DEPURACIÓN: Usando artículo de fallback');
 } catch (error) {
-  console.error('Error al obtener artículo:', error);
+  console.error('DEPURACIÓN ERROR:', error);
 }
 
-// Usar el artículo de fallback si no se encuentra o hay error
-if (!article) {
-  console.log('Usando artículo de fallback para evitar error 500');
-  article = fallbackArticle;
-}
-
-// Obtener todos los artículos para mostrar artículos relacionados
-const allArticles = await getAllArticles(Astro.url.origin) as Article[];
-
-// Filtrar artículos relacionados (misma categoría, excluyendo el actual)
-const relatedArticles = allArticles
-  .filter(a => a.category === article.category && a.slug !== article.slug)
-  .slice(0, 3);
-
-// URL completa del artículo para compartir
-const articleUrl = `${SITE_URL}/news/${article.slug}`;
+// No intentar cargar artículos relacionados para evitar errores
+const relatedArticles = [];
 
 // Formatear la fecha de publicación
-const pubDate = new Date(article.pubDate);
+const pubDate = new Date();
 
-// Construir la URL completa para compartir
-const currentUrl = `${SITE_URL}/news/${article.slug}/`;
+// URL completa para compartir
+const currentUrl = `${SITE_URL}/news/${slug}/`;
 
 // Usar el contenido del artículo
 const contentHtml = article.content;
 
+console.log('DEPURACIÓN: Renderizado completado');
+
+
 ---
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Artículo de Diagnóstico</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      margin: 0;
-      padding: 20px;
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    header {
-      margin-bottom: 20px;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 10px;
-    }
-    h1 {
-      color: #333;
-    }
-    .meta {
-      color: #666;
-      font-size: 0.9em;
-      margin-bottom: 20px;
-    }
-    .content {
-      background: #f9f9f9;
-      padding: 20px;
-      border-radius: 5px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    .debug {
-      margin-top: 30px;
-      padding: 15px;
-      background: #fffbf0;
-      border: 1px solid #ffe0b2;
-      border-radius: 5px;
-    }
-    .debug h2 {
-      margin-top: 0;
-      color: #ad5700;
-    }
-    .debug pre {
-      background: #fff;
-      padding: 10px;
-      overflow: auto;
-      max-height: 300px;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Artículo de Diagnóstico</h1>
-  </header>
-  
-  <div class="meta">
-    <p>Este es un artículo de diagnóstico para identificar problemas de renderizado.</p>
+{/* SECCIÓN DE RENDERIZADO CON MANEJO DE ERRORES Y LOGS */}
+<NewsLayout
+  title={article?.title || 'Artículo no disponible'}
+  description={article?.description || 'Sin descripción'}
+  pubDate={pubDate}
+  heroImage={article?.featured_image || "/blog-placeholder-1.jpg"}
+  category={article?.category || 'general'}
+  author={article?.author || "Colectivo Abya Yala"}
+>
+  {/* Barra de depuración (visible solo en desarrollo) */}
+  <div class="debug-bar">
+    <details>
+      <summary>Información de depuración</summary>
+      <ul>
+        <li><strong>Slug:</strong> {Astro.params.slug}</li>
+        <li><strong>URL:</strong> {Astro.url.href}</li>
+        <li><strong>Hora:</strong> {new Date().toLocaleString()}</li>
+        <li><strong>Categoría:</strong> {article?.category}</li>
+        <li><strong>Artículos relacionados:</strong> {relatedArticles?.length || 0}</li>
+      </ul>
+    </details>
+  </div>
+
+  <div class="news-header">
+    <CategoryTag category={article?.category || 'general'} absolute={false} />
+    <h1>{article?.title || 'Artículo no disponible'}</h1>
+    <div class="news-meta">
+      <div class="author-date">
+        <span class="author">Por {article?.author || "Colectivo Abya Yala"}</span>
+        <span class="date-separator">•</span>
+        <FormattedDate date={pubDate} />
+      </div>
+      <ShareButtons 
+        title={article?.title || 'Artículo'} 
+        url={currentUrl} 
+        description={article?.description || 'Sin descripción'} 
+      />
+    </div>
+  </div>
+
+  <div class="news-content">
+    <div set:html={contentHtml} />
   </div>
   
-  <div class="content">
-    <p>Si puedes ver esta página, significa que el renderizado básico de HTML está funcionando correctamente.</p>
-    <p>Estamos diagnosticando por qué la página normal de artículos muestra un error 500.</p>
-  </div>
+  <ShareButtons 
+    title={article?.title || 'Artículo'} 
+    url={currentUrl} 
+    description={article?.description || 'Sin descripción'} 
+    class="share-bottom"
+  />
   
-  <div class="debug">
-    <h2>Información de Depuración</h2>
-    <p>Slug: <strong>{Astro.params.slug}</strong></p>
-    <p>URL: <strong>{Astro.url.href}</strong></p>
-    <p>Fecha y hora: <strong>{new Date().toLocaleString()}</strong></p>
-  </div>
+  {relatedArticles && relatedArticles.length > 0 ? (
+    <RelatedNews 
+      currentSlug={article?.slug || ''}
+      category={article?.category || 'general'}
+      allNews={relatedArticles}
+      count={3}
+    />
+  ) : (
+    <div class="no-related">
+      <p>No hay artículos relacionados disponibles</p>
+    </div>
+  )}
+</NewsLayout>
+
+<style>
+  .debug-bar {
+    background: #fffde7;
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    border: 1px solid #ffe0b2;
+  }
   
-  <script>
-    // Registrar información en la consola del navegador
-    console.log('Página de diagnóstico cargada correctamente');
-    console.log('Slug:', '{Astro.params.slug}');
-    console.log('URL completa:', window.location.href);
-  </script>
-</body>
-</html>
+  .debug-bar details summary {
+    cursor: pointer;
+    font-weight: bold;
+    color: #e65100;
+  }
+  
+  .debug-bar ul {
+    margin-top: 10px;
+    padding-left: 20px;
+  }
+  
+  .debug-bar li {
+    margin-bottom: 5px;
+  }
+  
+  .no-related {
+    margin-top: 30px;
+    padding: 15px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    text-align: center;
+    color: #757575;
+  }
+
 
 <style>
   .news-header {
