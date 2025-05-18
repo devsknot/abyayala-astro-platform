@@ -93,6 +93,7 @@ function transformArticleForFrontend(article: any) {
     }
 
     // Asegurarse de que todos los campos requeridos existan con validación explícita de tipos
+    // IMPORTANTE: Mantener la estructura exacta que la vista espera
     const transformedArticle = {
         slug: String(safeArticle.slug || ''),
         title: String(safeArticle.title || 'Sin título'),
@@ -101,6 +102,9 @@ function transformArticleForFrontend(article: any) {
         pubDate: String(safeArticle.pub_date || new Date().toISOString()), // Transform pub_date to pubDate
         category: String(safeArticle.category || ''), // Usar solo category (singular)
         featured_image: String(safeArticle.featured_image || ''),
+        // Añadir campo author (string simple) que es el que usa la vista
+        author: safeArticle.author_name ? String(safeArticle.author_name) : 'Colectivo Abya Yala',
+        // Mantener author_info para compatibilidad
         author_info: author_info,
         tags: parsedTags,
         updated_at: String(safeArticle.updated_at || safeArticle.pub_date || new Date().toISOString()) // Incluir fecha de actualización
