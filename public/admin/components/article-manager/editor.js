@@ -115,7 +115,23 @@ export function loadArticleDataIntoForm(article) {
     
     // Seleccionar el autor si existe
     if (authorSelect) {
-      authorSelect.value = article.author_id || '';
+      console.log('Asignando autor al selector. Autor actual:', article.author);
+      // Probar con diferentes propiedades que podrían contener el ID del autor
+      if (article.author_id) {
+        authorSelect.value = article.author_id;
+        console.log('Se encontró author_id:', article.author_id);
+      } else if (typeof article.author === 'string') {
+        // Si el autor es un string, asignarlo directamente
+        authorSelect.value = article.author;
+        console.log('Asignando author como string:', article.author);
+      } else if (article.author && article.author.id) {
+        // Si el autor es un objeto, intentar obtener su ID
+        authorSelect.value = article.author.id;
+        console.log('Asignando author.id:', article.author.id);
+      } else {
+        console.warn('No se pudo determinar el ID del autor');
+        authorSelect.value = '';
+      }
     }
     
     // Cargar etiquetas

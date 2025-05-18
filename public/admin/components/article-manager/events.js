@@ -424,9 +424,12 @@ export async function saveArticle() {
       content: this.editor ? this.editor.getContent() : ''
     };
     
-    // Manejar autor si existe
+    // Manejar autor si existe - guardar en ambos campos para mayor compatibilidad
     if (authorSelect && authorSelect.value) {
+      // Guardar tanto en author como en author_id para garantizar compatibilidad
       articleData.author_id = authorSelect.value;
+      articleData.author = authorSelect.value;
+      console.log('Autor guardado:', authorSelect.value);
     }
     
     // Manejar etiquetas si existen
