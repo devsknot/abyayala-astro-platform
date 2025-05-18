@@ -7,6 +7,10 @@ export async function editArticle(slug) {
   this.showLoading('Cargando artículo...');
   
   try {
+    // Primero cargar autores para asegurar que el selector esté completo
+    await this.loadAuthors();
+    console.log('Autores cargados antes de editar artículo');
+    
     // Obtener el artículo de la API
     const response = await this.contentManager.getArticle(slug);
     console.log('Artículo recibido de la API:', response);
@@ -115,23 +119,56 @@ export function loadArticleDataIntoForm(article) {
     
     // Seleccionar el autor si existe
     if (authorSelect) {
-      console.log('Asignando autor al selector. Autor actual:', article.author);
-      // Probar con diferentes propiedades que podrían contener el ID del autor
+      console.log('DEBUG: Verificando opciones disponibles en el selector de autores:');
+      Array.from(authorSelect.options).forEach(option => {
+        console.log(`- Opción: valor=${option.value}, texto=${option.text}`);
+      });
+      
+      console.log('DEBUG: Intentando seleccionar autor actual:', { 
+        author: article.author, 
+        author_id: article.author_id, 
+        typeof_author: typeof article.author 
+      });
+      
+      // Añadir la opción del autor actual si no existe en el selector
+      let authorFound = false;
+      const authorValue = article.author_id || article.author;
+      
+      // Verificar si el autor ya existe en las opciones
+      if (authorValue) {
+        // Buscar si existe una opción con ese valor
+        for (let i = 0; i < authorSelect.options.length; i++) {
+          if (authorSelect.options[i].value === authorValue) {
+            authorFound = true;
+            break;
+          }
+        }
+        
+        // Si el autor no está en las opciones, añadirlo temporalmente
+        if (!authorFound && authorValue) {
+          const authorName = typeof article.author === 'string' ? article.author : authorValue;
+          const newOption = new Option(authorName, authorValue);
+          authorSelect.add(newOption);
+          console.log(`Añadida opción temporal para autor: ${authorName} (${authorValue})`);
+        }
+      }
+      
+      // Intentar seleccionar el autor con varias estrategias
       if (article.author_id) {
         authorSelect.value = article.author_id;
-        console.log('Se encontró author_id:', article.author_id);
+        console.log('Seleccionando por author_id:', article.author_id);
       } else if (typeof article.author === 'string') {
-        // Si el autor es un string, asignarlo directamente
         authorSelect.value = article.author;
-        console.log('Asignando author como string:', article.author);
+        console.log('Seleccionando por author (string):', article.author);
       } else if (article.author && article.author.id) {
-        // Si el autor es un objeto, intentar obtener su ID
         authorSelect.value = article.author.id;
-        console.log('Asignando author.id:', article.author.id);
+        console.log('Seleccionando por author.id:', article.author.id);
       } else {
         console.warn('No se pudo determinar el ID del autor');
-        authorSelect.value = '';
       }
+      
+      // Verificar si se seleccionó correctamente
+      console.log('Autor seleccionado finalmente:', authorSelect.value);
     }
     
     // Cargar etiquetas
