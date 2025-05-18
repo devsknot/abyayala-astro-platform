@@ -503,16 +503,12 @@ async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
             // Ejecutar la consulta SQL
             try {
                 console.log(`[articles/API] Preparing SQL query for slug: '${cleanSlug}'`);
-                // Consulta SQL simplificada para minimizar errores de join
+                // Consulta SQL ultra simplificada sin JOIN para diagnosticar problemas
+                console.log(`[articles/API] DIAGNÓSTICO: Usando consulta simplificada sin JOIN para resolver error 500`);
                 const statement = db.prepare(`
-                    SELECT a.*,
-                           aut.id as author_id,
-                           aut.name as author_name,
-                           aut.slug as author_slug,
-                           aut.avatar as author_avatar
-                    FROM articles a
-                    LEFT JOIN authors aut ON a.author_id = aut.id
-                    WHERE a.slug = ?
+                    SELECT * 
+                    FROM articles 
+                    WHERE slug = ? 
                     LIMIT 1
                 `);
                 
