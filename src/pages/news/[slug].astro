@@ -45,7 +45,7 @@ const fallbackArticle: Article = {
   pubDate: new Date().toISOString(),
   category: 'general',
   featured_image: '/blog-placeholder-1.jpg',
-  author: 'Colectivo Abya Yala'
+  author: 'Autor Desconocido'
 };
 
 // Definir interfaz para respuestas de API
@@ -130,7 +130,7 @@ console.log('DEPURACIÓN: Renderizado completado');
   pubDate={pubDate}
   heroImage={article?.featured_image || "/blog-placeholder-1.jpg"}
   category={article?.category || 'general'}
-  author={article?.author || "Colectivo Abya Yala"}
+  author={article?.author || "Autor Desconocido"}
 >
   {/* Barra de depuración (visible solo en desarrollo) */}
   <div class="debug-bar">
@@ -151,7 +151,7 @@ console.log('DEPURACIÓN: Renderizado completado');
     <h1>{article?.title || 'Artículo no disponible'}</h1>
     <div class="news-meta">
       <div class="author-date">
-        <span class="author">Por {article?.author || "Colectivo Abya Yala"}</span>
+        <span class="author">Por {article?.author || "Autor Desconocido"}</span>
         <span class="date-separator">•</span>
         <FormattedDate date={pubDate} />
       </div>
