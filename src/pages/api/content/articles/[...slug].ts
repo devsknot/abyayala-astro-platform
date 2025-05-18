@@ -587,11 +587,11 @@ async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
                     
                     console.log(`[articles/API] Article transformed successfully: '${article.title}'`);
                     
-                    // Retornar el artículo transformado
-                    return new Response(JSON.stringify({
-                        success: true,
-                        article
-                    }), { 
+                    // COMPATIBILIDAD: Retornar directamente el artículo (sin envolverlo en success/article)
+                    // Esto es para mantener compatibilidad con el frontend existente
+                    console.log(`[articles/API] Devolviendo artículo en formato compatible con frontend anterior`);
+                    
+                    return new Response(JSON.stringify(article), { 
                         headers: {
                             ...headers,
                             'Cache-Control': 'private, max-age=60' // Cache por 1 minuto
