@@ -119,55 +119,39 @@ export function loadArticleDataIntoForm(article) {
     
     // Seleccionar el autor si existe
     if (authorSelect) {
-      console.log('DEBUG: Verificando opciones disponibles en el selector de autores:');
-      Array.from(authorSelect.options).forEach(option => {
-        console.log(`- Opción: valor=${option.value}, texto=${option.text}`);
-      });
+      console.log('DEBUG: Opciones de autor disponibles:', Array.from(authorSelect.options).map(o => o.value));
+      console.log('DEBUG: Autor del artículo:', article.author);
       
-      console.log('DEBUG: Intentando seleccionar autor actual:', { 
-        author: article.author, 
-        author_id: article.author_id, 
-        typeof_author: typeof article.author 
-      });
-      
-      // Añadir la opción del autor actual si no existe en el selector
-      let authorFound = false;
-      const authorValue = article.author_id || article.author;
-      
-      // Verificar si el autor ya existe en las opciones
-      if (authorValue) {
-        // Buscar si existe una opción con ese valor
+      // Enfoque directo: Si el autor es un string, usarlo directamente
+      if (typeof article.author === 'string' && article.author) {
+        // Verificar si el autor existe en las opciones
+        let autorExisteEnOpciones = false;
+        
         for (let i = 0; i < authorSelect.options.length; i++) {
-          if (authorSelect.options[i].value === authorValue) {
-            authorFound = true;
+          // Comparación insensible a mayúsculas/minúsculas para mayor tolerancia
+          if (authorSelect.options[i].value.toLowerCase() === article.author.toLowerCase()) {
+            authorSelect.selectedIndex = i;
+            autorExisteEnOpciones = true;
+            console.log(`Autor encontrado y seleccionado: ${article.author}`);
             break;
           }
         }
         
-        // Si el autor no está en las opciones, añadirlo temporalmente
-        if (!authorFound && authorValue) {
-          const authorName = typeof article.author === 'string' ? article.author : authorValue;
-          const newOption = new Option(authorName, authorValue);
+        // Si no existe, añadirlo como opción temporal
+        if (!autorExisteEnOpciones && article.author !== 'Autor Desconocido') {
+          console.log(`Añadiendo autor como opción temporal: ${article.author}`);
+          const newOption = new Option(article.author, article.author);
           authorSelect.add(newOption);
-          console.log(`Añadida opción temporal para autor: ${authorName} (${authorValue})`);
+          authorSelect.value = article.author;
         }
       }
-      
-      // Intentar seleccionar el autor con varias estrategias
-      if (article.author_id) {
+      // Si hay un author_id, intentar usarlo como respaldo
+      else if (article.author_id) {
         authorSelect.value = article.author_id;
-        console.log('Seleccionando por author_id:', article.author_id);
-      } else if (typeof article.author === 'string') {
-        authorSelect.value = article.author;
-        console.log('Seleccionando por author (string):', article.author);
-      } else if (article.author && article.author.id) {
-        authorSelect.value = article.author.id;
-        console.log('Seleccionando por author.id:', article.author.id);
-      } else {
-        console.warn('No se pudo determinar el ID del autor');
+        console.log('Usando author_id como respaldo:', article.author_id);
       }
       
-      // Verificar si se seleccionó correctamente
+      // Mostrar resultado final
       console.log('Autor seleccionado finalmente:', authorSelect.value);
     }
     

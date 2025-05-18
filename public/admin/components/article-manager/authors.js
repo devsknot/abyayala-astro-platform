@@ -29,14 +29,12 @@ export async function loadAuthors() {
     if (authors && authors.length > 0) {
       // Crear opciones para el selector de autores
       const authorOptions = authors.map(author => {
-        // Extraer id y name, considerando diferentes estructuras de datos
-        // Usar name como fallback para el ID si no existe un ID específico
-        // Esto hace que los autores sean compatibles con el formato de string directo
-        const id = author.id || author.name || author.slug || '';
+        // Simplificar: usar el nombre como valor y como texto mostrado
+        // Esto asegura que la comparación sea directa contra el campo `author` del artículo
         const name = author.name || 'Sin nombre';
         
-        console.log(`Opción de autor generada: ID=${id}, Nombre=${name}`);
-        return `<option value="${id}">${name}</option>`;
+        console.log(`Opción de autor generada: Nombre=${name}`);
+        return `<option value="${name}">${name}</option>`;
       }).join('');
       
       // Actualizar el selector de autores
