@@ -48,28 +48,75 @@ const fallbackArticle: Article = {
   author: 'Colectivo Abya Yala'
 };
 
-// Intentar obtener el artículo
-console.log('DEPURACIÓN: Intentando obtener artículo');
-let article = fallbackArticle;
-
-try {
-  // Usar el artículo de fallback directamente para evitar problemas
-  console.log('DEPURACIÓN: Usando artículo de fallback');
-} catch (error) {
-  console.error('DEPURACIÓN ERROR:', error);
+// Definir interfaz para respuestas de API
+interface ApiResponse {
+  [key: string]: any;
 }
 
-// No intentar cargar artículos relacionados para evitar errores
-const relatedArticles = [];
+interface ArticlesResponse {
+  articles?: Article[];
+  [key: string]: any;
+}
+
+// Intentar obtener el artículo
+console.log('DEPURACIÓN: Intentando obtener artículo');
+let article: Article = fallbackArticle;
+let error = null;
+
+try {
+  // Intentar obtener el artículo real (con manejo de errores)
+  console.log(`Intentando obtener artículo para slug: ${slug}`);
+  const response: ApiResponse = await getArticleBySlug(slug, Astro.url.origin) as ApiResponse;
+  console.log('Respuesta de API recibida:', response ? 'OK' : 'No hay respuesta');
+  
+  if (response && typeof response === 'object' && 'title' in response) {
+    article = response as Article;
+    console.log('Artículo encontrado:', article.title);
+  } else {
+    console.log('No se encontró el artículo, usando fallback');
+    article = fallbackArticle;
+  }
+} catch (err) {
+  console.error('Error al obtener artículo:', err);
+  error = err;
+  article = fallbackArticle;
+  console.log('Usando artículo de fallback debido a error');
+}
+
+// Intentar cargar artículos relacionados con manejo de errores
+let relatedArticles: Article[] = [];
+try {
+  console.log('Intentando obtener artículos relacionados...');
+  const allArticlesResponse: ArticlesResponse = await getAllArticles(Astro.url.origin) as ArticlesResponse;
+  
+  if (allArticlesResponse && typeof allArticlesResponse === 'object' && 'articles' in allArticlesResponse && Array.isArray(allArticlesResponse.articles)) {
+    console.log(`Se encontraron ${allArticlesResponse.articles.length} artículos en total`);
+    // Solo obtener hasta 3 artículos relacionados de la misma categoría
+    relatedArticles = allArticlesResponse.articles
+      .filter((a: Article) => a.category === article.category && a.slug !== article.slug)
+      .slice(0, 3);
+    console.log(`Se encontraron ${relatedArticles.length} artículos relacionados`);
+  } else {
+    console.log('Formato de respuesta inesperado para artículos relacionados');
+  }
+} catch (relatedError) {
+  console.error('Error al obtener artículos relacionados:', relatedError);
+}
 
 // Formatear la fecha de publicación
-const pubDate = new Date();
+let pubDate: Date;
+try {
+  pubDate = new Date(article.pubDate);
+} catch (dateError) {
+  console.error('Error al formatear fecha:', dateError);
+  pubDate = new Date();
+}
 
 // URL completa para compartir
 const currentUrl = `${SITE_URL}/news/${slug}/`;
 
 // Usar el contenido del artículo
-const contentHtml = article.content;
+const contentHtml = article.content || '<p>No hay contenido disponible</p>';
 
 console.log('DEPURACIÓN: Renderizado completado');
 
