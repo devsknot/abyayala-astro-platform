@@ -15,45 +15,95 @@ function transformArticleForFrontend(article: any) {
         return null;
     }
     
-    console.log(`[transformArticleForFrontend] Processing article: ${article.slug}`);
-    
-    // Procesamiento seguro de tags
-    let parsedTags: any[] = [];
-    if (article.tags) {
-        try {
-            // Si ya es un array, usarlo directamente
-            if (Array.isArray(article.tags)) {
-                parsedTags = article.tags;
-            } else {
-                // Intentar parsear como JSON
-                parsedTags = JSON.parse(article.tags);
-            }
-        } catch (e) {
-            console.error(`[transformArticleForFrontend] Error parsing tags for article ${article.slug}:`, e);
-            // Si hay error, intentar dividir por comas como fallback
-            if (typeof article.tags === 'string') {
-                parsedTags = article.tags.split(',').map(tag => tag.trim()).filter(Boolean);
-            }
-        }
-    }
-
-    // Asegurarse de que todos los campos requeridos existan
-    const transformedArticle = {
+    // Asegurar que todos los campos del artículo tienen valores por defecto seguros
+    const safeArticle = {
         slug: article.slug || '',
         title: article.title || 'Sin título',
         description: article.description || '',
         content: article.content || '',
-        pubDate: article.pub_date || new Date().toISOString(), // Transform pub_date to pubDate
-        category: article.category || '', // Usar solo category (singular)
+        pub_date: article.pub_date || new Date().toISOString(),
+        category: article.category || '',
         featured_image: article.featured_image || '',
-        author_info: article.author_id ? { // Use author_info for structured data
-            id: article.author_id,
-            name: article.author_name || 'Autor desconocido',
-            slug: article.author_slug || '',
-            avatar: article.author_avatar || ''
-        } : null,
+        author_id: article.author_id || null,
+        author_name: article.author_name || 'Autor desconocido',
+        author_slug: article.author_slug || '',
+        author_avatar: article.author_avatar || '',
+        tags: article.tags || '',
+        updated_at: article.updated_at || article.pub_date || new Date().toISOString()
+    };
+    
+    console.log(`[transformArticleForFrontend] Processing article: ${safeArticle.slug}`);
+    
+    // Procesamiento ultra seguro de tags con múltiples fallbacks
+    let parsedTags: any[] = [];
+    try {
+        if (!safeArticle.tags) {
+            // Si no hay tags, usar array vacío
+            parsedTags = [];
+        } else if (Array.isArray(safeArticle.tags)) {
+            // Si ya es un array, usarlo directamente
+            parsedTags = safeArticle.tags;
+        } else if (typeof safeArticle.tags === 'string') {
+            // Intentar primero como JSON
+            try {
+                // Solo intentar parsear como JSON si parece serlo (empieza con [ y termina con ])
+                if (safeArticle.tags.trim().startsWith('[') && safeArticle.tags.trim().endsWith(']')) {
+                    parsedTags = JSON.parse(safeArticle.tags);
+                } else {
+                    // Si no parece JSON, dividir por comas
+                    parsedTags = safeArticle.tags.split(',').map(tag => tag.trim()).filter(Boolean);
+                }
+            } catch (parseError) {
+                // Si falla el parsing como JSON, dividir por comas
+                parsedTags = safeArticle.tags.split(',').map(tag => tag.trim()).filter(Boolean);
+                console.log(`[transformArticleForFrontend] Fallback to comma splitting for tags: ${parsedTags.join(', ')}`);
+            }
+        } else {
+            // Si tags existe pero no es string ni array, convertir a string e intentar
+            console.warn(`[transformArticleForFrontend] Unexpected tags type: ${typeof safeArticle.tags}`);
+            const tagString = String(safeArticle.tags);
+            parsedTags = tagString.split(',').map(tag => tag.trim()).filter(Boolean);
+        }
+    } catch (tagError) {
+        // Último fallback: si todo falla, al menos asegurar que es un array vacío
+        console.error(`[transformArticleForFrontend] Error processing tags, using empty array:`, tagError);
+        parsedTags = [];
+    }
+
+    // Construir objeto de autor con manejo seguro de nulos
+    let author_info = null;
+    if (safeArticle.author_id) {
+        try {
+            author_info = {
+                id: safeArticle.author_id,
+                name: safeArticle.author_name || 'Autor desconocido',
+                slug: safeArticle.author_slug || '',
+                avatar: safeArticle.author_avatar || ''
+            };
+        } catch (authorError) {
+            console.error(`[transformArticleForFrontend] Error creating author_info:`, authorError);
+            // Si falla la creación del autor, usar un objeto básico
+            author_info = { 
+                id: safeArticle.author_id, 
+                name: 'Autor desconocido', 
+                slug: '', 
+                avatar: '' 
+            };
+        }
+    }
+
+    // Asegurarse de que todos los campos requeridos existan con validación explícita de tipos
+    const transformedArticle = {
+        slug: String(safeArticle.slug || ''),
+        title: String(safeArticle.title || 'Sin título'),
+        description: String(safeArticle.description || ''),
+        content: String(safeArticle.content || ''),
+        pubDate: String(safeArticle.pub_date || new Date().toISOString()), // Transform pub_date to pubDate
+        category: String(safeArticle.category || ''), // Usar solo category (singular)
+        featured_image: String(safeArticle.featured_image || ''),
+        author_info: author_info,
         tags: parsedTags,
-        updated_at: article.updated_at || article.pub_date || new Date().toISOString() // Incluir fecha de actualización
+        updated_at: String(safeArticle.updated_at || safeArticle.pub_date || new Date().toISOString()) // Incluir fecha de actualización
     };
     
     console.log(`[transformArticleForFrontend] Article transformed successfully: ${transformedArticle.title}`);
@@ -453,6 +503,7 @@ async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
             // Ejecutar la consulta SQL
             try {
                 console.log(`[articles/API] Preparing SQL query for slug: '${cleanSlug}'`);
+                // Consulta SQL simplificada para minimizar errores de join
                 const statement = db.prepare(`
                     SELECT a.*,
                            aut.id as author_id,
@@ -462,6 +513,7 @@ async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
                     FROM articles a
                     LEFT JOIN authors aut ON a.author_id = aut.id
                     WHERE a.slug = ?
+                    LIMIT 1
                 `);
                 
                 console.log(`[articles/API] Binding parameter: '${cleanSlug}'`);
@@ -493,16 +545,49 @@ async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
                     console.log(`[articles/API] Transforming article data for frontend`);
                     
                     // Guardar datos crudos para debugging
-                    const rawData = results[0];
-                    console.log(`[articles/API] Raw article data:`, {
-                        slug: rawData.slug,
-                        title: rawData.title,
-                        hasContent: Boolean(rawData.content),
-                        contentLength: rawData.content ? rawData.content.length : 0,
-                        author_id: rawData.author_id
-                    });
+                    // Guardar datos crudos para debugging con comprobación de nulos
+                    const rawData = results[0] || {};
                     
-                    const article = transformArticleForFrontend(rawData);
+                    // Registrar información básica para debug, con validaciones
+                    try {
+                        console.log(`[articles/API] Raw article data:`, {
+                            slug: rawData.slug || 'undefined',
+                            title: rawData.title || 'undefined',
+                            hasContent: Boolean(rawData.content),
+                            contentLength: rawData.content ? String(rawData.content).length : 0,
+                            author_id: rawData.author_id || 'null',
+                            keys: Object.keys(rawData).join(', ')
+                        });
+                    } catch (logError) {
+                        console.error('[articles/API] Error logging raw data:', logError);
+                    }
+                    
+                    // Intentar transformar el artículo con manejo explícito de errores
+                    let article;
+                    try {
+                        article = transformArticleForFrontend(rawData);
+                        if (!article) {
+                            throw new Error('Article transformation returned null');
+                        }
+                    } catch (transformError) {
+                        console.error('[articles/API] Error in transformArticleForFrontend:', transformError);
+                        
+                        // Crear un artículo mínimo como fallback si la transformación falla
+                        article = {
+                            slug: rawData.slug || 'error-slug',
+                            title: rawData.title || 'Error al procesar artículo',
+                            description: 'No se pudo transformar correctamente el artículo',
+                            content: '',
+                            pubDate: new Date().toISOString(),
+                            category: '',
+                            featured_image: '',
+                            author_info: null,
+                            tags: [],
+                            updated_at: new Date().toISOString()
+                        };
+                        
+                        console.log('[articles/API] Created fallback article:', article.title);
+                    }
                     
                     console.log(`[articles/API] Article transformed successfully: '${article.title}'`);
                     
