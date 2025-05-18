@@ -19,6 +19,11 @@ export async function editArticle(slug) {
     const article = response.article || response;
     console.log('Datos del artículo procesados:', article);
     
+    // Super importante: mostrar el formato exacto del autor
+    console.log('AUTOR DEL ARTÍCULO:', article.author);
+    console.log('TIPO DE AUTOR:', typeof article.author);
+    console.log('AUTOR_ID DEL ARTÍCULO:', article.author_id);
+    
     if (!article) {
       throw new Error('Artículo no encontrado');
     }
@@ -117,42 +122,65 @@ export function loadArticleDataIntoForm(article) {
     // Formatear la fecha para el input date
     this.setDateInputValue(dateInput, article.pubDate);
     
-    // Seleccionar el autor si existe
+    // SOLUCIÓN RADICAL: Forzar la selección del autor correcto
     if (authorSelect) {
-      console.log('DEBUG: Opciones de autor disponibles:', Array.from(authorSelect.options).map(o => o.value));
-      console.log('DEBUG: Autor del artículo:', article.author);
+      console.log('DEPURACIÓN AUTORES:');
+      console.log('- Autor del artículo:', article.author);
+      console.log('- Opciones disponibles:', Array.from(authorSelect.options).map(o => ({value: o.value, text: o.text})));
       
-      // Enfoque directo: Si el autor es un string, usarlo directamente
-      if (typeof article.author === 'string' && article.author) {
-        // Verificar si el autor existe en las opciones
-        let autorExisteEnOpciones = false;
-        
+      // PASO 1: Limpiar selector y añadir una opción para cada autor conocido
+      const autoresConocidos = [
+        'Juan Pérez',
+        'María González',
+        'Carlos Rodríguez',
+        'Ana López',
+        'Pedro García',
+        'Laura Martínez',
+        'Javier Sánchez',
+        'Carmen Fernández',
+        'Miguel Díaz',
+        'Sofía Gómez',
+        'Juan Manuel',
+        'Autor Desconocido'
+      ];
+      
+      // PASO 2: Guardar la opción actual seleccionada
+      const autorActual = article.author || 'Autor Desconocido';
+      console.log('Autor actual a seleccionar:', autorActual);
+      
+      // PASO 3: Recrear todas las opciones para asegurar consistencia
+      // Primero, borrar todas las opciones existentes
+      authorSelect.innerHTML = '';
+      
+      // Añadir la opción por defecto
+      const defaultOption = new Option('Seleccionar autor', '');
+      authorSelect.add(defaultOption);
+      
+      // Añadir todos los autores conocidos
+      autoresConocidos.forEach(autor => {
+        authorSelect.add(new Option(autor, autor));
+      });
+      
+      // Si el autor actual no está en la lista, añadirlo
+      if (autorActual && !autoresConocidos.includes(autorActual)) {
+        authorSelect.add(new Option(autorActual, autorActual));
+      }
+      
+      // PASO 4: Seleccionar explícitamente el autor actual
+      authorSelect.value = autorActual;
+      
+      // Verificación final
+      console.log('Autor finalmente seleccionado:', authorSelect.value);
+      
+      // PASO 5: Como último recurso, usar selectedIndex
+      if (authorSelect.value !== autorActual) {
         for (let i = 0; i < authorSelect.options.length; i++) {
-          // Comparación insensible a mayúsculas/minúsculas para mayor tolerancia
-          if (authorSelect.options[i].value.toLowerCase() === article.author.toLowerCase()) {
+          if (authorSelect.options[i].value === autorActual) {
             authorSelect.selectedIndex = i;
-            autorExisteEnOpciones = true;
-            console.log(`Autor encontrado y seleccionado: ${article.author}`);
             break;
           }
         }
-        
-        // Si no existe, añadirlo como opción temporal
-        if (!autorExisteEnOpciones && article.author !== 'Autor Desconocido') {
-          console.log(`Añadiendo autor como opción temporal: ${article.author}`);
-          const newOption = new Option(article.author, article.author);
-          authorSelect.add(newOption);
-          authorSelect.value = article.author;
-        }
       }
-      // Si hay un author_id, intentar usarlo como respaldo
-      else if (article.author_id) {
-        authorSelect.value = article.author_id;
-        console.log('Usando author_id como respaldo:', article.author_id);
-      }
-      
-      // Mostrar resultado final
-      console.log('Autor seleccionado finalmente:', authorSelect.value);
     }
     
     // Cargar etiquetas
