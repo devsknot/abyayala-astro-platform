@@ -129,9 +129,25 @@ export function loadArticleDataIntoForm(article) {
       console.log('- Author ID del artículo:', article.author_id);
       console.log('- Opciones disponibles:', Array.from(authorSelect.options).map(o => ({value: o.value, text: o.text})));
       
-      // Limpiar y guardar valores para depuración
-      const autorActual = article.author || '';
-      const autorId = article.author_id || '';
+      // Limpiar y guardar valores para depuración (eliminar espacios extras)
+      let autorActual = (article.author || '').trim();
+      let autorId = (article.author_id || '').trim();
+      
+      // Manejar caso especial de "Autor desconocido"
+      if (autorActual.toLowerCase() === 'autor desconocido') {
+        console.log('Caso especial: "Autor desconocido" detectado, seleccionando primera opción disponible');
+        
+        // Comprobar si hay opciones disponibles y seleccionar la primera no vacía
+        if (authorSelect.options.length > 1) { // Más de la opción "Seleccionar autor"
+          authorSelect.selectedIndex = 1; // Seleccionar la primera opción real (no la opción vacía)
+          console.log(`Seleccionando primera opción disponible: ${authorSelect.options[1].text}`);
+          // Verificación final
+          console.log('Autor seleccionado por defecto:', authorSelect.options[authorSelect.selectedIndex]?.text, 
+                     '(valor:', authorSelect.value, ')');
+          return; // Salir de la función
+        }
+      }
+      
       console.log('Autor actual a seleccionar:', autorActual, 'con ID:', autorId);
       
       // Determinar qué valor usar para la comparación (primero intentar con ID si existe)
@@ -147,9 +163,9 @@ export function loadArticleDataIntoForm(article) {
       // Verificar si el autor ya existe en las opciones
       let autorEncontrado = false;
       for (let i = 0; i < authorSelect.options.length; i++) {
-        // Comparar tanto con el valor como con el texto visible
-        if (authorSelect.options[i].value === valorASeleccionar || 
-            authorSelect.options[i].text === autorActual) {
+        // Comparar tanto con el valor como con el texto visible (ignorando mayúsculas/minúsculas)
+        if (authorSelect.options[i].value.toLowerCase() === valorASeleccionar.toLowerCase() || 
+            authorSelect.options[i].text.toLowerCase() === autorActual.toLowerCase()) {
           autorEncontrado = true;
           authorSelect.selectedIndex = i;
           console.log(`Autor encontrado en opción ${i}:`, authorSelect.options[i].text);
@@ -157,8 +173,8 @@ export function loadArticleDataIntoForm(article) {
         }
       }
       
-      // Si no se encontró el autor y tenemos un valor válido, añadirlo temporalmente
-      if (!autorEncontrado && (autorActual || autorId)) {
+      // Si no se encontró el autor y tenemos un valor válido (que no sea "Autor desconocido"), añadirlo temporalmente
+      if (!autorEncontrado && (autorActual || autorId) && autorActual.toLowerCase() !== 'autor desconocido') {
         // Determinar el texto a mostrar
         const textoMostrado = autorActual || `Autor ID: ${autorId}`;
         const valorOption = valorASeleccionar || textoMostrado;
