@@ -424,12 +424,16 @@ export async function saveArticle() {
       content: this.editor ? this.editor.getContent() : ''
     };
     
-    // Manejar autor si existe - guardar en ambos campos para mayor compatibilidad
+    // Manejar autor si existe - guardar correctamente el ID y el nombre
     if (authorSelect && authorSelect.value) {
-      // Guardar tanto en author como en author_id para garantizar compatibilidad
+      // Guardar el ID en author_id
       articleData.author_id = authorSelect.value;
-      articleData.author = authorSelect.value;
-      console.log('Autor guardado:', authorSelect.value);
+      
+      // Guardar el nombre visible (texto de la opción) en author
+      const selectedOption = authorSelect.options[authorSelect.selectedIndex];
+      articleData.author = selectedOption ? selectedOption.text : authorSelect.value;
+      
+      console.log('Autor guardado - ID:', articleData.author_id, 'Nombre:', articleData.author);
     }
     
     // Manejar etiquetas si existen

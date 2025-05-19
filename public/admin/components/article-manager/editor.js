@@ -126,45 +126,54 @@ export function loadArticleDataIntoForm(article) {
     if (authorSelect) {
       console.log('DEPURACIÓN AUTORES:');
       console.log('- Autor del artículo:', article.author);
+      console.log('- Author ID del artículo:', article.author_id);
       console.log('- Opciones disponibles:', Array.from(authorSelect.options).map(o => ({value: o.value, text: o.text})));
       
-      // Guardar la opción actual seleccionada
-      const autorActual = article.author || 'Autor Desconocido';
-      console.log('Autor actual a seleccionar:', autorActual);
+      // Limpiar y guardar valores para depuración
+      const autorActual = article.author || '';
+      const autorId = article.author_id || '';
+      console.log('Autor actual a seleccionar:', autorActual, 'con ID:', autorId);
       
-      // Si el autor actual no está en las opciones, añadirlo temporalmente
+      // Determinar qué valor usar para la comparación (primero intentar con ID si existe)
+      let valorASeleccionar = '';
+      if (autorId) {
+        valorASeleccionar = autorId;
+        console.log('Usando author_id para la selección:', valorASeleccionar);
+      } else if (autorActual) {
+        valorASeleccionar = autorActual;
+        console.log('Usando el nombre del autor para la selección:', valorASeleccionar);
+      }
+      
+      // Verificar si el autor ya existe en las opciones
       let autorEncontrado = false;
       for (let i = 0; i < authorSelect.options.length; i++) {
-        if (authorSelect.options[i].value === autorActual) {
+        // Comparar tanto con el valor como con el texto visible
+        if (authorSelect.options[i].value === valorASeleccionar || 
+            authorSelect.options[i].text === autorActual) {
           autorEncontrado = true;
+          authorSelect.selectedIndex = i;
+          console.log(`Autor encontrado en opción ${i}:`, authorSelect.options[i].text);
           break;
         }
       }
       
-      if (!autorEncontrado && autorActual) {
-        // Añadir el autor actual como opción temporal
-        console.log(`Añadiendo autor actual como opción temporal: ${autorActual}`);
-        const newOption = new Option(autorActual, autorActual);
+      // Si no se encontró el autor y tenemos un valor válido, añadirlo temporalmente
+      if (!autorEncontrado && (autorActual || autorId)) {
+        // Determinar el texto a mostrar
+        const textoMostrado = autorActual || `Autor ID: ${autorId}`;
+        const valorOption = valorASeleccionar || textoMostrado;
+        
+        console.log(`Añadiendo autor actual como opción temporal: ${textoMostrado} (valor: ${valorOption})`);
+        const newOption = new Option(textoMostrado, valorOption);
         authorSelect.add(newOption);
-      }
-      
-      // Seleccionar explícitamente el autor actual
-      authorSelect.value = autorActual;
-      console.log('Valor del select después de asignar:', authorSelect.value);
-      
-      // Como último recurso, usar selectedIndex
-      if (authorSelect.value !== autorActual) {
-        for (let i = 0; i < authorSelect.options.length; i++) {
-          if (authorSelect.options[i].value === autorActual) {
-            console.log(`Seleccionando por índice la opción ${i}: ${authorSelect.options[i].text}`);
-            authorSelect.selectedIndex = i;
-            break;
-          }
-        }
+        
+        // Seleccionar la nueva opción
+        authorSelect.value = valorOption;
       }
       
       // Verificación final
-      console.log('Autor finalmente seleccionado:', authorSelect.value);
+      console.log('Autor finalmente seleccionado:', authorSelect.options[authorSelect.selectedIndex]?.text, 
+                 '(valor:', authorSelect.value, ')');
     }
     
     // Cargar etiquetas
