@@ -16,11 +16,18 @@ function transformArticleForFrontend(article: any) {
     }
     
     // Asegurar que todos los campos del artículo tienen valores por defecto seguros
+    // Intentar obtener el contenido de cualquier campo que pueda contenerlo
+    const articleContent = article.article_content || article.content || '';
+    console.log(`[transformArticleForFrontend] Contenido encontrado: ${articleContent.length} caracteres`);
+    if (articleContent.length > 0) {
+        console.log(`[transformArticleForFrontend] Muestra del contenido: ${articleContent.substring(0, 100)}...`);
+    }
+    
     const safeArticle = {
         slug: article.slug || '',
         title: article.title || 'Sin título',
         description: article.description || '',
-        content: article.content || '',
+        content: articleContent, // Usar el contenido encontrado (normal o del campo article_content)
         pub_date: article.pub_date || new Date().toISOString(),
         category: article.category || '',
         featured_image: article.featured_image || '',
@@ -507,12 +514,30 @@ async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
             // Ejecutar la consulta SQL
             try {
                 console.log(`[articles/API] Preparing SQL query for slug: '${cleanSlug}'`);
-                // Consulta SQL ultra simplificada sin JOIN para diagnosticar problemas
-                console.log(`[articles/API] DIAGNÓSTICO: Usando consulta simplificada sin JOIN para resolver error 500`);
+                // Consulta SQL mejorada con JOIN para incluir datos de autor y asegurar que se obtiene el contenido
+                console.log(`[articles/API] DIAGNÓSTICO: Usando consulta completa con JOIN para obtener todos los datos`);
+                
+                // Primero obtenemos todos los campos para debug
+                try {
+                    const infoStatement = db.prepare(`PRAGMA table_info(articles)`);
+                    const { results: tableInfo } = await infoStatement.all();
+                    if (tableInfo && tableInfo.length > 0) {
+                        console.log(`[articles/API] Columnas de la tabla articles:`, tableInfo.map((col: any) => col.name).join(', '));
+                    }
+                } catch (infoError) {
+                    console.error(`[articles/API] Error al obtener info de tabla:`, infoError);
+                }
+                
+                // Consulta principal con JOIN a la tabla de autores
                 const statement = db.prepare(`
-                    SELECT * 
-                    FROM articles 
-                    WHERE slug = ? 
+                    SELECT a.*, 
+                           authors.name as author_name, 
+                           authors.slug as author_slug, 
+                           authors.avatar as author_avatar,
+                           a.content as article_content  -- Obtener el contenido explícitamente
+                    FROM articles a
+                    LEFT JOIN authors ON a.author_id = authors.id
+                    WHERE a.slug = ? 
                     LIMIT 1
                 `);
                 
@@ -587,17 +612,56 @@ async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
                         console.error('[articles/API] Error in transformArticleForFrontend:', transformError);
                         
                         // Crear un artículo mínimo como fallback si la transformación falla
+                    // Pero asegurarse de incluir el contenido si existe
+                        console.log('[articles/API] Error en transformación, creando respuesta manual con campos debugeados');
+                        
+                        // Verificar cada campo importante para debug
+                        console.log('[articles/API] Campos importantes del artículo:');
+                        const debugFields = ['slug', 'title', 'description', 'content', 'article_content', 'pub_date', 'category', 'featured_image', 'author_id'];
+                        debugFields.forEach(field => {
+                            console.log(`- ${field}: ${typeof rawData[field]} ${rawData[field] ? (typeof rawData[field] === 'string' ? `(${rawData[field].length} chars)` : '') : '(vacío)'}`); 
+                        });
+                        
+                        // Usar el contenido de article_content si existe, o content como respaldo
+                        const articleContent = rawData.article_content || rawData.content || '';
+                        console.log(`[articles/API] Contenido a usar: ${articleContent ? articleContent.substring(0, 100) + '...' : 'VACÍO'} (${articleContent.length} caracteres)`);
+                        
+                        // Intentar buscar contenido en otros campos si todavía no se ha encontrado
+                        let finalContent = articleContent;
+                        if (!finalContent || finalContent.trim() === '') {
+                            console.log('[articles/API] Buscando contenido en otros campos del objeto...');
+                            // Buscar en todos los campos un posible contenido HTML (buscar tags comunes)
+                            for (const key in rawData) {
+                                if (typeof rawData[key] === 'string' && 
+                                    rawData[key].length > 100 && 
+                                    (rawData[key].includes('<p>') || 
+                                     rawData[key].includes('<div>') || 
+                                     rawData[key].includes('<br>') || 
+                                     rawData[key].includes('&nbsp;'))) {
+                                    
+                                    console.log(`[articles/API] Posible contenido encontrado en campo '${key}': ${rawData[key].substring(0, 100)}...`);
+                                    finalContent = rawData[key];
+                                    break;
+                                }
+                            }
+                        }
+                        
                         article = {
                             slug: rawData.slug || 'error-slug',
                             title: rawData.title || 'Error al procesar artículo',
-                            description: 'No se pudo transformar correctamente el artículo',
-                            content: '',
-                            pubDate: new Date().toISOString(),
-                            category: '',
-                            featured_image: '',
-                            author_info: null,
-                            tags: [],
-                            updated_at: new Date().toISOString()
+                            description: rawData.description || 'No se pudo transformar correctamente el artículo',
+                            content: finalContent, // Usar el contenido encontrado o buscado
+                            pubDate: rawData.pub_date || new Date().toISOString(),
+                            category: rawData.category || '',
+                            featured_image: rawData.featured_image || '',
+                            author_info: rawData.author_id ? {
+                                id: rawData.author_id,
+                                name: rawData.author_name || 'Autor desconocido',
+                                slug: rawData.author_slug || '',
+                                avatar: rawData.author_avatar || ''
+                            } : null,
+                            tags: rawData.tags ? (typeof rawData.tags === 'string' ? rawData.tags.split(',').map((t: string) => t.trim()) : []) : [],
+                            updated_at: rawData.updated_at || rawData.pub_date || new Date().toISOString()
                         };
                         
                         console.log('[articles/API] Created fallback article:', article.title);
