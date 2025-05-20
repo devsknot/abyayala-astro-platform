@@ -17,7 +17,13 @@ export async function editArticle(slug) {
     
     // La respuesta puede venir en diferentes formatos, manejar ambos casos
     const article = response.article || response;
+    
+    // Mostrar todos los campos del artículo para depuración
     console.log('Datos del artículo procesados:', article);
+    console.log('Campos del artículo:');
+    for (const key in article) {
+      console.log(`- ${key}: ${typeof article[key] === 'object' ? JSON.stringify(article[key]) : article[key]}`);
+    }
     
     // Verificar que el artículo tenga contenido
     if (!article.content) {
@@ -226,24 +232,56 @@ export function loadArticleDataIntoForm(article) {
       tagsInput.value = Array.isArray(article.tags) ? article.tags.join(', ') : '';
     }
     
-    // Cargar imagen destacada
-    this.loadFeaturedImage(article.featured_image);
+    // Cargar imagen destacada (verificar todos los posibles nombres de campo)
+    if (article.featured_image) {
+      console.log('Imagen destacada encontrada (featured_image):', article.featured_image);
+      this.loadFeaturedImage(article.featured_image);
+    } else if (article.heroImage) { // Compatibilidad con nombre antiguo
+      console.log('Imagen destacada encontrada (heroImage):', article.heroImage);
+      this.loadFeaturedImage(article.heroImage);
+    } else if (article.featuredImage) { // Otro nombre alternativo
+      console.log('Imagen destacada encontrada (featuredImage):', article.featuredImage);
+      this.loadFeaturedImage(article.featuredImage);
+    } else if (article.hero_image) { // Otro nombre alternativo
+      console.log('Imagen destacada encontrada (hero_image):', article.hero_image);
+      this.loadFeaturedImage(article.hero_image);
+    } else {
+      console.warn('No se encontró imagen destacada para el artículo');
+      // Buscar cualquier campo que pueda contener una URL de imagen
+      for (const key in article) {
+        if (typeof article[key] === 'string' && 
+            (article[key].includes('/api/media/') || 
+             article[key].includes('/media/') || 
+             article[key].includes('/img/') || 
+             article[key].includes('.jpg') || 
+             article[key].includes('.png') || 
+             article[key].includes('.jpeg'))) {
+          console.log(`Posible imagen encontrada en campo '${key}':`, article[key]);
+          this.loadFeaturedImage(article[key]);
+          break;
+        }
+      }
+    }
     
     // Verificar y registrar el contenido del artículo para depuración
     console.log('Contenido del artículo a cargar:', article.content ? article.content.substring(0, 100) + '...' : 'No hay contenido');
     console.log('Longitud del contenido:', article.content ? article.content.length : 0);
     
+    // Guardar una referencia al contenido para asegurarnos de que no se pierda
+    const articleContent = article.content || '';
+    
     // Cargar contenido en el editor (en un método separado para evitar anidamiento)
     // Aumentar el tiempo de espera para asegurar que el DOM esté listo
     setTimeout(() => {
-      if (article.content) {
+      if (articleContent) {
         console.log('Iniciando carga de contenido en el editor...');
-        this.initializeEditor(article.content);
+        console.log('Primeros 100 caracteres del contenido:', articleContent.substring(0, 100));
+        this.initializeEditor(articleContent);
       } else {
         console.warn('No hay contenido para cargar en el editor');
         this.initializeEditor('');
       }
-    }, 800);
+    }, 1000); // Aumentar el tiempo de espera para asegurar que el DOM esté completamente listo
     
   } catch (error) {
     console.error('Error al cargar datos en el formulario:', error);
@@ -323,9 +361,17 @@ export function loadFeaturedImage(featuredImage) {
       // Comprobar si la URL de la imagen es válida
       // Si la URL no comienza con http o /, intentar prepender la ruta base
       let imageUrl = featuredImage;
+      if (!imageUrl) {
+        console.warn('URL de imagen vacía o no válida');
+        return;
+      }
+      
+      // Normalizar la URL de la imagen
       if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
         imageUrl = '/' + imageUrl;
       }
+      
+      console.log('URL de imagen normalizada:', imageUrl);
       
       // Actualizar la vista previa de la imagen
       this.updateFeaturedImagePreview(imageUrl, featuredImagePreview);
@@ -378,8 +424,16 @@ export function initializeEditor(content) {
     // Limpiar cualquier contenido previo del editor
     editorContainer.innerHTML = '';
     
-    // Importar dinámicamente el editor (corregir ruta de importación)
-    import('../../components/content-editor.js')
+    // Verificar nuevamente que el contenido sea válido
+    if (content) {
+      console.log(`Preparando editor para contenido de ${content.length} caracteres`);
+    } else {
+      console.warn('Contenido vacío o no válido para el editor');
+      content = ''; // Asegurar que sea una cadena vacía y no undefined
+    }
+    
+    // Importar dinámicamente el editor (usando ruta absoluta para evitar problemas)
+    import('/admin/components/content-editor.js')
       .then(module => {
         try {
           const ContentEditor = module.ContentEditor;
@@ -392,9 +446,19 @@ export function initializeEditor(content) {
             // Verificar que el contenido sea válido
             if (content && typeof content === 'string') {
               console.log(`Estableciendo contenido en el editor (${content.length} caracteres)`);
+              console.log('Muestra del contenido a establecer:', content.substring(0, 100) + '...');
+              
               // Asegurar que el contenido sea una cadena válida
-              this.editor.setContent(content);
-              console.log('Contenido establecido en el editor correctamente');
+              try {
+                // Usar setTimeout para asegurar que el editor esté completamente inicializado
+                setTimeout(() => {
+                  this.editor.setContent(content);
+                  console.log('Contenido establecido en el editor correctamente');
+                }, 100);
+              } catch (contentError) {
+                console.error('Error al establecer contenido:', contentError);
+                this.editor.setContent(''); // Intentar con contenido vacío como fallback
+              }
             } else {
               console.warn('Contenido inválido o vacío:', content);
               this.editor.setContent(''); // Establecer contenido vacío como fallback
