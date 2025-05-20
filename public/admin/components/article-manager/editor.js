@@ -232,19 +232,13 @@ export function loadArticleDataIntoForm(article) {
       tagsInput.value = Array.isArray(article.tags) ? article.tags.join(', ') : '';
     }
     
-    // Cargar imagen destacada (verificar todos los posibles nombres de campo)
+    // Cargar imagen destacada (el campo estándar es featured_image)
     if (article.featured_image) {
       console.log('Imagen destacada encontrada (featured_image):', article.featured_image);
       this.loadFeaturedImage(article.featured_image);
-    } else if (article.heroImage) { // Compatibilidad con nombre antiguo
-      console.log('Imagen destacada encontrada (heroImage):', article.heroImage);
-      this.loadFeaturedImage(article.heroImage);
-    } else if (article.featuredImage) { // Otro nombre alternativo
+    } else if (article.featuredImage) { // Posible nombre alternativo en camelCase
       console.log('Imagen destacada encontrada (featuredImage):', article.featuredImage);
       this.loadFeaturedImage(article.featuredImage);
-    } else if (article.hero_image) { // Otro nombre alternativo
-      console.log('Imagen destacada encontrada (hero_image):', article.hero_image);
-      this.loadFeaturedImage(article.hero_image);
     } else {
       console.warn('No se encontró imagen destacada para el artículo');
       // Buscar cualquier campo que pueda contener una URL de imagen
@@ -268,7 +262,30 @@ export function loadArticleDataIntoForm(article) {
     console.log('Longitud del contenido:', article.content ? article.content.length : 0);
     
     // Guardar una referencia al contenido para asegurarnos de que no se pierda
-    const articleContent = article.content || '';
+    // Asegurarnos de que el contenido sea una cadena válida
+    let articleContent = '';
+    
+    if (article.content) {
+      // El contenido existe, usarlo directamente
+      articleContent = article.content;
+    } else if (article.body) {
+      // Compatibilidad con campo alternativo 'body'
+      console.log('Usando campo alternativo "body" para el contenido');
+      articleContent = article.body;
+    } else {
+      console.warn('No se encontró contenido para el artículo');
+    }
+    
+    // Verificar que el contenido sea una cadena
+    if (typeof articleContent !== 'string') {
+      console.warn('El contenido no es una cadena, intentando convertir');
+      try {
+        articleContent = String(articleContent || '');
+      } catch (e) {
+        console.error('Error al convertir contenido a cadena:', e);
+        articleContent = '';
+      }
+    }
     
     // Cargar contenido en el editor (en un método separado para evitar anidamiento)
     // Aumentar el tiempo de espera para asegurar que el DOM esté listo
@@ -369,6 +386,16 @@ export function loadFeaturedImage(featuredImage) {
       // Normalizar la URL de la imagen
       if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
         imageUrl = '/' + imageUrl;
+      }
+      
+      // Asegurarse de que la URL use el formato estándar para R2
+      // El formato estándar es: /api/media/YYYY/MM/nombre-archivo.jpg
+      if (imageUrl.includes('/api/media/')) {
+        console.log('URL de imagen en formato R2 detectada');
+      } else if (imageUrl.includes('/media/')) {
+        // Convertir /media/ a /api/media/
+        imageUrl = imageUrl.replace('/media/', '/api/media/');
+        console.log('URL de imagen convertida a formato R2:', imageUrl);
       }
       
       console.log('URL de imagen normalizada:', imageUrl);
