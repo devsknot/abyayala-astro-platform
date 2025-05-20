@@ -669,6 +669,43 @@ async function handleGetArticle(slug: string, db: any, headers: HeadersInit) {
                     
                     console.log(`[articles/API] Article transformed successfully: '${article.title}'`);
                     
+                    // Verificar una última vez que el artículo tenga contenido
+                    if (!article.content || article.content.trim() === '') {
+                        console.log('[articles/API] ALERTA: Contenido vacío en etapa final, intentando recuperación de emergencia');
+                        
+                        // Imprimir todos los campos del artículo para debug
+                        console.log('[articles/API] Campos del artículo raw:');
+                        Object.keys(results[0] || {}).forEach((key: string) => {
+                            const value = (results[0] || {})[key];
+                            const preview = typeof value === 'string' && value.length > 50 ? 
+                                value.substring(0, 50) + '...' : 
+                                String(value);
+                            console.log(`- ${key}: (${typeof value}) ${preview}`);
+                        });
+                        
+                        // Intentar recuperar contenido directamente de la tabla
+                        try {
+                            console.log('[articles/API] Consultando directamente el contenido...');
+                            const contentStatement = db.prepare(`
+                                SELECT content FROM articles WHERE slug = ? LIMIT 1
+                            `);
+                            const contentResults = await contentStatement.bind(cleanSlug).all();
+                            
+                            if (contentResults && contentResults.results && contentResults.results.length > 0 && contentResults.results[0].content) {
+                                console.log(`[articles/API] Recuperado contenido directo: ${contentResults.results[0].content.length} caracteres`);
+                                article.content = contentResults.results[0].content;
+                            }
+                        } catch (directError) {
+                            console.error('[articles/API] Error al recuperar contenido directo:', directError);
+                        }
+                    }
+                    
+                    // Verificación final e impresión de detalles para debug
+                    console.log(`[articles/API] Contenido final: ${article.content ? article.content.length : 0} caracteres`);
+                    if (article.content && article.content.length > 0) {
+                        console.log(`[articles/API] Muestra de contenido: ${article.content.substring(0, 100)}...`);
+                    }
+                    
                     // COMPATIBILIDAD: Retornar directamente el artículo (sin envolverlo en success/article)
                     // Esto es para mantener compatibilidad con el frontend existente
                     console.log(`[articles/API] Devolviendo artículo en formato compatible con frontend anterior`);
