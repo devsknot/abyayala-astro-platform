@@ -36,6 +36,10 @@ export async function editArticle(slug) {
     // Cargar los datos del artículo en el formulario
     this.loadArticleDataIntoForm(article);
     
+    // Ocultar el indicador de carga una vez que todo esté listo
+    this.hideLoading();
+    console.log('Artículo cargado correctamente, loader ocultado');
+    
   } catch (error) {
     console.error('Error al cargar artículo:', error);
     if (this.notificationManager) {
@@ -127,11 +131,23 @@ export function loadArticleDataIntoForm(article) {
       console.log('DEPURACIÓN AUTORES:');
       console.log('- Autor del artículo:', article.author);
       console.log('- Author ID del artículo:', article.author_id);
+      console.log('- Author Info:', article.author_info);
       console.log('- Opciones disponibles:', Array.from(authorSelect.options).map(o => ({value: o.value, text: o.text})));
       
-      // Limpiar y guardar valores para depuración (eliminar espacios extras)
+      // Extraer información del autor del artículo
       let autorActual = (article.author || '').trim();
-      let autorId = (article.author_id || '').trim();
+      let autorId = '';
+      
+      // Intentar obtener el ID del autor de diferentes fuentes
+      if (article.author_id) {
+        // Si el ID viene directamente en el artículo
+        autorId = String(article.author_id).trim();
+      } else if (article.author_info && article.author_info.id) {
+        // Si el ID viene en el objeto author_info
+        autorId = String(article.author_info.id).trim();
+      }
+      
+      console.log('Datos procesados - Autor:', autorActual, 'ID:', autorId);
       
       // Manejar caso especial de "Autor desconocido"
       if (autorActual.toLowerCase() === 'autor desconocido') {
@@ -144,51 +160,56 @@ export function loadArticleDataIntoForm(article) {
           // Verificación final
           console.log('Autor seleccionado por defecto:', authorSelect.options[authorSelect.selectedIndex]?.text, 
                      '(valor:', authorSelect.value, ')');
-          return; // Salir de la función
+          return; // Continuar con el resto del formulario
         }
       }
       
-      console.log('Autor actual a seleccionar:', autorActual, 'con ID:', autorId);
-      
-      // Determinar qué valor usar para la comparación (primero intentar con ID si existe)
-      let valorASeleccionar = '';
-      if (autorId) {
-        valorASeleccionar = autorId;
-        console.log('Usando author_id para la selección:', valorASeleccionar);
-      } else if (autorActual) {
-        valorASeleccionar = autorActual;
-        console.log('Usando el nombre del autor para la selección:', valorASeleccionar);
-      }
-      
-      // Verificar si el autor ya existe en las opciones
+      // Intentar seleccionar el autor por ID primero (más preciso)
       let autorEncontrado = false;
-      for (let i = 0; i < authorSelect.options.length; i++) {
-        // Comparar tanto con el valor como con el texto visible (ignorando mayúsculas/minúsculas)
-        if (authorSelect.options[i].value.toLowerCase() === valorASeleccionar.toLowerCase() || 
-            authorSelect.options[i].text.toLowerCase() === autorActual.toLowerCase()) {
+      
+      if (autorId) {
+        console.log('Intentando seleccionar autor por ID:', autorId);
+        // Intentar seleccionar por ID
+        authorSelect.value = autorId;
+        
+        // Verificar si se seleccionó correctamente
+        if (authorSelect.value === autorId) {
           autorEncontrado = true;
-          authorSelect.selectedIndex = i;
-          console.log(`Autor encontrado en opción ${i}:`, authorSelect.options[i].text);
-          break;
+          console.log('Autor seleccionado correctamente por ID:', authorSelect.options[authorSelect.selectedIndex].text);
+        } else {
+          console.log('No se pudo seleccionar por ID, intentando por nombre...');
         }
       }
       
-      // Si no se encontró el autor y tenemos un valor válido (que no sea "Autor desconocido"), añadirlo temporalmente
-      if (!autorEncontrado && (autorActual || autorId) && autorActual.toLowerCase() !== 'autor desconocido') {
-        // Determinar el texto a mostrar
-        const textoMostrado = autorActual || `Autor ID: ${autorId}`;
-        const valorOption = valorASeleccionar || textoMostrado;
+      // Si no se encontró por ID, intentar por nombre
+      if (!autorEncontrado && autorActual && autorActual.toLowerCase() !== 'autor desconocido') {
+        console.log('Intentando seleccionar autor por nombre:', autorActual);
         
-        console.log(`Añadiendo autor actual como opción temporal: ${textoMostrado} (valor: ${valorOption})`);
-        const newOption = new Option(textoMostrado, valorOption);
+        // Buscar en las opciones por texto
+        for (let i = 0; i < authorSelect.options.length; i++) {
+          if (authorSelect.options[i].text.toLowerCase() === autorActual.toLowerCase()) {
+            authorSelect.selectedIndex = i;
+            autorEncontrado = true;
+            console.log(`Autor encontrado por nombre en opción ${i}:`, authorSelect.options[i].text);
+            break;
+          }
+        }
+      }
+      
+      // Si aún no se encontró, añadir temporalmente (solo si no es "Autor desconocido")
+      if (!autorEncontrado && autorActual && autorActual.toLowerCase() !== 'autor desconocido') {
+        console.log(`Añadiendo autor temporal: ${autorActual}`);
+        // Usar el ID si existe, de lo contrario usar un valor temporal
+        const valorOption = autorId || `temp_${Date.now()}`;
+        const newOption = new Option(autorActual, valorOption);
         authorSelect.add(newOption);
-        
-        // Seleccionar la nueva opción
         authorSelect.value = valorOption;
       }
       
       // Verificación final
-      console.log('Autor finalmente seleccionado:', authorSelect.options[authorSelect.selectedIndex]?.text, 
+      const selectedOption = authorSelect.options[authorSelect.selectedIndex];
+      console.log('Autor finalmente seleccionado:', 
+                 selectedOption ? selectedOption.text : 'Ninguno', 
                  '(valor:', authorSelect.value, ')');
     }
     

@@ -426,14 +426,29 @@ export async function saveArticle() {
     
     // Manejar autor si existe - guardar correctamente el ID y el nombre
     if (authorSelect && authorSelect.value) {
-      // Guardar el ID en author_id
-      articleData.author_id = authorSelect.value;
+      // Guardar el ID en author_id (asegurarse de que sea un número si es posible)
+      const authorId = authorSelect.value;
+      articleData.author_id = !isNaN(authorId) ? Number(authorId) : authorId;
       
       // Guardar el nombre visible (texto de la opción) en author
       const selectedOption = authorSelect.options[authorSelect.selectedIndex];
-      articleData.author = selectedOption ? selectedOption.text : authorSelect.value;
+      articleData.author = selectedOption ? selectedOption.text : '';
       
-      console.log('Autor guardado - ID:', articleData.author_id, 'Nombre:', articleData.author);
+      // Guardar información adicional del autor si está disponible
+      if (selectedOption && selectedOption.dataset) {
+        // Crear objeto author_info con los datos disponibles
+        articleData.author_info = {
+          id: articleData.author_id,
+          name: articleData.author,
+          slug: selectedOption.dataset.slug || ''
+        };
+      }
+      
+      console.log('Autor guardado:', {
+        author_id: articleData.author_id,
+        author: articleData.author,
+        author_info: articleData.author_info
+      });
     }
     
     // Manejar etiquetas si existen

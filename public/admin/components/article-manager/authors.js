@@ -31,10 +31,10 @@ export async function loadAuthors() {
       const authorOptions = authors.map(author => {
         // Usar el ID como valor y el nombre como texto mostrado
         const name = author.name || 'Sin nombre';
-        const id = author.id || name; // Si no hay ID, usar el nombre como fallback
+        const id = author.id || ''; // Usar el ID numérico de la base de datos
         
-        console.log(`Opción de autor generada: Nombre=${name}, ID=${id}`);
-        return `<option value="${id}">${name}</option>`;
+        console.log(`Opción de autor generada: Nombre=${name}, ID=${id}, Slug=${author.slug}`);
+        return `<option value="${id}" data-slug="${author.slug || ''}" data-name="${name}">${name}</option>`;
       }).join('');
       
       // Actualizar el selector de autores
