@@ -19,6 +19,14 @@ export async function editArticle(slug) {
     const article = response.article || response;
     console.log('Datos del artículo procesados:', article);
     
+    // Verificar que el artículo tenga contenido
+    if (!article.content) {
+      console.warn('El artículo no tiene contenido o es vacío');
+    } else {
+      console.log(`Artículo con contenido de ${article.content.length} caracteres`);
+      console.log('Muestra del contenido:', article.content.substring(0, 100) + '...');
+    }
+    
     // Super importante: mostrar el formato exacto del autor
     console.log('AUTOR DEL ARTÍCULO:', article.author);
     console.log('TIPO DE AUTOR:', typeof article.author);
@@ -221,8 +229,21 @@ export function loadArticleDataIntoForm(article) {
     // Cargar imagen destacada
     this.loadFeaturedImage(article.featured_image);
     
+    // Verificar y registrar el contenido del artículo para depuración
+    console.log('Contenido del artículo a cargar:', article.content ? article.content.substring(0, 100) + '...' : 'No hay contenido');
+    console.log('Longitud del contenido:', article.content ? article.content.length : 0);
+    
     // Cargar contenido en el editor (en un método separado para evitar anidamiento)
-    setTimeout(() => this.initializeEditor(article.content || ''), 500);
+    // Aumentar el tiempo de espera para asegurar que el DOM esté listo
+    setTimeout(() => {
+      if (article.content) {
+        console.log('Iniciando carga de contenido en el editor...');
+        this.initializeEditor(article.content);
+      } else {
+        console.warn('No hay contenido para cargar en el editor');
+        this.initializeEditor('');
+      }
+    }, 800);
     
   } catch (error) {
     console.error('Error al cargar datos en el formulario:', error);
@@ -357,8 +378,8 @@ export function initializeEditor(content) {
     // Limpiar cualquier contenido previo del editor
     editorContainer.innerHTML = '';
     
-    // Importar dinámicamente el editor
-    import('../content-editor.js')
+    // Importar dinámicamente el editor (corregir ruta de importación)
+    import('../../components/content-editor.js')
       .then(module => {
         try {
           const ContentEditor = module.ContentEditor;
@@ -368,8 +389,16 @@ export function initializeEditor(content) {
           
           // Establecer el contenido
           if (this.editor && typeof this.editor.setContent === 'function') {
-            this.editor.setContent(content);
-            console.log('Contenido establecido en el editor correctamente');
+            // Verificar que el contenido sea válido
+            if (content && typeof content === 'string') {
+              console.log(`Estableciendo contenido en el editor (${content.length} caracteres)`);
+              // Asegurar que el contenido sea una cadena válida
+              this.editor.setContent(content);
+              console.log('Contenido establecido en el editor correctamente');
+            } else {
+              console.warn('Contenido inválido o vacío:', content);
+              this.editor.setContent(''); // Establecer contenido vacío como fallback
+            }
           } else {
             console.error('El editor no tiene el método setContent');
           }
