@@ -752,28 +752,60 @@ export async function deleteArticle(slug) {
     console.log(`Eliminando artículo con slug: ${slug}`);
     this.showLoading('Eliminando artículo...');
     
-    // Confirmar eliminación
-    const response = await this.contentManager.deleteArticle(slug);
+    // Variable para controlar si debemos actualizar la lista
+    let isDeleted = false;
     
-    console.log('Respuesta de eliminación:', response);
-    
-    if (response && response.success) {
-      if (this.notificationManager) {
-        this.notificationManager.success('Artículo eliminado con éxito');
-      }
+    try {
+      // Intentar eliminar el artículo
+      const response = await this.contentManager.deleteArticle(slug);
+      console.log('Respuesta de eliminación:', response);
       
-      // Recargar lista de artículos
+      if (response && response.success) {
+        isDeleted = true;
+        if (this.notificationManager) {
+          this.notificationManager.success('Artículo eliminado con éxito');
+        }
+      }
+    } catch (deleteError) {
+      console.warn('Error durante la eliminación:', deleteError);
+      
+      // Si el error es 404, puede significar que el artículo ya fue eliminado
+      if (deleteError.message && (deleteError.message.includes('404') || deleteError.message.includes('not found'))) {
+        console.log('Artículo no encontrado (404), asumiendo que ya ha sido eliminado');
+        isDeleted = true; // Consideramos que el artículo ya no está en la base de datos
+        
+        if (this.notificationManager) {
+          this.notificationManager.info('El artículo ya fue eliminado o no existe');
+        }
+      } else {
+        // Otros tipos de error
+        if (this.notificationManager) {
+          this.notificationManager.error('Error al eliminar el artículo: ' + (deleteError.message || ''));
+        }
+      }
+    }
+    
+    // Si determinamos que el artículo fue eliminado o ya no existe,
+    // actualizamos la lista de artículos
+    if (isDeleted) {
+      console.log('Actualizando lista después de la eliminación...');
       await this.loadArticles();
-    } else {
-      throw new Error('No se pudo eliminar el artículo');
     }
     
     this.hideLoading();
   } catch (error) {
+    // Error general en la función de eliminación
     console.error('Error al eliminar artículo:', error);
     if (this.notificationManager) {
       this.notificationManager.error('Error al eliminar el artículo: ' + (error.message || ''));
     }
     this.hideLoading();
+    
+    // A pesar del error, intentamos actualizar la lista por si acaso
+    try {
+      await this.loadArticles();
+    } catch (loadError) {
+      console.error('Error adicional al recargar la lista:', loadError);
+    }
   }
 }
