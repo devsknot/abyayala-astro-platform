@@ -209,65 +209,83 @@ export class ContentManager {
   async getArticle(slug) {
     try {
       console.log(`ContentManager.getArticle - Solicitando artículo con slug: ${slug}`);
-      
-      // Intentar primero con el endpoint de news que contiene el contenido completo
-      const newsUrl = `${this.baseUrl}/news/${slug}`;
-      console.log(`ContentManager.getArticle - Intentando primero con URL de frontend: ${newsUrl}`);
-      
+
+      // Primero intentamos importar directamente la función getArticleBySlug desde utils/contentApi.js
       try {
-        const newsResponse = await fetch(newsUrl);
-        if (newsResponse.ok) {
-          // Extraer el contenido HTML de la página
-          const htmlContent = await newsResponse.text();
-          console.log('ContentManager.getArticle - Respuesta de news recibida, extrayendo datos');
+        console.log('ContentManager.getArticle - Importando función getArticleBySlug...');
+        const module = await import('/src/utils/contentApi.js');
+        if (module && typeof module.getArticleBySlug === 'function') {
+          console.log('ContentManager.getArticle - Función importada correctamente, llamando...');
+          const article = await module.getArticleBySlug(slug, window.location.origin);
           
-          // Buscar el artículo en el HTML usando regex para extraer el JSON incrustado
-          const articleDataMatch = htmlContent.match(/window\.article\s*=\s*(\{[\s\S]*?\});/);
-          if (articleDataMatch && articleDataMatch[1]) {
-            try {
-              // Limpiar y parsear el JSON
-              const cleanJson = articleDataMatch[1].replace(/\\n/g, '\n').replace(/\\'/g, "'");
-              const articleData = JSON.parse(cleanJson);
-              console.log('ContentManager.getArticle - Datos extraídos de la página HTML:', articleData);
-              return articleData;
-            } catch (parseError) {
-              console.error('Error al parsear datos del artículo desde HTML:', parseError);
+          console.log('ContentManager.getArticle - Resultado de getArticleBySlug:', article);
+          if (article && article.title) {
+            // Validar que el artículo tenga contenido
+            if (article.content) {
+              console.log(`ContentManager.getArticle - Artículo obtenido con ${article.content.length} caracteres de contenido`);
+            } else {
+              console.warn('ContentManager.getArticle - Artículo sin contenido');
             }
+            return article;
           }
         }
-      } catch (newsError) {
-        console.warn('Error al obtener artículo desde news:', newsError);
+      } catch (importError) {
+        console.warn('ContentManager.getArticle - No se pudo importar getArticleBySlug:', importError);
       }
       
-      // Si falla, intentar con el endpoint de la API
-      const apiUrl = `${this.apiBase}/articles/${slug}`;
-      console.log(`ContentManager.getArticle - Intentando con URL de API: ${apiUrl}`);
+      // Si falla la importación, implementamos la función directamente aquí
+      console.log('ContentManager.getArticle - Usando implementación interna...');
+      
+      // Implementación equivalente a getArticleBySlug
+      const apiUrl = `${this.baseUrl}/api/content/articles/${slug}`;
+      console.log(`ContentManager.getArticle - Solicitando a: ${apiUrl}`);
       
       const response = await fetch(apiUrl, {
-        headers: this.getAuthHeaders()
+        method: 'GET',
+        headers: {
+          ...this.getAuthHeaders(),
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        }
       });
       
       console.log(`ContentManager.getArticle - Código de respuesta: ${response.status}`);
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('ContentManager.getArticle - Datos recibidos de API:', data);
+      if (!response.ok) {
+        console.error(`Error al obtener artículo: ${response.status}`);
+        
+        // Intentar leer el mensaje de error
+        try {
+          const errorData = await response.json();
+          console.error('Detalles del error:', errorData);
+        } catch (parseError) {
+          console.error('No se pudo parsear la respuesta de error');
+        }
+        
+        return null;
+      }
+      
+      const data = await response.json();
+      console.log('ContentManager.getArticle - Datos recibidos:', data);
+      
+      // Verificar el formato de respuesta (nuevo formato con success y article)
+      if (data && data.success === true && data.article) {
+        console.log(`ContentManager.getArticle - Artículo obtenido (nuevo formato): ${data.article.title || slug}`);
+        return data.article;
+      }
+      
+      // Formato antiguo: directamente el objeto artículo
+      if (data && data.title) {
+        console.log(`ContentManager.getArticle - Artículo obtenido (formato antiguo): ${data.title}`);
         return data;
       }
       
-      console.error(`Error al obtener artículo: ${response.status}`);
-      
-      // Intentar leer el mensaje de error
-      try {
-        const errorData = await response.json();
-        console.error('Detalles del error:', errorData);
-      } catch (parseError) {
-        console.error('No se pudo parsear la respuesta de error');
-      }
-      
+      console.warn('ContentManager.getArticle - Formato de respuesta inesperado:', data);
       return null;
+      
     } catch (error) {
-      console.error('Error al conectar con la API:', error);
+      console.error('ContentManager.getArticle - Error al conectar con la API:', error);
       return null;
     }
   }

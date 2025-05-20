@@ -26,8 +26,30 @@ export async function editArticle(slug) {
     }
     
     // Verificar que el artículo tenga contenido
-    if (!article.content) {
-      console.warn('El artículo no tiene contenido o es vacío');
+    if (!article.content || article.content.trim() === '') {
+      console.log('El artículo no tiene contenido o es vacío');
+      // Intento de recuperar el contenido directamente usando la API de Cloudflare D1
+      try {
+        console.log('Intentando recuperar contenido completo del artículo...');
+        const response = await fetch(`/api/content/articles/full/${article.slug}`, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const fullArticle = await response.json();
+          if (fullArticle && fullArticle.content) {
+            console.log('Contenido recuperado con éxito de la API alternativa');
+            article.content = fullArticle.content;
+            console.log('Nuevo contenido asignado:', article.content.substring(0, 100) + '...');
+          }
+        } else {
+          console.warn('No se pudo recuperar el contenido completo:', response.status);
+        }
+      } catch (fetchError) {
+        console.error('Error al intentar recuperar contenido completo:', fetchError);
+      }
     } else {
       console.log(`Artículo con contenido de ${article.content.length} caracteres`);
       console.log('Muestra del contenido:', article.content.substring(0, 100) + '...');
