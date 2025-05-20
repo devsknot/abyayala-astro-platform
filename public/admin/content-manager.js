@@ -209,10 +209,41 @@ export class ContentManager {
   async getArticle(slug) {
     try {
       console.log(`ContentManager.getArticle - Solicitando artículo con slug: ${slug}`);
-      const url = `${this.apiBase}/articles/${slug}`;
-      console.log(`ContentManager.getArticle - URL de solicitud: ${url}`);
       
-      const response = await fetch(url, {
+      // Intentar primero con el endpoint de news que contiene el contenido completo
+      const newsUrl = `${this.baseUrl}/news/${slug}`;
+      console.log(`ContentManager.getArticle - Intentando primero con URL de frontend: ${newsUrl}`);
+      
+      try {
+        const newsResponse = await fetch(newsUrl);
+        if (newsResponse.ok) {
+          // Extraer el contenido HTML de la página
+          const htmlContent = await newsResponse.text();
+          console.log('ContentManager.getArticle - Respuesta de news recibida, extrayendo datos');
+          
+          // Buscar el artículo en el HTML usando regex para extraer el JSON incrustado
+          const articleDataMatch = htmlContent.match(/window\.article\s*=\s*(\{[\s\S]*?\});/);
+          if (articleDataMatch && articleDataMatch[1]) {
+            try {
+              // Limpiar y parsear el JSON
+              const cleanJson = articleDataMatch[1].replace(/\\n/g, '\n').replace(/\\'/g, "'");
+              const articleData = JSON.parse(cleanJson);
+              console.log('ContentManager.getArticle - Datos extraídos de la página HTML:', articleData);
+              return articleData;
+            } catch (parseError) {
+              console.error('Error al parsear datos del artículo desde HTML:', parseError);
+            }
+          }
+        }
+      } catch (newsError) {
+        console.warn('Error al obtener artículo desde news:', newsError);
+      }
+      
+      // Si falla, intentar con el endpoint de la API
+      const apiUrl = `${this.apiBase}/articles/${slug}`;
+      console.log(`ContentManager.getArticle - Intentando con URL de API: ${apiUrl}`);
+      
+      const response = await fetch(apiUrl, {
         headers: this.getAuthHeaders()
       });
       
@@ -220,7 +251,7 @@ export class ContentManager {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('ContentManager.getArticle - Datos recibidos:', data);
+        console.log('ContentManager.getArticle - Datos recibidos de API:', data);
         return data;
       }
       
