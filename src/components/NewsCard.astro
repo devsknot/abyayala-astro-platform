@@ -134,19 +134,27 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
   .image-container {
     position: relative;
     width: 100%;
-    height: 0;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
     overflow: hidden;
+    flex-grow: 0;
+    flex-shrink: 0;
+  }
+  
+  /* Clase específica para la imagen en tarjetas destacadas */
+  .featured .image-container {
+    height: 350px;
+  }
+  
+  /* Altura estándar para tarjetas no destacadas */
+  .news-card:not(.featured) .image-container {
+    height: 200px;
   }
 
   .image-container img {
-    position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
     transition: transform 0.3s ease;
+    display: block;
   }
   
   /* Estilos específicos para imágenes de respaldo */

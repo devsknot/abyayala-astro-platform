@@ -114,7 +114,7 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
   -->
 
   <!-- Featured News Section -->
-  <section class="featured-news">
+  <section id="featured-news" class="featured-news">
     <div class="container">
       <h2 class="section-title">Noticias Destacadas</h2>
       
@@ -122,8 +122,8 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
       
       {featuredNews.length > 0 ? (
         <div class="featured-news-grid">
-          <!-- Artículo principal destacado -->
-          <div class="featured-main">
+          <!-- Primera fila: Artículo principal destacado -->
+          <div class="featured-row-main">
             {featuredNews.length > 0 && (
               <NewsCard 
                 title={featuredNews[0].title}
@@ -138,9 +138,9 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
             )}
           </div>
           
-          <!-- Artículos destacados secundarios -->
-          <div class="featured-secondary">
-            {featuredNews.slice(1).map((news: any) => (
+          <!-- Segunda fila: Artículos destacados secundarios -->
+          <div class="featured-row-secondary">
+            {featuredNews.slice(1, 4).map((news: any) => (
               <NewsCard
                 title={news.title}
                 description={news.description}
@@ -148,7 +148,7 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
                 category={news.category}
                 image={news.image}
                 slug={news.slug}
-                featured={news.featured}
+                featured={false}
                 isNew={news.isNew}
               />
             ))}
@@ -163,7 +163,7 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
   </section>
 
   <!-- Categories Section -->
-  <section class="categories-section">
+  <section id="categories" class="categories-section">
     <div class="container">
       <h2 class="section-title">Explora por Categorías</h2>
       
@@ -312,21 +312,68 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
   }
 
   .featured-news-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    height: calc(100vh - 120px); /* Altura del viewport completo menos un margen */
+    margin-bottom: 2rem;
+    max-height: 900px; /* Altura máxima para pantallas muy grandes */
   }
 
-  .featured-main {
-    grid-column: 1;
-    grid-row: 1 / span 2;
+  .featured-row-main {
+    width: 100%;
+    height: 40%; /* 40% del alto para la primera fila */
+    min-height: 300px;
+    max-height: 400px; /* Altura máxima para el artículo principal */
   }
 
-  .featured-secondary {
-    grid-column: 2;
+  .featured-row-secondary {
+    width: 100%;
+    height: 60%; /* 60% del alto para la segunda fila */
     display: grid;
-    grid-template-rows: repeat(3, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
+    min-height: 350px;
+  }
+  
+  /* Ajuste para asegurar que el scroll muestre la siguiente sección */
+  #featured-news {
+    scroll-margin-top: 80px;
+  }
+  
+  #categories {
+    scroll-margin-top: 80px;
+  }
+  
+  /* Aseguramos que las cards ocupen todo el espacio disponible */
+  .featured-row-main :global(.news-card),
+  .featured-row-secondary :global(.news-card) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Aseguramos que las imágenes ocupen el espacio adecuado */
+  .featured-row-main :global(.news-card-image) {
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  .featured-row-secondary :global(.news-card-image) {
+    height: 180px;
+    overflow: hidden;
+  }
+
+  /* Ajustes responsivos */
+  @media (max-width: 768px) {
+    .featured-news-grid {
+      height: auto;
+    }
+    
+    .featured-row-secondary {
+      grid-template-columns: repeat(1, 1fr);
+    }
   }
 
   .categories-grid {
