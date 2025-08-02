@@ -85,31 +85,65 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
   data-category={category}
 >
   <a href={href} class="news-card-link">
-    <div class="image-container">
-      <img 
-        src={normalizedImage} 
-        alt={title} 
-        loading="lazy" 
-        class={normalizedImage === '/img/placeholder-image.png' ? 'fallback-image' : ''}
-        onerror="this.onerror=null; this.src='/img/placeholder-image.png'; this.classList.add('fallback-image');" 
-      />
-      <CategoryTag category={category} />
-      {isNew && <span class="new-badge">Nuevo</span>}
-    </div>
-    <div class="content">
-      {isoDate && <time datetime={isoDate}>{displayDate}</time>}
-      <h3>{title || 'Título del artículo'}</h3>
-      <p>{description || 'Descripción del artículo no disponible.'}</p>
-      <div class="read-more-container">
-        <div class="read-more">
-          <span>Leer más</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-            <polyline points="12 5 19 12 12 19"></polyline>
-          </svg>
+    {featured ? (
+      /* Layout para tarjetas destacadas: contenido primero, imagen después */
+      <>
+        <div class="content featured-content">
+          {isoDate && <time datetime={isoDate}>{displayDate}</time>}
+          <h3>{title || 'Título del artículo'}</h3>
+          <p>{description || 'Descripción del artículo no disponible.'}</p>
+          <div class="read-more-container">
+            <div class="read-more">
+              <span>Leer más</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+        <div class="image-container featured-image">
+          <img 
+            src={normalizedImage} 
+            alt={title} 
+            loading="lazy" 
+            class={normalizedImage === '/img/placeholder-image.png' ? 'fallback-image' : ''}
+            onerror="this.onerror=null; this.src='/img/placeholder-image.png'; this.classList.add('fallback-image');" 
+          />
+          <CategoryTag category={category} />
+          {isNew && <span class="new-badge">Nuevo</span>}
+        </div>
+      </>
+    ) : (
+      /* Layout estándar para tarjetas no destacadas: imagen primero, contenido después */
+      <>
+        <div class="image-container">
+          <img 
+            src={normalizedImage} 
+            alt={title} 
+            loading="lazy" 
+            class={normalizedImage === '/img/placeholder-image.png' ? 'fallback-image' : ''}
+            onerror="this.onerror=null; this.src='/img/placeholder-image.png'; this.classList.add('fallback-image');" 
+          />
+          <CategoryTag category={category} />
+          {isNew && <span class="new-badge">Nuevo</span>}
+        </div>
+        <div class="content">
+          {isoDate && <time datetime={isoDate}>{displayDate}</time>}
+          <h3>{title || 'Título del artículo'}</h3>
+          <p>{description || 'Descripción del artículo no disponible.'}</p>
+          <div class="read-more-container">
+            <div class="read-more">
+              <span>Leer más</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </>
+    )}
   </a>
 </article>
 
@@ -136,6 +170,14 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     height: 100%;
     text-decoration: none;
     color: inherit;
+  }
+  
+  /* Estilo especial para tarjetas destacadas */
+  .featured .news-card-link {
+    flex-direction: column-reverse; /* Contenido arriba, imagen abajo */
+    min-height: 500px; /* Altura mínima para asegurar espacio para la imagen */
+    height: auto;
+    display: flex;
   }
 
   .image-container {
@@ -267,10 +309,21 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
   /* Estilos específicos para tarjetas destacadas */
   .featured .content {
     padding: 1.5rem;
-    flex-grow: 1;
+    flex-grow: 0;
     display: flex;
     flex-direction: column;
-    min-height: 250px; /* Altura mínima mayor para tarjetas destacadas */
+    min-height: auto;
+    max-height: 250px;
+  }
+  
+  /* Contenedor de imagen para tarjetas destacadas */
+  .featured .image-container {
+    flex-grow: 1;
+    min-height: 250px;
+    max-height: 350px;
+    display: block;
+    width: 100%;
+    overflow: hidden;
   }
   
   /* Media queries para responsividad */
@@ -319,6 +372,8 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     .featured .image-container,
     .news-card:not(.featured) .image-container {
       height: 200px; /* Altura estándar para ambos tipos en pantallas medianas */
+      min-height: 200px;
+      display: block;
     }
     
     .content {
@@ -327,10 +382,19 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     
     .featured .content {
       min-height: 180px;
+      max-height: none;
     }
     
     .read-more-container {
       margin-top: 0.5rem;
+    }
+    
+    /* Asegurar que la imagen destacada sea visible */
+    .featured .news-card-link {
+      display: flex;
+      flex-direction: column-reverse;
+      height: auto;
+      min-height: 400px;
     }
   }
   
@@ -338,11 +402,19 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     .featured .image-container,
     .news-card:not(.featured) .image-container {
       height: 180px; /* Altura reducida en pantallas pequeñas */
+      min-height: 180px;
+      display: block;
+      width: 100%;
     }
     
     .content {
       min-height: 160px; /* Altura mínima reducida en pantallas pequeñas */
       padding: 1rem; /* Padding reducido */
+    }
+    
+    .featured .content {
+      min-height: 160px;
+      max-height: none;
     }
     
     h3 {
@@ -358,6 +430,11 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     
     .read-more {
       font-size: 0.85rem;
+    }
+    
+    /* Asegurar que la imagen destacada sea visible en móviles */
+    .featured .news-card-link {
+      min-height: 350px;
     }
   }
   
