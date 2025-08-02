@@ -460,9 +460,13 @@ export class ArticleManager {
               slug: this.container.querySelector('#article-slug').value,
               featured_image: this.featuredImageInput.value,
               content: this.editor.getContent(),
+              // Enviar tanto author como author_id para garantizar compatibilidad con la API
+              author: this.container.querySelector('#article-author').value,
               author_id: this.container.querySelector('#article-author').value,
               tags: this.container.querySelector('#article-tags').value.split(',').map(tag => tag.trim())
             };
+            
+            console.log('Guardando artículo con datos:', articleData);
             
             // Validar datos
             if (!this.validateArticleData(articleData)) {
@@ -935,51 +939,13 @@ export class ArticleManager {
         featuredImagePreview: this.container.querySelector('.featured-image-preview') ? 'Encontrado' : 'No encontrado',
       });
     } catch (error) {
-      console.error('Error al configurar interfaz del editor:', error);
-    }
-  }
   
-  loadArticleDataIntoForm(article) {
-    if (!article) return;
-    
-    try {
-      // Cargar los datos del artículo en el formulario
-      const titleInput = this.container.querySelector('#article-title');
-      const descriptionInput = this.container.querySelector('#article-description');
-      const categorySelect = this.container.querySelector('#article-category');
-      const dateInput = this.container.querySelector('#article-date');
-      const slugInput = this.container.querySelector('#article-slug');
-      const authorSelect = this.container.querySelector('#article-author');
-      const tagsInput = this.container.querySelector('#article-tags');
-      
-      // Verificar que todos los elementos existan
-      if (!titleInput || !descriptionInput || !categorySelect || !dateInput || !slugInput) {
-        console.error('No se encontraron todos los elementos del formulario');
-        if (this.notificationManager) {
-          this.notificationManager.error('Error al cargar el formulario');
-        }
-        this.hideLoading();
-        return;
-      }
-      
-      // Asignar valores con comprobación de nulos
-      titleInput.value = article.title || '';
-      descriptionInput.value = article.description || '';
-      categorySelect.value = article.category || '';
-      slugInput.value = article.slug || '';
-      slugInput.dataset.edited = 'true';
-      
-      // Formatear la fecha para el input date
-      this.setDateInputValue(dateInput, article.pubDate);
-      
-      // Seleccionar el autor si existe
-      if (authorSelect) {
-        authorSelect.value = article.author_id || '';
-      }
-      
-      // Cargar etiquetas
-      if (tagsInput) {
-        tagsInput.value = Array.isArray(article.tags) ? article.tags.join(', ') : '';
+  this.articlesContainer.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', (event) => {
+      const slug = event.target.closest('tr').dataset.slug;
+      this.deleteArticle(slug);
+    });
+  });
       }
       
       // Cargar imagen destacada

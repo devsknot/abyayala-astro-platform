@@ -12,6 +12,7 @@ interface Props {
   slug?: string;
   url?: string;
   featured?: boolean;
+  isNew?: boolean;
 }
 
 const { 
@@ -23,7 +24,8 @@ const {
   image, 
   slug, 
   url, 
-  featured = false 
+  featured = false,
+  isNew = false
 } = Astro.props;
 
 // Usar date si pubDate no está disponible
@@ -71,7 +73,7 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
 ---
 
 <article 
-  class={`news-card ${featured ? 'featured' : ''}`}
+  class={`news-card ${featured ? 'featured' : ''} ${isNew ? 'is-new' : ''}`}
   data-title={title}
   data-description={description}
   data-date={isoDate}
@@ -87,6 +89,7 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
         onerror="this.onerror=null; this.src='/img/placeholder-image.png'; this.classList.add('fallback-image');" 
       />
       <CategoryTag category={category} />
+      {isNew && <span class="new-badge">Nuevo</span>}
     </div>
     <div class="content">
       {isoDate && <time datetime={isoDate}>{displayDate}</time>}
@@ -229,6 +232,27 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
   .featured .image-container {
     padding-bottom: 50%; /* Aspect ratio diferente para destacados */
   }
+  
+  /* Estilos para el badge de nuevo */
+  .new-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: var(--color-primary);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+  }
+  
+  /* Estilos para artículos nuevos */
+  .is-new {
+    border: 2px solid var(--color-primary);
+  }
 
   /* Estilos para la imagen de respaldo (logo) */
   .fallback-image {
@@ -240,6 +264,7 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
   .featured h3 {
     font-size: 1.5rem;
     margin-bottom: 1rem;
+    line-height: 1.2;
   }
 
   .featured p {
