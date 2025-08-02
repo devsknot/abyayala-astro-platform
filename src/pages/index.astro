@@ -366,13 +366,52 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
   }
 
   /* Ajustes responsivos */
-  @media (max-width: 768px) {
+  @media (max-width: 1200px) {
     .featured-news-grid {
+      height: auto;
+      max-height: none;
+    }
+    
+    .featured-row-main {
+      min-height: 250px;
       height: auto;
     }
     
     .featured-row-secondary {
+      height: auto;
+      min-height: auto;
+    }
+  }
+  
+  @media (max-width: 992px) {
+    .featured-row-secondary {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+    
+    .featured-row-main {
+      min-height: 220px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .featured-news-grid {
+      gap: 1.5rem;
+    }
+    
+    .featured-row-secondary {
       grid-template-columns: repeat(1, 1fr);
+      gap: 1.5rem;
+    }
+    
+    .featured-row-main {
+      min-height: 200px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .featured-row-main {
+      min-height: 180px;
     }
   }
 
