@@ -91,7 +91,7 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
   <a href={href} class="flex flex-col h-full text-inherit no-underline hover:no-underline">
     <div class={`
       relative w-full overflow-hidden flex-shrink-0
-      ${featured ? 'h-64 sm:h-52 md:h-64' : 'h-48'}
+      ${featured ? 'h-64 sm:h-52 md:h-56 lg:h-64' : 'h-48'}
     `}>
       <img 
         src={normalizedImage} 
@@ -126,14 +126,14 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
           </time>
         )}
         <h3 class={`
-          font-bold text-gray-900 mb-3 line-clamp-2
-          ${featured ? 'text-xl md:text-2xl' : 'text-lg'}
+          font-bold text-gray-900 mb-3
+          ${featured ? 'text-xl md:text-2xl line-clamp-3 md:line-clamp-none' : 'text-lg line-clamp-2'}
         `}>
           {title || 'Título del artículo'}
         </h3>
         <p class={`
-          text-gray-600 mb-4 line-clamp-3
-          ${featured ? 'text-base' : 'text-sm'}
+          text-gray-600 mb-4
+          ${featured ? 'text-base line-clamp-4 md:line-clamp-none' : 'text-sm line-clamp-3'}
         `}>
           {description || 'Descripción del artículo no disponible.'}
         </p>
