@@ -16,12 +16,12 @@ interface Props {
 }
 
 const { 
-  title, 
-  description, 
+  title = 'Artículo', 
+  description = 'Descripción no disponible para este artículo.', 
   pubDate, 
   date, 
-  category, 
-  image, 
+  category = 'general',
+  image = '/img/placeholder-image.png',
   slug, 
   url, 
   featured = false,
@@ -93,15 +93,16 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     </div>
     <div class="content">
       {isoDate && <time datetime={isoDate}>{displayDate}</time>}
-      <h3>{title}</h3>
-      <p>{description}</p>
-      <!-- Aseguramos que el botón "Leer más" siempre sea visible -->
-      <div class="read-more">
-        <span>Leer más</span>
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
+      <h3>{title || 'Título del artículo'}</h3>
+      <p>{description || 'Descripción del artículo no disponible.'}</p>
+      <div class="read-more-container">
+        <div class="read-more">
+          <span>Leer más</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </div>
       </div>
     </div>
   </a>
@@ -176,6 +177,8 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    min-height: 200px; /* Altura mínima para asegurar espacio para el contenido */
+    justify-content: space-between; /* Distribuye el espacio entre los elementos */
   }
 
   time {
@@ -212,6 +215,13 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     min-height: 4.5rem; /* Altura mínima para asegurar espacio para el texto */
   }
 
+  .read-more-container {
+    margin-top: auto;
+    display: block;
+    width: 100%;
+    min-height: 30px;
+  }
+
   .read-more {
     display: flex;
     align-items: center;
@@ -219,7 +229,6 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     font-size: 0.9rem;
     font-weight: 600;
     color: var(--color-primary);
-    margin-top: auto;
     transition: gap 0.3s ease;
     position: relative; /* Aseguramos que sea visible */
     z-index: 2; /* Mayor z-index para asegurar visibilidad */
@@ -242,12 +251,48 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     grid-column: span 2;
   }
 
-  /* Eliminamos el padding-bottom que podría estar causando problemas */
+  /* Estilos específicos para tarjetas destacadas */
   .featured .content {
     padding: 1.5rem;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    min-height: 250px; /* Altura mínima mayor para tarjetas destacadas */
+  }
+  
+  /* Media queries para responsividad */
+  @media (max-width: 768px) {
+    .featured .image-container,
+    .news-card:not(.featured) .image-container {
+      height: 200px; /* Altura estándar para ambos tipos en pantallas medianas */
+    }
+    
+    .content {
+      min-height: 180px; /* Altura mínima reducida en pantallas medianas */
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .featured .image-container,
+    .news-card:not(.featured) .image-container {
+      height: 180px; /* Altura reducida en pantallas pequeñas */
+    }
+    
+    .content {
+      min-height: 160px; /* Altura mínima reducida en pantallas pequeñas */
+      padding: 1rem; /* Padding reducido */
+    }
+    
+    h3 {
+      font-size: 1.1rem; /* Tamaño de fuente reducido */
+      margin-bottom: 0.5rem;
+    }
+    
+    p {
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+      min-height: 3.5rem; /* Altura mínima reducida */
+    }
   }
   
   /* Estilos para el badge de nuevo */
