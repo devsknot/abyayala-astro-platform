@@ -95,6 +95,7 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
       {isoDate && <time datetime={isoDate}>{displayDate}</time>}
       <h3>{title}</h3>
       <p>{description}</p>
+      <!-- Aseguramos que el botón "Leer más" siempre sea visible -->
       <div class="read-more">
         <span>Leer más</span>
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -208,6 +209,7 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-height: 4.5rem; /* Altura mínima para asegurar espacio para el texto */
   }
 
   .read-more {
@@ -219,6 +221,9 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     color: var(--color-primary);
     margin-top: auto;
     transition: gap 0.3s ease;
+    position: relative; /* Aseguramos que sea visible */
+    z-index: 2; /* Mayor z-index para asegurar visibilidad */
+    min-height: 24px; /* Altura mínima para asegurar visibilidad */
   }
 
   .read-more svg {
@@ -237,8 +242,12 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     grid-column: span 2;
   }
 
-  .featured .image-container {
-    padding-bottom: 50%; /* Aspect ratio diferente para destacados */
+  /* Eliminamos el padding-bottom que podría estar causando problemas */
+  .featured .content {
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
   }
   
   /* Estilos para el badge de nuevo */
