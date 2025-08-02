@@ -8,18 +8,51 @@ import { getAllArticles, getAllCategories } from '../utils/contentApi.js';
 // Configuración para SSR
 export const prerender = false;
 
+// Definir interfaces para tipar correctamente los datos
+interface Article {
+  title: string;
+  description?: string;
+  pubDate?: string;
+  date?: string;
+  category?: string;
+  featured_image?: string;
+  image?: string;
+  slug?: string;
+  tags?: string[];
+  author?: string;
+  author_info?: any;
+  content?: string;
+  updated_at?: string;
+}
+
+interface ApiResponse {
+  articles: Article[];
+  pagination?: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+  success?: boolean;
+}
+
 // Obtener artículos de la API
-const allArticles = await getAllArticles(Astro.url.origin);
+const articlesResponse = await getAllArticles(Astro.url.origin) as ApiResponse;
 
 // Obtener categorías de la API
 const categories = await getAllCategories(Astro.url.origin);
 
-// Verificar que allArticles sea un array y tenga elementos
-const articlesArray = Array.isArray(allArticles) ? allArticles : [];
+// Extraer el array de artículos de la respuesta
+const articlesArray = articlesResponse && articlesResponse.articles ? articlesResponse.articles : [];
+
+// Verificar en consola
+console.log(`Artículos obtenidos: ${articlesArray.length}`);
 
 // Ordenar por fecha de publicación (más reciente primero)
 const sortedArticles = articlesArray.length > 0 
-  ? articlesArray.sort((a, b) => {
+  ? articlesArray.sort((a: Article, b: Article) => {
       const dateA = new Date(a.pubDate || a.date || 0).valueOf();
       const dateB = new Date(b.pubDate || b.date || 0).valueOf();
       return dateB - dateA;
@@ -38,7 +71,7 @@ const normalizeImage = (imagePath: string | undefined): string => {
 };
 
 // Obtener artículos destacados (los 4 más recientes)
-const featuredNews = sortedArticles.slice(0, 4).map(article => {
+const featuredNews = sortedArticles.slice(0, 4).map((article: Article) => {
   const index = sortedArticles.indexOf(article);
   return {
     title: article.title || 'Sin título',
@@ -53,7 +86,7 @@ const featuredNews = sortedArticles.slice(0, 4).map(article => {
 });
 
 // Obtener artículos recientes (los siguientes 6 después de los destacados)
-const recentNews = sortedArticles.slice(4, 10).map(article => {
+const recentNews = sortedArticles.slice(4, 10).map((article: Article) => {
   return {
     title: article.title || 'Sin título',
     description: article.description || 'Sin descripción',
@@ -107,14 +140,15 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
           
           <!-- Artículos destacados secundarios -->
           <div class="featured-secondary">
-            {featuredNews.slice(1).map(news => (
-              <NewsCard 
+            {featuredNews.slice(1).map((news: any) => (
+              <NewsCard
                 title={news.title}
                 description={news.description}
                 pubDate={news.pubDate}
                 category={news.category}
                 image={news.image}
                 slug={news.slug}
+                featured={news.featured}
                 isNew={news.isNew}
               />
             ))}
@@ -165,7 +199,7 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
       
       {recentNews.length > 0 ? (
         <div class="news-grid">
-          {recentNews.map(news => (
+          {recentNews.map((news: any) => (
             <NewsCard 
               title={news.title}
               description={news.description}
@@ -177,9 +211,7 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
           ))}
         </div>
       ) : (
-        <div class="no-content-message">
-          <p>{noArticlesMessage}</p>
-        </div>
+        <p class="no-articles">No hay artículos recientes disponibles en este momento.</p>
       )}
     </div>
   </section>
