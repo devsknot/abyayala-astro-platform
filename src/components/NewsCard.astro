@@ -78,32 +78,70 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
 ---
 
 <article 
-  class={`news-card ${featured ? 'featured' : ''} ${isNew ? 'is-new' : ''}`}
+  class={`
+    bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 h-full flex flex-col
+    ${featured ? 'featured' : ''} 
+    ${isNew ? 'is-new' : ''}
+  `}
   data-title={title}
   data-description={description}
   data-date={isoDate}
   data-category={category}
 >
-  <a href={href} class="news-card-link">
-    <div class="image-container">
+  <a href={href} class="flex flex-col h-full text-inherit no-underline hover:no-underline">
+    <div class={`
+      relative w-full overflow-hidden flex-shrink-0
+      ${featured ? 'h-64 sm:h-52 md:h-64' : 'h-48'}
+    `}>
       <img 
         src={normalizedImage} 
         alt={title} 
         loading="lazy" 
-        class={normalizedImage === '/img/placeholder-image.png' ? 'fallback-image' : ''}
-        onerror="this.onerror=null; this.src='/img/placeholder-image.png'; this.classList.add('fallback-image');" 
+        class={`
+          w-full h-full object-cover transition-transform duration-300 hover:scale-105
+          ${normalizedImage === '/img/placeholder-image.png' ? 'object-contain p-4 bg-gray-50' : ''}
+        `}
+        onerror="this.onerror=null; this.src='/img/placeholder-image.png'; this.classList.add('object-contain', 'p-4', 'bg-gray-50');" 
       />
-      <CategoryTag category={category} />
-      {isNew && <span class="new-badge">Nuevo</span>}
+      <div class="absolute top-3 left-3">
+        <CategoryTag category={category} />
+      </div>
+      {isNew && (
+        <span class="absolute top-3 right-3 bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">
+          Nuevo
+        </span>
+      )}
     </div>
-    <div class="content">
-      {isoDate && <time datetime={isoDate}>{displayDate}</time>}
-      <h3>{title || 'Título del artículo'}</h3>
-      <p>{description || 'Descripción del artículo no disponible.'}</p>
-      <div class="read-more-container">
-        <div class="read-more">
+    <div class={`
+      flex-1 flex flex-col justify-between
+      ${featured ? 'p-6' : 'p-4'}
+    `}>
+      <div class="flex-1">
+        {isoDate && (
+          <time 
+            datetime={isoDate} 
+            class="text-sm text-gray-500 mb-2 block"
+          >
+            {displayDate}
+          </time>
+        )}
+        <h3 class={`
+          font-bold text-gray-900 mb-3 line-clamp-2
+          ${featured ? 'text-xl md:text-2xl' : 'text-lg'}
+        `}>
+          {title || 'Título del artículo'}
+        </h3>
+        <p class={`
+          text-gray-600 mb-4 line-clamp-3
+          ${featured ? 'text-base' : 'text-sm'}
+        `}>
+          {description || 'Descripción del artículo no disponible.'}
+        </p>
+      </div>
+      <div class="mt-auto">
+        <div class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors duration-200">
           <span>Leer más</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-2 transition-transform duration-200 group-hover:translate-x-1">
             <line x1="5" y1="12" x2="19" y2="12"></line>
             <polyline points="12 5 19 12 12 19"></polyline>
           </svg>
@@ -113,319 +151,4 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
   </a>
 </article>
 
-<style>
-  .news-card {
-    background-color: var(--color-background);
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .news-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-  }
-
-  .news-card-link {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    text-decoration: none;
-    color: inherit;
-  }
-
-  .image-container {
-    position: relative;
-    width: 100%;
-    overflow: hidden;
-    flex-grow: 0;
-    flex-shrink: 0;
-  }
-  
-  /* Altura estándar para tarjetas no destacadas */
-  .news-card:not(.featured) .image-container {
-    height: 200px;
-  }
-
-  .image-container img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-    display: block;
-    min-height: 100%;
-  }
-  
-  /* Asegurar que las imágenes en tarjetas destacadas se muestren correctamente */
-  .featured .image-container img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  /* Estilos específicos para imágenes de respaldo */
-  .fallback-image {
-    object-fit: contain !important;
-    padding: 1rem;
-    background-color: #f8f8f8;
-    max-width: 100%;
-    max-height: 100%;
-  }
-
-  .news-card:hover .image-container img {
-    transform: scale(1.05);
-  }
-
-  .content {
-    padding: 1.5rem;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 200px; /* Altura mínima para asegurar espacio para el contenido */
-    justify-content: space-between; /* Distribuye el espacio entre los elementos */
-  }
-
-  time {
-    font-size: 0.875rem;
-    color: rgba(var(--gray), 1);
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-  }
-
-  h3 {
-    font-size: 1.25rem;
-    margin: 0 0 0.75rem 0;
-    font-weight: 700;
-    color: var(--color-text);
-    line-height: 1.3;
-    transition: color 0.2s ease;
-  }
-
-  .news-card:hover h3 {
-    color: var(--color-primary);
-  }
-
-  p {
-    font-size: 0.95rem;
-    line-height: 1.5;
-    color: rgba(var(--gray-dark), 1);
-    margin: 0 0 1rem 0;
-    flex-grow: 1;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-height: 4.5rem; /* Altura mínima para asegurar espacio para el texto */
-  }
-
-  .read-more-container {
-    margin-top: auto;
-    display: block;
-    width: 100%;
-    min-height: 30px;
-  }
-
-  .read-more {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--color-primary);
-    transition: gap 0.3s ease;
-    position: relative; /* Aseguramos que sea visible */
-    z-index: 2; /* Mayor z-index para asegurar visibilidad */
-    min-height: 24px; /* Altura mínima para asegurar visibilidad */
-  }
-
-  .read-more svg {
-    transition: transform 0.3s ease;
-  }
-
-  .news-card:hover .read-more {
-    gap: 0.75rem;
-  }
-
-  .news-card:hover .read-more svg {
-    transform: translateX(3px);
-  }
-
-  .featured {
-    grid-column: span 2;
-  }
-
-  /* Estilos específicos para tarjetas destacadas */
-  .featured .image-container {
-    height: 250px !important;
-    min-height: 250px !important;
-  }
-  
-  .featured .content {
-    padding: 1rem;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
-  
-  /* Media queries para responsividad */
-  @media (max-width: 1200px) {
-    .featured .image-container {
-      height: 300px;
-    }
-    
-    .content {
-      min-height: 180px;
-    }
-    
-    .featured .content {
-      min-height: 220px;
-    }
-  }
-  
-  @media (max-width: 992px) {
-    .featured .image-container {
-      height: 250px;
-    }
-    
-    .news-card:not(.featured) .image-container {
-      height: 180px;
-    }
-    
-    .content {
-      min-height: 170px;
-    }
-    
-    .featured .content {
-      min-height: 200px;
-    }
-    
-    h3 {
-      font-size: 1.2rem;
-      margin-bottom: 0.6rem;
-    }
-    
-    .featured h3 {
-      font-size: 1.3rem;
-    }
-  }
-  
-  @media (max-width: 768px) {
-    .image-container {
-      height: 180px !important;
-    }
-    
-    .featured .image-container {
-      height: 200px !important;
-      min-height: 200px !important;
-    }
-    
-    .content {
-      padding: 1rem;
-    }
-  }
-  
-  @media (max-width: 480px) {
-    .image-container {
-      height: 160px !important;
-    }
-    
-    .featured .image-container {
-      height: 180px !important;
-      min-height: 180px !important;
-    }
-    
-    .content {
-      padding: 0.8rem;
-    }
-    
-    h3 {
-      font-size: 1.1rem;
-      margin-bottom: 0.4rem;
-    }
-    
-    p {
-      font-size: 0.9rem;
-      margin-bottom: 0.5rem;
-    }
-    
-    .read-more {
-      font-size: 0.85rem;
-    }
-  }
-  
-  /* Estilos para el badge de nuevo */
-  .new-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background-color: var(--color-primary);
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    z-index: 2;
-  }
-  
-  /* Estilos para artículos nuevos */
-  .is-new {
-    border: 2px solid var(--color-primary);
-  }
-
-  /* Estilos para la imagen de respaldo (logo) */
-  .fallback-image {
-    object-fit: contain !important;
-    background-color: #f8f9fa;
-    padding: 1rem;
-  }
-
-  .featured h3 {
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-    line-height: 1.2;
-  }
-
-  .featured p {
-    font-size: 1rem;
-    -webkit-line-clamp: 4;
-  }
-
-  /* Media queries para responsividad */
-  @media (max-width: 1200px) {
-    .content {
-      padding: 1.25rem;
-    }
-    
-    .featured h3 {
-      font-size: 1.4rem;
-    }
-  }
-
-  @media (max-width: 992px) {
-    .featured {
-      grid-column: span 1;
-    }
-    
-    .featured .image-container {
-      padding-bottom: 56.25%;
-    }
-  }
-
-  @media (max-width: 768px) {
-    h3 {
-      font-size: 1.2rem;
-    }
-    
-    .content {
-      padding: 1rem;
-    }
-  }
-</style>
+<!-- Migración completa a Tailwind CSS completada -->
