@@ -266,17 +266,24 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
 
   /* Estilos específicos para tarjetas destacadas */
   .featured .content {
-    padding: 1.5rem;
+    padding: 1.2rem;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
   }
   
   /* Contenedor de imagen para tarjetas destacadas */
   .featured .image-container {
-    height: 300px;
-    min-height: 300px;
+    height: 250px;
+    min-height: 250px;
     flex-shrink: 0;
+  }
+  
+  /* Ajustar altura total de tarjetas destacadas */
+  .featured {
+    min-height: 450px;
+    max-height: 500px;
   }
   
   /* Media queries para responsividad */
@@ -323,26 +330,6 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
   
   @media (max-width: 768px) {
     .image-container {
-      height: 200px;
-      min-height: 200px;
-    }
-    
-    .featured .image-container {
-      height: 250px;
-      min-height: 250px;
-    }
-    
-    .content {
-      min-height: 150px;
-    }
-    
-    .read-more-container {
-      margin-top: 0.5rem;
-    }
-  }
-  
-  @media (max-width: 480px) {
-    .image-container {
       height: 180px;
       min-height: 180px;
     }
@@ -352,20 +339,58 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
       min-height: 200px;
     }
     
+    .featured {
+      min-height: 350px;
+      max-height: 400px;
+    }
+    
     .content {
-      min-height: 140px;
+      min-height: 120px;
+    }
+    
+    .featured .content {
       padding: 1rem;
+    }
+    
+    .read-more-container {
+      margin-top: 0.5rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .image-container {
+      height: 160px;
+      min-height: 160px;
+    }
+    
+    .featured .image-container {
+      height: 180px;
+      min-height: 180px;
+    }
+    
+    .featured {
+      min-height: 300px;
+      max-height: 350px;
+    }
+    
+    .content {
+      min-height: 110px;
+      padding: 0.8rem;
+    }
+    
+    .featured .content {
+      padding: 0.8rem;
     }
     
     h3 {
       font-size: 1.1rem;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
     }
     
     p {
       font-size: 0.9rem;
-      margin-bottom: 0.75rem;
-      min-height: 3rem;
+      margin-bottom: 0.5rem;
+      min-height: 2.5rem;
     }
     
     .read-more {
