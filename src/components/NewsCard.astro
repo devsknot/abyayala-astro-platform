@@ -146,11 +146,6 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     flex-shrink: 0;
   }
   
-  /* Clase específica para la imagen en tarjetas destacadas */
-  .featured .image-container {
-    height: 350px;
-  }
-  
   /* Altura estándar para tarjetas no destacadas */
   .news-card:not(.featured) .image-container {
     height: 200px;
@@ -265,25 +260,17 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
   }
 
   /* Estilos específicos para tarjetas destacadas */
+  .featured .image-container {
+    height: 250px !important;
+    min-height: 250px !important;
+  }
+  
   .featured .content {
-    padding: 1.2rem;
+    padding: 1rem;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-  }
-  
-  /* Contenedor de imagen para tarjetas destacadas */
-  .featured .image-container {
-    height: 250px;
-    min-height: 250px;
-    flex-shrink: 0;
-  }
-  
-  /* Ajustar altura total de tarjetas destacadas */
-  .featured {
-    min-height: 450px;
-    max-height: 500px;
   }
   
   /* Media queries para responsividad */
@@ -330,55 +317,30 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
   
   @media (max-width: 768px) {
     .image-container {
-      height: 180px;
-      min-height: 180px;
+      height: 180px !important;
     }
     
     .featured .image-container {
-      height: 200px;
-      min-height: 200px;
-    }
-    
-    .featured {
-      min-height: 350px;
-      max-height: 400px;
+      height: 200px !important;
+      min-height: 200px !important;
     }
     
     .content {
-      min-height: 120px;
-    }
-    
-    .featured .content {
       padding: 1rem;
-    }
-    
-    .read-more-container {
-      margin-top: 0.5rem;
     }
   }
   
   @media (max-width: 480px) {
     .image-container {
-      height: 160px;
-      min-height: 160px;
+      height: 160px !important;
     }
     
     .featured .image-container {
-      height: 180px;
-      min-height: 180px;
-    }
-    
-    .featured {
-      min-height: 300px;
-      max-height: 350px;
+      height: 180px !important;
+      min-height: 180px !important;
     }
     
     .content {
-      min-height: 110px;
-      padding: 0.8rem;
-    }
-    
-    .featured .content {
       padding: 0.8rem;
     }
     
@@ -390,7 +352,6 @@ const displayDate = dateToUse ? formatDate(dateToUse) : '';
     p {
       font-size: 0.9rem;
       margin-bottom: 0.5rem;
-      min-height: 2.5rem;
     }
     
     .read-more {
