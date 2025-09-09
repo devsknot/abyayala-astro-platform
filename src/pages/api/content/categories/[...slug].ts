@@ -210,11 +210,11 @@ async function handleGetCategories(db: any, headers: HeadersInit) {
 
 // Get a specific category by slug
 async function handleGetCategory(slug: string, db: any, headers: HeadersInit) {
-  console.log(`[categories/...slug.ts] Retrieving category with slug: ${slug}`);
+  console.log(`[categories/...slug.ts] Retrieving category with id: ${slug}`);
   try {
     const category = await db.prepare(`
       SELECT * FROM categories
-      WHERE slug = ?
+      WHERE id = ?
     `).bind(slug).first();
 
     if (!category) {
@@ -317,26 +317,26 @@ async function handleCreateCategory(categoryData: any, db: any, headers: Headers
 
 // Update an existing category
 async function handleUpdateCategory(slug: string, categoryData: any, db: any, headers: HeadersInit) {
-  console.log(`[categories/...slug.ts] Updating category with slug: ${slug}`);
+  console.log(`[categories/...slug.ts] Updating category with id: ${slug}`);
   
   // Basic validation
-  if (!categoryData || (!categoryData.name && !categoryData.description && categoryData.slug === slug)) {
+  if (!categoryData || (!categoryData.name && !categoryData.description && !categoryData.slug)) {
     console.warn(`[categories/...slug.ts] No update data provided for category: ${slug}`);
     return new Response(JSON.stringify({
       success: false,
-      error: 'No update data provided or slug cannot be changed here'
+      error: 'No update data provided'
     }), {
       status: 400,
       headers
     });
   }
   
-  // Prevent changing the slug via this method if attempted
+  // Prevent changing the id/slug via this method
   if (categoryData.slug && categoryData.slug !== slug) {
-    console.warn(`[categories/...slug.ts] Attempted to change slug from ${slug} to ${categoryData.slug}`);
+    console.warn(`[categories/...slug.ts] Attempted to change id from ${slug} to ${categoryData.slug}`);
     return new Response(JSON.stringify({
       success: false,
-      error: 'Changing the slug is not supported via PUT. Delete and recreate if necessary.'
+      error: 'Changing the category ID (slug) is not supported.'
     }), {
       status: 400,
       headers
@@ -345,7 +345,7 @@ async function handleUpdateCategory(slug: string, categoryData: any, db: any, he
 
   try {
     // Check if category exists
-    const categoryExists = await db.prepare(`SELECT slug, name FROM categories WHERE slug = ?`).bind(slug).first();
+    const categoryExists = await db.prepare(`SELECT id, name FROM categories WHERE id = ?`).bind(slug).first();
     if (!categoryExists) {
       console.warn(`[categories/...slug.ts] Category not found for update: ${slug}`);
       return new Response(JSON.stringify({
@@ -388,13 +388,13 @@ async function handleUpdateCategory(slug: string, categoryData: any, db: any, he
     setClauses.push('updated_at = datetime("now")');
     
     bindings.push(slug); // For the WHERE clause
-    const query = `UPDATE categories SET ${setClauses.join(', ')} WHERE slug = ?`;
+    const query = `UPDATE categories SET ${setClauses.join(', ')} WHERE id = ?`;
     console.log(`[categories/...slug.ts] Running update query for category ${slug}`);
 
     await db.prepare(query).bind(...bindings).run();
 
     // Fetch the updated category
-    const updatedCategory = await db.prepare(`SELECT * FROM categories WHERE slug = ?`).bind(slug).first();
+    const updatedCategory = await db.prepare(`SELECT * FROM categories WHERE id = ?`).bind(slug).first();
 
     console.log(`[categories/...slug.ts] Category updated successfully: ${updatedCategory.name} (${slug})`);
     return new Response(JSON.stringify({
@@ -417,11 +417,11 @@ async function handleUpdateCategory(slug: string, categoryData: any, db: any, he
 
 // Delete a category
 async function handleDeleteCategory(slug: string, db: any, headers: HeadersInit) {
-  console.log(`[categories/...slug.ts] Deleting category with slug: ${slug}`);
+  console.log(`[categories/...slug.ts] Deleting category with id: ${slug}`);
   
   try {
     // Check if category exists
-    const categoryExists = await db.prepare(`SELECT slug, name FROM categories WHERE slug = ?`).bind(slug).first();
+    const categoryExists = await db.prepare(`SELECT id, name FROM categories WHERE id = ?`).bind(slug).first();
     if (!categoryExists) {
       console.warn(`[categories/...slug.ts] Category not found for deletion: ${slug}`);
       return new Response(JSON.stringify({
@@ -436,7 +436,7 @@ async function handleDeleteCategory(slug: string, db: any, headers: HeadersInit)
     console.log(`[categories/...slug.ts] Found category to delete: ${categoryExists.name} (${slug})`);
 
     // Check if category is in use by articles before deleting
-    // Cambiamos la consulta para que use category (singular) en lugar de categories (plural)
+    // The 'articles' table uses a 'category' column which holds the category id/slug.
     const articlesUsingCategory = await db.prepare(`
         SELECT COUNT(*) as count FROM articles WHERE category = ?
     `).bind(slug).first();
@@ -453,7 +453,7 @@ async function handleDeleteCategory(slug: string, db: any, headers: HeadersInit)
     }
 
     // Delete the category
-    const result = await db.prepare(`DELETE FROM categories WHERE slug = ?`).bind(slug).run();
+    const result = await db.prepare(`DELETE FROM categories WHERE id = ?`).bind(slug).run();
     console.log(`[categories/...slug.ts] Deletion query executed for category ${slug}. Changes: ${result.changes}`);
 
     if (result.changes > 0) {
