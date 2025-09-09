@@ -279,10 +279,10 @@ async function handleCreateCategory(categoryData: any, db: any, headers: Headers
     
     // Insert new category
     const result = await db.prepare(`
-      INSERT INTO categories (slug, name, description)
+      INSERT INTO categories (id, name, description)
       VALUES (?, ?, ?)
     `).bind(
-      categoryData.slug,
+      categoryData.slug, // The frontend sends the slug value in the 'slug' property
       categoryData.name,
       categoryData.description || ''
     ).run();
