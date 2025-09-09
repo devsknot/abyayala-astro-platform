@@ -1,0 +1,102 @@
+--- 
+// src/pages/authors/[slug].astro
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+
+// This function runs at build time to generate a page for each author.
+export async function getStaticPaths() {
+  const response = await fetch(`${Astro.url.origin}/api/content/authors`);
+  if (!response.ok) {
+    console.error('Failed to fetch authors for static paths');
+    return [];
+  }
+  const data = await response.json();
+  const authors = data.authors || [];
+
+  return authors.map(author => ({
+    params: { slug: author.slug },
+    props: { authorSlug: author.slug } // Pass slug to fetch full data
+  }));
+}
+
+const { authorSlug } = Astro.props;
+
+// Fetch full author details, including articles
+const response = await fetch(`${Astro.url.origin}/api/content/authors/${authorSlug}`);
+let author = null;
+if (response.ok) {
+  const data = await response.json();
+  author = data.author;
+} else {
+  console.error(`Failed to fetch author details for slug: ${authorSlug}`);
+}
+
+if (!author) {
+  return Astro.redirect('/404');
+}
+
+const pageTitle = author.name;
+const pageDescription = author.bio ? author.bio.substring(0, 160) : `Artículos y biografía de ${author.name}.`;
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+  <div class="bg-white py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="lg:grid lg:grid-cols-12 lg:gap-8">
+        
+        <!-- Author Details (Left Column) -->
+        <div class="lg:col-span-4">
+          <div class="sticky top-8 bg-gray-50 p-6 rounded-lg shadow-md">
+            <div class="flex flex-col items-center text-center">
+              <img 
+                class="w-40 h-40 rounded-full object-cover shadow-lg mb-4" 
+                src={author.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(author.name)}&background=random&color=fff&size=256`}
+                alt={`Avatar de ${author.name}`}
+              />
+              <h1 class="text-3xl font-bold text-gray-900">{author.name}</h1>
+              <p class="text-md text-gray-600 mt-1">{author.email}</p>
+              
+              <!-- Social Media Links -->
+              {author.social_media && (
+                <div class="flex justify-center space-x-4 mt-4">
+                  {author.social_media.twitter && <a href={author.social_media.twitter} target="_blank" class="text-gray-400 hover:text-blue-500"><i class="fab fa-twitter"></i></a>}
+                  {author.social_media.facebook && <a href={author.social_media.facebook} target="_blank" class="text-gray-400 hover:text-blue-700"><i class="fab fa-facebook"></i></a>}
+                  {author.social_media.instagram && <a href={author.social_media.instagram} target="_blank" class="text-gray-400 hover:text-pink-600"><i class="fab fa-instagram"></i></a>}
+                  {author.social_media.website && <a href={author.social_media.website} target="_blank" class="text-gray-400 hover:text-gray-800"><i class="fas fa-globe"></i></a>}
+                </div>
+              )}
+            </div>
+            
+            {author.bio && (
+              <div class="mt-6 border-t border-gray-200 pt-6">
+                <h2 class="text-lg font-semibold text-gray-800">Biografía</h2>
+                <p class="mt-2 text-gray-600 whitespace-pre-wrap">{author.bio}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <!-- Articles List (Right Column) -->
+        <div class="lg:col-span-8 mt-12 lg:mt-0">
+          <h2 class="text-2xl font-bold text-gray-900 mb-6">Artículos de {author.name}</h2>
+          {author.articles && author.articles.length > 0 ? (
+            <div class="space-y-8">
+              {author.articles.map(article => (
+                <a href={`/blog/${article.slug}`} class="block bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300">
+                  <h3 class="text-xl font-bold text-gray-900">{article.title}</h3>
+                  <p class="text-sm text-gray-500 mt-2">
+                    <FormattedDate date={new Date(article.pub_date)} />
+                  </p>
+                  <p class="mt-4 text-gray-600 line-clamp-3">{article.description}</p>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p class="text-gray-500">Este autor aún no tiene artículos publicados.</p>
+          )}
+        </div>
+
+      </div>
+    </div>
+  </div>
+</BaseLayout>
