@@ -133,7 +133,10 @@ export async function DELETE(context: APIContext) {
 
   } catch (error: any) {
     console.error(`Error in DELETE /api/content/categories/${slug}:`, error);
-    return new Response(JSON.stringify({ error: error.message || 'Server Error' }), {
+    return new Response(JSON.stringify({
+      success: false,
+      error: error.message || 'Server Error'
+    }), {
       status: 500,
       headers: commonHeaders
     });
@@ -454,10 +457,10 @@ async function handleDeleteCategory(slug: string, db: any, headers: HeadersInit)
 
     // Delete the category
     const result = await db.prepare(`DELETE FROM categories WHERE id = ?`).bind(slug).run();
-    console.log(`[categories/...slug.ts] Deletion query executed for category ${slug}. Changes: ${result.changes}`);
+    console.log(`[categories/...slug.ts] Deletion query executed for category ${slug}. Result:`, JSON.stringify(result));
 
-    if (result.changes > 0) {
-      console.log(`[categories/...slug.ts] Category deleted successfully: ${categoryExists.name} (${slug})`);
+    if (result.meta.changes > 0) {
+      console.log(`[categories/...slug.ts] Category deleted successfully: ${slug}`);
       return new Response(JSON.stringify({
         success: true,
         message: 'Category deleted successfully',
