@@ -259,18 +259,18 @@ async function handleCreateCategory(categoryData: any, db: any, headers: Headers
   }
 
   try {
-    // Check if slug already exists
+    // Check if id already exists
     const existingCategory = await db.prepare(`
-      SELECT slug FROM categories WHERE slug = ?
+      SELECT id FROM categories WHERE id = ?
     `).bind(categoryData.slug).first();
 
     if (existingCategory) {
-      console.warn(`[categories/...slug.ts] Category slug already exists: ${categoryData.slug}`);
+      console.warn(`[categories/...slug.ts] Category id already exists: ${categoryData.slug}`);
       return new Response(JSON.stringify({
         success: false,
-        error: 'Category slug already exists'
+        error: 'Category ID (slug) already exists'
       }), {
-        status: 409,
+        status: 409, // Conflict
         headers
       });
     }
@@ -289,7 +289,7 @@ async function handleCreateCategory(categoryData: any, db: any, headers: Headers
 
     // Fetch the newly created category to return it
     const newCategory = await db.prepare(`
-      SELECT * FROM categories WHERE slug = ?
+      SELECT * FROM categories WHERE id = ?
     `).bind(categoryData.slug).first();
 
     console.log(`[categories/...slug.ts] Category created successfully: ${categoryData.name}`);
