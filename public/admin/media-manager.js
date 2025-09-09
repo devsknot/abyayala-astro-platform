@@ -614,10 +614,8 @@ export class MediaManager {
         }
       });
       
-      // Agregar evento para seleccionar el archivo al hacer clic en la tarjeta
-      thumbnailContainer.addEventListener('click', () => {
-        selectButton.click();
-      });
+      // Ya no agregamos evento al hacer clic en la tarjeta para evitar conflictos
+      // con los botones de acción
       
       mediaGrid.appendChild(mediaItem);
     });
@@ -671,81 +669,8 @@ export class MediaManager {
           background-color: #fed7d7;
           border-color: #feb2b2;
         }
-        .media-item {
-          position: relative;
-          border: 1px solid #e2e8f0;
-          border-radius: 4px;
-          overflow: hidden;
-          background-color: white;
-          transition: transform 0.2s, box-shadow 0.2s;
-          display: flex;
-          flex-direction: column;
-        }
-        .media-item:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .media-thumbnail {
-          position: relative;
-          height: 120px;
-          background-color: #f7fafc;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          overflow: hidden;
-        }
-        .media-info {
-          padding: 8px;
-          display: flex;
-          flex-direction: column;
-        }
-        .media-name {
-          font-size: 0.875rem;
-          font-weight: 500;
-          margin-bottom: 5px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
       `;
       document.head.appendChild(style);
-    }
-  }
-  
-  /**
-   * Sube un archivo multimedia y devuelve la información del archivo subido
-   * @param {File} file - Archivo a subir
-   * @returns {Promise<Object>} - Objeto con la URL y otra información del archivo
-   */
-  async uploadMedia(file) {
-    try {
-      console.log('MediaManager: Subiendo archivo multimedia', file.name);
-      
-      // Validar el archivo
-      if (!file) {
-        throw new Error('No se proporcionó ningún archivo');
-      }
-      
-      // Verificar si es un tipo de archivo permitido
-      if (!this.isImage(file) && !this.isDocument(file)) {
-        throw new Error('Tipo de archivo no permitido. Solo se permiten imágenes y documentos.');
-      }
-      
-      // Usar el método existente para subir archivos
-      const result = await this.uploadFile(file);
-      console.log('MediaManager: Resultado de la subida:', result);
-      
-      // Formatear la respuesta para ser compatible con el selector de imágenes
-      return {
-        url: result.url || this.getPublicUrl(result.path),
-        path: result.path,
-        name: file.name,
-        type: file.type,
-        size: file.size
-      };
-    } catch (error) {
-      console.error('MediaManager: Error al subir archivo multimedia:', error);
-      throw error;
     }
   }
   
@@ -981,16 +906,13 @@ export class MediaManager {
       mediaGrid.style.display = 'none';
       loadingElement.style.display = 'block';
       
-      // Obtener los archivos multimedia
-      const files = await this.getMediaFiles();
-      
       // Almacenar los archivos para la búsqueda
-      this.allMediaFiles = files || [];
+      let allMediaFiles = [];
       
       // Función para renderizar los archivos filtrados
       const renderFilteredFiles = (query = '') => {
         // Filtrar archivos por nombre
-        const filteredFiles = this.allMediaFiles.filter(file => {
+        const filteredFiles = allMediaFiles.filter(file => {
           if (!query) return true;
           
           const searchTerms = query.toLowerCase().split(' ');
@@ -1012,7 +934,7 @@ export class MediaManager {
           return;
         }
         
-        // Renderizar los archivos
+        // Renderizar los archivos filtrados
         this.renderMediaItemsWithDelete(filteredFiles, mediaGrid);
       };
       
@@ -1029,17 +951,25 @@ export class MediaManager {
         });
       }
       
-      // Mostrar los archivos
-      loadingElement.style.display = 'none';
-      mediaGrid.style.display = 'grid';
-      
-      if (!files || files.length === 0) {
-        mediaGrid.innerHTML = '<p class="no-media">No hay archivos multimedia disponibles.</p>';
-        return;
-      }
-      
-      // Renderizar los archivos
-      renderFilteredFiles();
+      // Cargar los archivos multimedia
+      this.getMediaFiles().then(files => {
+        // Guardar todos los archivos para la búsqueda
+        allMediaFiles = files || [];
+        loadingElement.style.display = 'none';
+        mediaGrid.style.display = 'grid';
+        
+        if (!files || files.length === 0) {
+          mediaGrid.innerHTML = '<p class="no-media">No hay archivos multimedia disponibles.</p>';
+          return;
+        }
+        
+        // Usar el método renderMediaItems para renderizar los archivos
+        this.renderMediaItemsWithDelete(files, mediaGrid);
+      }).catch(error => {
+        console.error('Error al cargar archivos multimedia:', error);
+        loadingElement.style.display = 'none';
+        mediaGrid.innerHTML = '<p class="error-message">Error al cargar los archivos multimedia.</p>';
+      });
     } catch (error) {
       console.error('MediaManager: Error al cargar archivos:', error);
       
@@ -1054,7 +984,7 @@ export class MediaManager {
   }
   
   /**
-   * Renderiza los archivos multimedia con botón de eliminar
+   * Renderiza los archivos multimedia con botón de eliminar junto al botón de seleccionar, manteniendo la estructura original del código
    * @param {Array} files - Lista de archivos a renderizar
    * @param {HTMLElement} mediaGrid - Elemento donde renderizar los archivos
    */
@@ -1341,6 +1271,164 @@ export class MediaManager {
         }
       `;
       document.head.appendChild(style);
+    }
+  }
+  
+  /**
+   * Sube un archivo multimedia y devuelve la información del archivo subido
+   * @param {File} file - Archivo a subir
+   * @returns {Promise<Object>} - Objeto con la URL y otra información del archivo
+   */
+  async uploadMedia(file) {
+    try {
+      console.log('MediaManager: Subiendo archivo multimedia', file.name);
+      
+      // Validar el archivo
+      if (!file) {
+        throw new Error('No se proporcionó ningún archivo');
+      }
+      
+      // Verificar si es un tipo de archivo permitido
+      if (!this.isImage(file) && !this.isDocument(file)) {
+        throw new Error('Tipo de archivo no permitido. Solo se permiten imágenes y documentos.');
+      }
+      
+      // Usar el método existente para subir archivos
+      const result = await this.uploadFile(file);
+      console.log('MediaManager: Resultado de la subida:', result);
+      
+      // Formatear la respuesta para ser compatible con el selector de imágenes
+      return {
+        url: result.url || this.getPublicUrl(result.path),
+        path: result.path,
+        name: file.name,
+        type: file.type,
+        size: file.size
+      };
+    } catch (error) {
+      console.error('MediaManager: Error al subir archivo multimedia:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Abre el navegador de medios
+   * @param {Object} options - Opciones de configuración
+   * @param {Function} options.onSelect - Función de callback para la selección
+   */
+  openMediaBrowser(options = {}) {
+    try {
+      console.log('MediaManager: Abriendo navegador de medios');
+      
+      // Crear el modal de selección de medios si no existe
+      let mediaBrowser = document.getElementById('media-browser-modal');
+      
+      if (!mediaBrowser) {
+        mediaBrowser = document.createElement('div');
+        mediaBrowser.id = 'media-browser-modal';
+        mediaBrowser.className = 'modal';
+        mediaBrowser.innerHTML = `
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Seleccionar archivo multimedia</h3>
+              <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div class="search-container">
+                <input type="text" class="search-input" placeholder="Buscar imágenes...">
+              </div>
+              <div class="media-browser-loading">Cargando archivos...</div>
+              <div class="media-browser-grid"></div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(mediaBrowser);
+        
+        // Agregar evento para cerrar el modal
+        mediaBrowser.querySelector('.close-modal').addEventListener('click', () => {
+          mediaBrowser.style.display = 'none';
+        });
+      }
+      
+      // Mostrar el modal
+      mediaBrowser.style.display = 'block';
+      
+      // Obtener el grid donde se mostrarán los archivos
+      const mediaGrid = mediaBrowser.querySelector('.media-browser-grid');
+      const loadingElement = mediaBrowser.querySelector('.media-browser-loading');
+      const searchInput = mediaBrowser.querySelector('.search-input');
+      
+      // Limpiar el grid
+      mediaGrid.innerHTML = '';
+      mediaGrid.style.display = 'none';
+      loadingElement.style.display = 'block';
+      
+      // Almacenar los archivos para la búsqueda
+      let allMediaFiles = [];
+      
+      // Función para renderizar los archivos filtrados
+      const renderFilteredFiles = (query = '') => {
+        // Filtrar archivos por nombre
+        const filteredFiles = allMediaFiles.filter(file => {
+          if (!query) return true;
+          
+          const searchTerms = query.toLowerCase().split(' ');
+          const fileName = (file.name || '').toLowerCase();
+          const filePath = (file.path || '').toLowerCase();
+          
+          // Comprobar si todos los términos de búsqueda están en el nombre o ruta
+          return searchTerms.every(term => 
+            fileName.includes(term) || filePath.includes(term)
+          );
+        });
+        
+        // Limpiar el grid
+        mediaGrid.innerHTML = '';
+        
+        // Mostrar mensaje si no hay resultados
+        if (filteredFiles.length === 0) {
+          mediaGrid.innerHTML = `<p class="no-media">No se encontraron archivos${query ? ' para "' + query + '"' : ''}.</p>`;
+          return;
+        }
+        
+        // Renderizar los archivos filtrados
+        this.renderMediaItems(filteredFiles, mediaGrid, options);
+      };
+      
+      // Agregar evento de búsqueda al input
+      if (searchInput) {
+        // Limpiar eventos anteriores
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+        
+        // Agregar nuevo evento de búsqueda
+        newSearchInput.addEventListener('input', (e) => {
+          const query = e.target.value.trim();
+          renderFilteredFiles(query);
+        });
+      }
+      
+      // Cargar los archivos multimedia
+      this.getMediaFiles().then(files => {
+        // Guardar todos los archivos para la búsqueda
+        allMediaFiles = files || [];
+        loadingElement.style.display = 'none';
+        mediaGrid.style.display = 'grid';
+        
+        if (!files || files.length === 0) {
+          mediaGrid.innerHTML = '<p class="no-media">No hay archivos multimedia disponibles.</p>';
+          return;
+        }
+        
+        // Usar el método renderMediaItems para renderizar los archivos
+        this.renderMediaItems(files, mediaGrid, options);
+      }).catch(error => {
+        console.error('Error al cargar archivos multimedia:', error);
+        loadingElement.style.display = 'none';
+        mediaGrid.innerHTML = '<p class="error-message">Error al cargar los archivos multimedia.</p>';
+      });
+    } catch (error) {
+      console.error('MediaManager: Error al abrir navegador de medios:', error);
     }
   }
 }
