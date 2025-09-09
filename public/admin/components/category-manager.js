@@ -344,16 +344,21 @@ export class CategoryManager {
     const slugInput = this.container.querySelector('#categorySlug');
     const descriptionInput = this.container.querySelector('#categoryDescription');
     
-    // En la base de datos, el campo 'id' se usa como el identificador/slug
+    // Generar slug si está vacío
+    let slug = slugInput.value.trim();
+    if (!slug) {
+      slug = this.generateSlug(nameInput.value.trim());
+    }
+
     const categoryData = {
       name: nameInput.value.trim(),
-      id: slugInput.value.trim(), // Usar como ID en lugar de slug
+      slug: slug, // Usar 'slug' en lugar de 'id'
       description: descriptionInput.value.trim()
     };
     
     // Validar datos
-    if (!categoryData.name || !categoryData.id) {
-      notifications.error('El nombre y el ID/slug son obligatorios');
+    if (!categoryData.name || !categoryData.slug) {
+      notifications.error('El nombre y el slug son obligatorios');
       return;
     }
     
