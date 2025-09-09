@@ -1,4 +1,4 @@
---- 
+---
 // src/pages/authors/[slug].astro
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
@@ -15,20 +15,19 @@ export async function getStaticPaths() {
 
   return authors.map(author => ({
     params: { slug: author.slug },
-    props: { authorSlug: author.slug } // Pass slug to fetch full data
   }));
 }
 
-const { authorSlug } = Astro.props;
+const { slug } = Astro.params;
 
 // Fetch full author details, including articles
-const response = await fetch(`${Astro.url.origin}/api/content/authors/${authorSlug}`);
+const response = await fetch(`${Astro.url.origin}/api/content/authors/${slug}`);
 let author = null;
 if (response.ok) {
   const data = await response.json();
   author = data.author;
 } else {
-  console.error(`Failed to fetch author details for slug: ${authorSlug}`);
+  console.error(`Failed to fetch author details for slug: ${slug}`);
 }
 
 if (!author) {
