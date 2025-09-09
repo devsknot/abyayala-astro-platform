@@ -139,6 +139,8 @@ export class ContentManager {
         if (params.search && params.search.trim() !== '') {
           console.log('ContentManager.getArticles - Aplicando filtro de búsqueda:', params.search);
           queryParams.append('query', params.search.trim()); // Usar 'query' para el endpoint de búsqueda
+          // También añadir como 'search' para compatibilidad con diferentes endpoints
+          queryParams.append('search', params.search.trim());
         }
         
         if (params.category && params.category.trim() !== '') {
@@ -162,25 +164,50 @@ export class ContentManager {
         
         // Verificar si la respuesta tiene el formato esperado
         if (data.articles && Array.isArray(data.articles)) {
-          // Devolver la respuesta completa con paginación
+          // Formato con articles y pagination
+          const pagination = data.pagination || {};
+          
           return {
             articles: data.articles,
-            pagination: data.pagination || {
-              page: params.page || 1,
-              limit: params.limit || 10,
-              total: data.articles.length,
-              totalPages: Math.ceil(data.articles.length / (params.limit || 10))
+            pagination: {
+              page: parseInt(pagination.page || params.page || 1, 10),
+              limit: parseInt(pagination.limit || params.limit || 10, 10),
+              total: pagination.total || data.articles.length,
+              totalPages: pagination.totalPages || Math.ceil(data.articles.length / (params.limit || 10))
+            }
+          };
+        } else if (data.success === true && data.data && Array.isArray(data.data)) {
+          // Formato con success y data (usado en algunas APIs)
+          return {
+            articles: data.data,
+            pagination: {
+              page: parseInt(params.page || 1, 10),
+              limit: parseInt(params.limit || 10, 10),
+              total: data.total || data.data.length,
+              totalPages: data.totalPages || Math.ceil(data.data.length / (params.limit || 10))
             }
           };
         } else if (Array.isArray(data)) {
           // Si la API devuelve directamente un array, crear estructura de paginación
+          const limit = parseInt(params.limit || 10, 10);
+          const page = parseInt(params.page || 1, 10);
+          const total = data.length;
+          const totalPages = Math.ceil(total / limit);
+          
+          // Aplicar paginación manual si es necesario
+          const startIndex = (page - 1) * limit;
+          const endIndex = startIndex + limit;
+          const paginatedArticles = data.slice(startIndex, endIndex);
+          
+          console.log(`Paginación manual: página ${page}/${totalPages}, mostrando ${paginatedArticles.length} de ${total} artículos`);
+          
           return {
-            articles: data,
+            articles: paginatedArticles,
             pagination: {
-              page: params.page || 1,
-              limit: params.limit || 10,
-              total: data.length,
-              totalPages: Math.ceil(data.length / (params.limit || 10))
+              page: page,
+              limit: limit,
+              total: total,
+              totalPages: totalPages
             }
           };
         } else {
@@ -188,8 +215,8 @@ export class ContentManager {
           return {
             articles: [],
             pagination: {
-              page: 1,
-              limit: 10,
+              page: parseInt(params.page || 1, 10),
+              limit: parseInt(params.limit || 10, 10),
               total: 0,
               totalPages: 0
             }
@@ -198,10 +225,26 @@ export class ContentManager {
       }
       
       console.error(`Error al obtener artículos: ${response.status}`);
-      return { articles: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
+      return {
+        articles: [],
+        pagination: {
+          page: parseInt(params.page || 1, 10),
+          limit: parseInt(params.limit || 10, 10),
+          total: 0,
+          totalPages: 0
+        }
+      };
     } catch (error) {
       console.error('Error al conectar con la API:', error);
-      return { articles: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
+      return {
+        articles: [],
+        pagination: {
+          page: parseInt(params.page || 1, 10),
+          limit: parseInt(params.limit || 10, 10),
+          total: 0,
+          totalPages: 0
+        }
+      };
     }
   }
 
@@ -481,7 +524,7 @@ export class ContentManager {
       throw error;
     }
   }
-  
+
   // Importar artículos en masa
   async bulkImportArticles(articlesData) {
     try {

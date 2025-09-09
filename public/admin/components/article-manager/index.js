@@ -283,8 +283,24 @@ export class ArticleManager {
       console.log(`Se encontraron ${articles.length} artículos`);
       
       // Calcular paginación
-      const total = response.total || articles.length;
-      this.totalPages = response.totalPages || Math.ceil(total / this.pageSize);
+      let pagination = { page: 1, limit: this.pageSize, total: 0, totalPages: 0 };
+      
+      if (response && response.pagination) {
+        pagination = response.pagination;
+      } else {
+        // Calcular paginación manualmente si no viene en la respuesta
+        pagination = {
+          page: parseInt(page, 10),
+          limit: parseInt(this.pageSize, 10),
+          total: articles.length,
+          totalPages: Math.ceil(articles.length / this.pageSize)
+        };
+      }
+      
+      this.currentPage = pagination.page;
+      this.totalPages = pagination.totalPages;
+      
+      console.log(`Paginación: página ${this.currentPage}/${this.totalPages}, total: ${pagination.total} artículos`);
       
       // Guardar artículos en el estado
       this.articles = articles;
