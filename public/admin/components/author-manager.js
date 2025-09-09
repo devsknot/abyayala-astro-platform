@@ -114,10 +114,9 @@ export class AuthorManager {
             <table class="min-w-full bg-white border border-gray-200">
               <thead>
                 <tr>
-                  <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Avatar</th>
-                  <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Nombre</th>
+                  <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Autor</th>
+                  <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Slug</th>
                   <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Email</th>
-                  <th class="py-3 px-4 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Bio</th>
                   <th class="py-3 px-4 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider border-b">Acciones</th>
                 </tr>
               </thead>
@@ -273,18 +272,12 @@ export class AuthorManager {
         const row = document.createElement('tr');
         row.className = 'border-b border-gray-200 hover:bg-gray-50';
         
-        // Formatear fecha
-        const createdAt = author.created_at ? new Date(author.created_at).toLocaleDateString() : 'N/A';
-        
-        // Truncar biografía para la tabla
-        const bioPreview = author.bio ? (author.bio.length > 100 ? author.bio.substring(0, 100) + '...' : author.bio) : 'Sin biografía';
-        
         row.innerHTML = `
           <td class="px-6 py-4 whitespace-nowrap">
             <div class="flex items-center">
               <div class="flex-shrink-0 h-10 w-10">
                 ${author.avatar 
-                  ? `<img class="h-10 w-10 rounded-full object-cover" src="${author.avatar}" alt="${author.name}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(author.name || 'Usuario')}&background=random';">` 
+                  ? `<img class="h-10 w-10 rounded-full object-cover" src="${author.avatar}" alt="${author.name}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(author.name || 'U')}&background=random';">` 
                   : `<div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -294,20 +287,16 @@ export class AuthorManager {
               </div>
               <div class="ml-4">
                 <div class="text-sm font-medium text-gray-900">${author.name || 'Sin nombre'}</div>
-                <div class="text-sm text-gray-500">${author.email || 'Sin email'}</div>
               </div>
             </div>
           </td>
           <td class="px-6 py-4 whitespace-nowrap">
             <div class="text-sm text-gray-900">${author.slug}</div>
           </td>
-          <td class="px-6 py-4">
-            <div class="text-sm text-gray-900 line-clamp-2">${bioPreview}</div>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="text-sm text-gray-500">${author.email || 'Sin email'}</div>
           </td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            ${createdAt}
-          </td>
-          <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+          <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
             <button class="text-indigo-600 hover:text-indigo-900 mr-3 edit-author" data-slug="${author.slug}">
               Editar
             </button>
