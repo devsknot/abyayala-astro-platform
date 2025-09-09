@@ -133,6 +133,8 @@ export function loadArticleDataIntoForm(article) {
   if (!article) return;
   
   try {
+    console.log('Cargando datos del artículo en el formulario:', article);
+    
     // Cargar los datos del artículo en el formulario
     const titleInput = this.container.querySelector('#article-title');
     const descriptionInput = this.container.querySelector('#article-description');
@@ -145,6 +147,15 @@ export function loadArticleDataIntoForm(article) {
     // Verificar que todos los elementos existan
     if (!titleInput || !descriptionInput || !categorySelect || !dateInput || !slugInput) {
       console.error('No se encontraron todos los elementos del formulario');
+      console.log('Elementos encontrados:', {
+        titleInput: !!titleInput,
+        descriptionInput: !!descriptionInput,
+        categorySelect: !!categorySelect,
+        dateInput: !!dateInput,
+        slugInput: !!slugInput,
+        authorSelect: !!authorSelect,
+        tagsInput: !!tagsInput
+      });
       if (this.notificationManager) {
         this.notificationManager.error('Error al cargar el formulario');
       }
@@ -196,62 +207,61 @@ export function loadArticleDataIntoForm(article) {
           // Verificación final
           console.log('Autor seleccionado por defecto:', authorSelect.options[authorSelect.selectedIndex]?.text, 
                      '(valor:', authorSelect.value, ')');
-          return; // Continuar con el resto del formulario
         }
-      }
-      
-      // Intentar seleccionar el autor por ID primero (más preciso)
-      let autorEncontrado = false;
-      
-      if (autorId) {
-        console.log('Intentando seleccionar autor por ID:', autorId);
-        // Intentar seleccionar por ID
-        authorSelect.value = autorId;
+      } else {
+        // Intentar seleccionar el autor por ID primero (más preciso)
+        let autorEncontrado = false;
         
-        // Verificar si se seleccionó correctamente
-        if (authorSelect.value === autorId) {
-          autorEncontrado = true;
-          console.log('Autor seleccionado correctamente por ID:', authorSelect.options[authorSelect.selectedIndex].text);
-        } else {
-          console.log('No se pudo seleccionar por ID, intentando por nombre...');
-        }
-      }
-      
-      // Si no se encontró por ID, intentar por nombre
-      if (!autorEncontrado && autorActual && autorActual.toLowerCase() !== 'autor desconocido') {
-        console.log('Intentando seleccionar autor por nombre:', autorActual);
-        
-        // Buscar en las opciones por texto
-        for (let i = 0; i < authorSelect.options.length; i++) {
-          if (authorSelect.options[i].text.toLowerCase() === autorActual.toLowerCase()) {
-            authorSelect.selectedIndex = i;
+        if (autorId) {
+          console.log('Intentando seleccionar autor por ID:', autorId);
+          // Intentar seleccionar por ID
+          authorSelect.value = autorId;
+          
+          // Verificar si se seleccionó correctamente
+          if (authorSelect.value === autorId) {
             autorEncontrado = true;
-            console.log(`Autor encontrado por nombre en opción ${i}:`, authorSelect.options[i].text);
-            break;
+            console.log('Autor seleccionado correctamente por ID:', authorSelect.options[authorSelect.selectedIndex].text);
+          } else {
+            console.log('No se pudo seleccionar por ID, intentando por nombre...');
           }
         }
+        
+        // Si no se encontró por ID, intentar por nombre
+        if (!autorEncontrado && autorActual && autorActual.toLowerCase() !== 'autor desconocido') {
+          console.log('Intentando seleccionar autor por nombre:', autorActual);
+          
+          // Buscar en las opciones por texto
+          for (let i = 0; i < authorSelect.options.length; i++) {
+            if (authorSelect.options[i].text.toLowerCase() === autorActual.toLowerCase()) {
+              authorSelect.selectedIndex = i;
+              autorEncontrado = true;
+              console.log(`Autor encontrado por nombre en opción ${i}:`, authorSelect.options[i].text);
+              break;
+            }
+          }
+        }
+        
+        // Si aún no se encontró, añadir temporalmente (solo si no es "Autor desconocido")
+        if (!autorEncontrado && autorActual && autorActual.toLowerCase() !== 'autor desconocido') {
+          console.log(`Añadiendo autor temporal: ${autorActual}`);
+          // Usar el ID si existe, de lo contrario usar un valor temporal
+          const valorOption = autorId || `temp_${Date.now()}`;
+          const newOption = new Option(autorActual, valorOption);
+          authorSelect.add(newOption);
+          authorSelect.value = valorOption;
+        }
+        
+        // Verificación final
+        const selectedOption = authorSelect.options[authorSelect.selectedIndex];
+        console.log('Autor finalmente seleccionado:', 
+                   selectedOption ? selectedOption.text : 'Ninguno', 
+                   '(valor:', authorSelect.value, ')');
       }
-      
-      // Si aún no se encontró, añadir temporalmente (solo si no es "Autor desconocido")
-      if (!autorEncontrado && autorActual && autorActual.toLowerCase() !== 'autor desconocido') {
-        console.log(`Añadiendo autor temporal: ${autorActual}`);
-        // Usar el ID si existe, de lo contrario usar un valor temporal
-        const valorOption = autorId || `temp_${Date.now()}`;
-        const newOption = new Option(autorActual, valorOption);
-        authorSelect.add(newOption);
-        authorSelect.value = valorOption;
-      }
-      
-      // Verificación final
-      const selectedOption = authorSelect.options[authorSelect.selectedIndex];
-      console.log('Autor finalmente seleccionado:', 
-                 selectedOption ? selectedOption.text : 'Ninguno', 
-                 '(valor:', authorSelect.value, ')');
     }
     
     // Cargar etiquetas
     if (tagsInput) {
-      tagsInput.value = Array.isArray(article.tags) ? article.tags.join(', ') : '';
+      tagsInput.value = Array.isArray(article.tags) ? article.tags.join(', ') : (article.tags || '');
     }
     
     // Cargar imagen destacada (el campo estándar es featured_image)
@@ -320,6 +330,12 @@ export function loadArticleDataIntoForm(article) {
         console.warn('No hay contenido para cargar en el editor');
         this.initializeEditor('');
       }
+      
+      // Ocultar el indicador de carga después de un tiempo adicional
+      setTimeout(() => {
+        this.hideLoading();
+      }, 1500);
+      
     }, 1000); // Aumentar el tiempo de espera para asegurar que el DOM esté completamente listo
     
   } catch (error) {
@@ -476,6 +492,7 @@ export function initializeEditor(content) {
     // Verificar nuevamente que el contenido sea válido
     if (content) {
       console.log(`Preparando editor para contenido de ${content.length} caracteres`);
+      console.log('Muestra del contenido a cargar:', content.substring(0, 100) + '...');
     } else {
       console.warn('Contenido vacío o no válido para el editor');
       content = ''; // Asegurar que sea una cadena vacía y no undefined
@@ -490,31 +507,56 @@ export function initializeEditor(content) {
           // Inicializar el editor con el nuevo módulo
           this.editor = new ContentEditor(editorContainer);
           
-          // Establecer el contenido
-          if (this.editor && typeof this.editor.setContent === 'function') {
-            // Verificar que el contenido sea válido
-            if (content && typeof content === 'string') {
-              console.log(`Estableciendo contenido en el editor (${content.length} caracteres)`);
-              console.log('Muestra del contenido a establecer:', content.substring(0, 100) + '...');
-              
-              // Asegurar que el contenido sea una cadena válida
-              try {
-                // Usar setTimeout para asegurar que el editor esté completamente inicializado
-                setTimeout(() => {
+          // Esperar un momento para asegurar que el editor esté completamente inicializado
+          setTimeout(() => {
+            try {
+              // Establecer el contenido
+              if (this.editor && typeof this.editor.setContent === 'function') {
+                // Verificar que el contenido sea válido
+                if (content && typeof content === 'string') {
+                  console.log(`Estableciendo contenido en el editor (${content.length} caracteres)`);
+                  console.log('Muestra del contenido a establecer:', content.substring(0, 100) + '...');
+                  
+                  // Establecer el contenido en el editor
                   this.editor.setContent(content);
                   console.log('Contenido establecido en el editor correctamente');
-                }, 100);
-              } catch (contentError) {
-                console.error('Error al establecer contenido:', contentError);
-                this.editor.setContent(''); // Intentar con contenido vacío como fallback
+                  
+                  // Verificar que el contenido se haya establecido correctamente
+                  const editorContent = this.editor.getContent();
+                  console.log(`Contenido verificado: ${editorContent ? 'OK' : 'FALLO'} (${editorContent ? editorContent.length : 0} caracteres)`);
+                  
+                  // Si el contenido no se estableció correctamente, intentar nuevamente
+                  if (!editorContent || editorContent.length === 0) {
+                    console.warn('El contenido no se estableció correctamente, intentando nuevamente...');
+                    setTimeout(() => {
+                      this.editor.setContent(content);
+                      console.log('Segundo intento de establecer contenido completado');
+                    }, 500);
+                  }
+                } else {
+                  console.warn('Contenido inválido o vacío:', content);
+                  this.editor.setContent(''); // Establecer contenido vacío como fallback
+                }
+              } else {
+                console.error('El editor no tiene el método setContent o no está correctamente inicializado');
               }
-            } else {
-              console.warn('Contenido inválido o vacío:', content);
-              this.editor.setContent(''); // Establecer contenido vacío como fallback
+            } catch (contentError) {
+              console.error('Error al establecer contenido:', contentError);
+              // Intentar con un enfoque alternativo
+              try {
+                const editorArea = editorContainer.querySelector('.editor-area');
+                if (editorArea) {
+                  console.log('Intentando establecer contenido directamente en el área editable');
+                  editorArea.innerHTML = content || '';
+                }
+              } catch (fallbackError) {
+                console.error('Error en el fallback para establecer contenido:', fallbackError);
+              }
+            } finally {
+              this.hideLoading();
             }
-          } else {
-            console.error('El editor no tiene el método setContent');
-          }
+          }, 1000); // Aumentar el tiempo de espera para asegurar que el editor esté completamente inicializado
+          
         } catch (initError) {
           console.error('Error al instanciar el editor:', initError);
           
@@ -536,9 +578,9 @@ export function initializeEditor(content) {
             getContent: () => textarea.value,
             destroy: () => { editorContainer.innerHTML = ''; }
           };
+          
+          this.hideLoading();
         }
-        
-        this.hideLoading();
       })
       .catch(importError => {
         console.error('Error al importar el editor:', importError);
