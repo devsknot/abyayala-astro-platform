@@ -226,6 +226,7 @@ export class MediaLibrary {
           <div class="media-info">
             <div class="truncate text-sm font-medium">${file.filename || file.name}</div>
             <div class="text-xs text-gray-500">${this.formatFileSize(file.size)}</div>
+            <button class="media-delete-btn" data-id="${file.id || file.path}">🗑️</button>
           </div>
         </div>
       `;
@@ -235,7 +236,12 @@ export class MediaLibrary {
     
     // Agregar eventos a los elementos de la galería
     this.mediaGrid.querySelectorAll('.media-item').forEach(item => {
-      item.addEventListener('click', () => {
+      item.addEventListener('click', (e) => {
+        // Evitar que el clic en el botón de eliminar seleccione el elemento
+        if (e.target.closest('.media-delete-btn')) {
+          return;
+        }
+
         // Encontrar el archivo correspondiente
         const fileId = item.dataset.id;
         const filePath = item.dataset.path;
@@ -259,6 +265,52 @@ export class MediaLibrary {
         }
       });
     });
+
+    // Agregar eventos a los botones de eliminar
+    this.mediaGrid.querySelectorAll('.media-delete-btn').forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.stopPropagation(); // Evitar que el evento se propague
+        const fileId = button.dataset.id;
+        if (fileId) {
+          this.deleteFile(fileId);
+        }
+      });
+    });
+
+    // Agregar estilos para el botón de eliminar si no existen
+    if (!document.getElementById('media-library-styles')) {
+      const style = document.createElement('style');
+      style.id = 'media-library-styles';
+      style.innerHTML = `
+        .media-info {
+          position: relative;
+        }
+        .media-delete-btn {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          background-color: rgba(255, 255, 255, 0.8);
+          border: none;
+          border-radius: 50%;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          opacity: 0;
+          transition: opacity 0.2s;
+        }
+        .media-item:hover .media-delete-btn {
+          opacity: 1;
+        }
+        .media-delete-btn:hover {
+          background-color: #fecaca; /* red-200 */
+          color: #dc2626; /* red-600 */
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }
   
   selectFile(file) {
