@@ -260,17 +260,29 @@ export function renderPagination(currentPage, totalPages) {
       pages.push(totalPages);
     }
     
-    // Crear botones de paginación
+    // Crear botones de paginación con eventos directamente incluidos
+    const self = this; // Guardar referencia a 'this' para usar en los eventos
+    
     const paginationHTML = `
       <div class="pagination-controls">
-        <button class="pagination-btn prev" ${currentPage === 1 ? 'disabled' : ''}>Anterior</button>
+        <button class="pagination-btn prev" ${currentPage === 1 ? 'disabled' : ''} 
+          onclick="window.articleManagerInstance.loadArticles(${currentPage - 1}, '${this.currentCategory || ''}', '${this.currentSearch || ''}')">
+          Anterior
+        </button>
         ${pages.map(page => {
           if (page === '...') {
             return '<span class="pagination-ellipsis">...</span>';
           }
-          return `<button class="pagination-btn page-number ${page === currentPage ? 'active' : ''}" data-page="${page}">${page}</button>`;
+          return `<button class="pagination-btn page-number ${page === currentPage ? 'active' : ''}" 
+            data-page="${page}" 
+            onclick="window.articleManagerInstance.loadArticles(${page}, '${this.currentCategory || ''}', '${this.currentSearch || ''}')">
+            ${page}
+          </button>`;
         }).join('')}
-        <button class="pagination-btn next" ${currentPage === totalPages ? 'disabled' : ''}>Siguiente</button>
+        <button class="pagination-btn next" ${currentPage === totalPages ? 'disabled' : ''} 
+          onclick="window.articleManagerInstance.loadArticles(${currentPage + 1}, '${this.currentCategory || ''}', '${this.currentSearch || ''}')">
+          Siguiente
+        </button>
       </div>
       <div class="pagination-info">
         Página ${currentPage} de ${totalPages}
@@ -331,8 +343,8 @@ export function renderPagination(currentPage, totalPages) {
       document.head.appendChild(style);
     }
     
-    // Configurar eventos de paginación
-    this.setupPaginationEvents(currentPage, totalPages);
+    // Guardar la instancia del ArticleManager en window para acceder desde los eventos inline
+    window.articleManagerInstance = this;
     
     console.log('Paginación renderizada correctamente');
   } catch (error) {
@@ -346,62 +358,8 @@ export function renderPagination(currentPage, totalPages) {
  * @param {number} totalPages - Total de páginas
  */
 export function setupPaginationEvents(currentPage, totalPages) {
-  try {
-    console.log('Configurando eventos de paginación:', { currentPage, totalPages });
-    
-    // Botón de página anterior
-    const prevButton = this.container.querySelector('.pagination-btn.prev');
-    if (prevButton) {
-      // Eliminar eventos anteriores para evitar duplicados
-      const newPrevButton = prevButton.cloneNode(true);
-      prevButton.parentNode.replaceChild(newPrevButton, prevButton);
-      
-      newPrevButton.addEventListener('click', () => {
-        console.log('Botón anterior clickeado, página actual:', currentPage);
-        if (currentPage > 1) {
-          // Pasar también el término de búsqueda actual
-          this.loadArticles(currentPage - 1, this.currentCategory, this.currentSearch);
-        }
-      });
-    }
-    
-    // Botón de página siguiente
-    const nextButton = this.container.querySelector('.pagination-btn.next');
-    if (nextButton) {
-      // Eliminar eventos anteriores para evitar duplicados
-      const newNextButton = nextButton.cloneNode(true);
-      nextButton.parentNode.replaceChild(newNextButton, nextButton);
-      
-      newNextButton.addEventListener('click', () => {
-        console.log('Botón siguiente clickeado, página actual:', currentPage);
-        if (currentPage < totalPages) {
-          // Pasar también el término de búsqueda actual
-          this.loadArticles(currentPage + 1, this.currentCategory, this.currentSearch);
-        }
-      });
-    }
-    
-    // Botones de número de página
-    const pageButtons = this.container.querySelectorAll('.pagination-btn.page-number');
-    pageButtons.forEach(button => {
-      // Eliminar eventos anteriores para evitar duplicados
-      const newButton = button.cloneNode(true);
-      button.parentNode.replaceChild(newButton, button);
-      
-      newButton.addEventListener('click', () => {
-        const page = parseInt(newButton.dataset.page);
-        console.log('Botón de página clickeado:', page);
-        if (page && page !== currentPage) {
-          // Pasar también el término de búsqueda actual
-          this.loadArticles(page, this.currentCategory, this.currentSearch);
-        }
-      });
-    });
-    
-    console.log('Eventos de paginación configurados correctamente');
-  } catch (error) {
-    console.error('Error al configurar eventos de paginación:', error);
-  }
+  // Ya no es necesario configurar eventos aquí, ya que se incluyen directamente en el HTML
+  console.log('Eventos de paginación configurados en el HTML');
 }
 
 /**
