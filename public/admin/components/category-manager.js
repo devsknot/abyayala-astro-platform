@@ -162,24 +162,23 @@ export class CategoryManager {
     console.log('Renderizando tabla de categorías:', this.categories);
     
     return this.categories.map(category => {
-      // En la base de datos, el campo 'id' se usa como slug
-      // Asegurarse de que usamos el id como slug para mantener la consistencia
-      const categorySlug = category.id || '';
+      // Ensure we use the category's 'id' for all operations
+      const categoryId = category.id || '';
       
-      if (!categorySlug) {
-        console.error('Categoría sin ID/slug:', category);
+      if (!categoryId) {
+        console.error('Category is missing an ID:', category);
       }
       
       return `
-        <tr class="hover:bg-gray-50" data-slug="${categorySlug}">
+        <tr class="hover:bg-gray-50" data-slug="${categoryId}">
           <td class="py-3 px-4 border-b">${category.name || 'Sin nombre'}</td>
-          <td class="py-3 px-4 border-b">${categorySlug}</td>
+          <td class="py-3 px-4 border-b">${categoryId}</td>
           <td class="py-3 px-4 border-b">${category.description || '-'}</td>
           <td class="py-3 px-4 border-b text-center">
-            <button class="edit-category bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded-md text-xs mr-2 transition duration-300" data-slug="${categorySlug}">
+            <button class="edit-category bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded-md text-xs mr-2 transition duration-300" data-slug="${categoryId}">
               Editar
             </button>
-            <button class="delete-category bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded-md text-xs transition duration-300" data-slug="${categorySlug}">
+            <button class="delete-category bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded-md text-xs transition duration-300" data-slug="${categoryId}">
               Eliminar
             </button>
           </td>
