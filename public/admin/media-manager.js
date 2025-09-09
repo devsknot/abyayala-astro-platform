@@ -489,10 +489,30 @@ export class MediaManager {
       nameSpan.textContent = file.name || 'Sin nombre';
       infoContainer.appendChild(nameSpan);
       
+      // Agregar botones de acción
+      const actionContainer = document.createElement('div');
+      actionContainer.className = 'media-actions';
+      
+      // Botón de seleccionar
+      const selectButton = document.createElement('button');
+      selectButton.className = 'media-action-btn select-btn';
+      selectButton.innerHTML = '<span class="icon">✓</span> Seleccionar';
+      selectButton.title = 'Seleccionar este archivo';
+      actionContainer.appendChild(selectButton);
+      
+      // Botón de eliminar
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'media-action-btn delete-btn';
+      deleteButton.innerHTML = '<span class="icon">🗑️</span> Eliminar';
+      deleteButton.title = 'Eliminar este archivo';
+      actionContainer.appendChild(deleteButton);
+      
+      infoContainer.appendChild(actionContainer);
       mediaItem.appendChild(infoContainer);
       
       // Agregar evento para seleccionar el archivo
-      mediaItem.addEventListener('click', () => {
+      selectButton.addEventListener('click', (e) => {
+        e.stopPropagation(); // Evitar que el evento se propague al mediaItem
         try {
           console.log('MediaBrowser - Archivo seleccionado:', file);
           
@@ -543,8 +563,153 @@ export class MediaManager {
         }
       });
       
+      // Agregar evento para eliminar el archivo
+      deleteButton.addEventListener('click', async (e) => {
+        e.stopPropagation(); // Evitar que el evento se propague al mediaItem
+        
+        // Confirmar la eliminación
+        if (confirm(`¿Está seguro que desea eliminar el archivo "${file.name || 'Sin nombre'}"?`)) {
+          try {
+            // Mostrar indicador de carga
+            deleteButton.innerHTML = '<span class="icon">⏳</span> Eliminando...';
+            deleteButton.disabled = true;
+            
+            // Obtener el ID del archivo (path)
+            const fileId = file.path;
+            if (!fileId) {
+              throw new Error('No se pudo determinar el ID del archivo');
+            }
+            
+            console.log('MediaBrowser - Eliminando archivo:', fileId);
+            
+            // Llamar a la función de eliminación
+            const result = await this.deleteFile(fileId);
+            console.log('MediaBrowser - Resultado de eliminación:', result);
+            
+            // Eliminar el elemento del DOM
+            mediaItem.remove();
+            
+            // Mostrar mensaje de éxito
+            alert('Archivo eliminado correctamente');
+            
+            // Actualizar la lista de archivos en caché
+            const cachedFiles = this.getCachedMediaFiles();
+            if (cachedFiles) {
+              const updatedFiles = cachedFiles.filter(f => f.path !== fileId);
+              this.saveMediaFilesToCache(updatedFiles);
+            }
+            
+            // Si no quedan archivos, mostrar mensaje
+            if (mediaGrid.children.length === 0) {
+              mediaGrid.innerHTML = '<p class="no-media">No hay archivos multimedia disponibles.</p>';
+            }
+          } catch (error) {
+            console.error('Error al eliminar archivo:', error);
+            alert(`Error al eliminar el archivo: ${error.message || 'Error desconocido'}`);
+            
+            // Restaurar el botón
+            deleteButton.innerHTML = '<span class="icon">🗑️</span> Eliminar';
+            deleteButton.disabled = false;
+          }
+        }
+      });
+      
+      // Agregar evento para seleccionar el archivo al hacer clic en la tarjeta
+      thumbnailContainer.addEventListener('click', () => {
+        selectButton.click();
+      });
+      
       mediaGrid.appendChild(mediaItem);
     });
+    
+    // Agregar estilos para los botones de acción
+    if (!document.querySelector('#media-actions-styles')) {
+      const style = document.createElement('style');
+      style.id = 'media-actions-styles';
+      style.textContent = `
+        .media-actions {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 5px;
+          gap: 5px;
+        }
+        .media-action-btn {
+          padding: 4px 8px;
+          font-size: 0.75rem;
+          border: 1px solid #e2e8f0;
+          background-color: white;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: all 0.2s;
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .media-action-btn:hover {
+          background-color: #f7fafc;
+          border-color: #cbd5e0;
+        }
+        .media-action-btn .icon {
+          margin-right: 3px;
+        }
+        .select-btn {
+          background-color: #ebf8ff;
+          border-color: #bee3f8;
+          color: #2b6cb0;
+        }
+        .select-btn:hover {
+          background-color: #bee3f8;
+          border-color: #90cdf4;
+        }
+        .delete-btn {
+          background-color: #fff5f5;
+          border-color: #fed7d7;
+          color: #c53030;
+        }
+        .delete-btn:hover {
+          background-color: #fed7d7;
+          border-color: #feb2b2;
+        }
+        .media-item {
+          position: relative;
+          border: 1px solid #e2e8f0;
+          border-radius: 4px;
+          overflow: hidden;
+          background-color: white;
+          transition: transform 0.2s, box-shadow 0.2s;
+          display: flex;
+          flex-direction: column;
+        }
+        .media-item:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .media-thumbnail {
+          position: relative;
+          height: 120px;
+          background-color: #f7fafc;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        }
+        .media-info {
+          padding: 8px;
+          display: flex;
+          flex-direction: column;
+        }
+        .media-name {
+          font-size: 0.875rem;
+          font-weight: 500;
+          margin-bottom: 5px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }
   
   /**
