@@ -174,9 +174,6 @@ export class AuthorManager {
                       <img id="avatarPreview" src="" alt="Avatar Preview" style="display: none; width: 100%; height: 100%; object-fit: cover;">
                       <span class="text-gray-400" id="avatarPlaceholder">Sin avatar</span>
                     </div>
-                    <button type="button" id="selectAvatarBtn" class="ml-4 bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded-md">
-                      Seleccionar imagen
-                    </button>
                   </div>
                 </div>
                 
@@ -188,23 +185,23 @@ export class AuthorManager {
             </div>
             
             <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">Redes Sociales</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Redes Sociales (Opcional)</label>
               <div class="social-media-inputs grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label for="authorTwitter" class="block text-xs text-gray-500 mb-1">Twitter</label>
-                  <input type="text" id="authorTwitter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <label for="social_twitter" class="block text-xs text-gray-500 mb-1">Twitter URL</label>
+                  <input type="text" id="social_twitter" placeholder="https://twitter.com/usuario" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
                 <div>
-                  <label for="authorFacebook" class="block text-xs text-gray-500 mb-1">Facebook</label>
-                  <input type="text" id="authorFacebook" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <label for="social_facebook" class="block text-xs text-gray-500 mb-1">Facebook URL</label>
+                  <input type="text" id="social_facebook" placeholder="https://facebook.com/usuario" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
                 <div>
-                  <label for="authorInstagram" class="block text-xs text-gray-500 mb-1">Instagram</label>
-                  <input type="text" id="authorInstagram" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <label for="social_instagram" class="block text-xs text-gray-500 mb-1">Instagram URL</label>
+                  <input type="text" id="social_instagram" placeholder="https://instagram.com/usuario" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
                 <div>
-                  <label for="authorWebsite" class="block text-xs text-gray-500 mb-1">Sitio Web</label>
-                  <input type="text" id="authorWebsite" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                  <label for="social_website" class="block text-xs text-gray-500 mb-1">Sitio Web</label>
+                  <input type="text" id="social_website" placeholder="https://sitioweb.com" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
               </div>
             </div>
@@ -520,10 +517,10 @@ export class AuthorManager {
     const avatarInput = this.container.querySelector('#authorAvatar');
     
     // Recopilar datos de redes sociales
-    const twitterInput = this.container.querySelector('#authorTwitter');
-    const facebookInput = this.container.querySelector('#authorFacebook');
-    const instagramInput = this.container.querySelector('#authorInstagram');
-    const websiteInput = this.container.querySelector('#authorWebsite');
+    const twitterInput = this.container.querySelector('#social_twitter');
+    const facebookInput = this.container.querySelector('#social_facebook');
+    const instagramInput = this.container.querySelector('#social_instagram');
+    const websiteInput = this.container.querySelector('#social_website');
     
     // Crear objeto de redes sociales
     const socialMedia = {};
@@ -651,10 +648,10 @@ export class AuthorManager {
       // Llenar datos de redes sociales
       const socialMedia = author.social_media || {};
       
-      const twitterInput = this.container.querySelector('#authorTwitter');
-      const facebookInput = this.container.querySelector('#authorFacebook');
-      const instagramInput = this.container.querySelector('#authorInstagram');
-      const websiteInput = this.container.querySelector('#authorWebsite');
+      const twitterInput = this.container.querySelector('#social_twitter');
+      const facebookInput = this.container.querySelector('#social_facebook');
+      const instagramInput = this.container.querySelector('#social_instagram');
+      const websiteInput = this.container.querySelector('#social_website');
       
       if (twitterInput) twitterInput.value = socialMedia.twitter || '';
       if (facebookInput) facebookInput.value = socialMedia.facebook || '';
