@@ -218,6 +218,12 @@ export function setupArticleCardEvents() {
  */
 export function renderPagination(currentPage, totalPages) {
   try {
+    console.log('Renderizando paginación:', { currentPage, totalPages });
+    
+    // Asegurar que los valores sean números
+    currentPage = parseInt(currentPage, 10) || 1;
+    totalPages = parseInt(totalPages, 10) || 1;
+    
     const paginationContainer = this.container.querySelector('.pagination');
     if (!paginationContainer) {
       console.error('No se encontró el contenedor para la paginación');
@@ -256,22 +262,79 @@ export function renderPagination(currentPage, totalPages) {
     
     // Crear botones de paginación
     const paginationHTML = `
-      <button class="pagination-btn prev" ${currentPage === 1 ? 'disabled' : ''}>Anterior</button>
-      ${pages.map(page => {
-        if (page === '...') {
-          return '<span class="pagination-ellipsis">...</span>';
-        }
-        return `<button class="pagination-btn page-number ${page === currentPage ? 'active' : ''}" data-page="${page}">${page}</button>`;
-      }).join('')}
-      <button class="pagination-btn next" ${currentPage === totalPages ? 'disabled' : ''}>Siguiente</button>
+      <div class="pagination-controls">
+        <button class="pagination-btn prev" ${currentPage === 1 ? 'disabled' : ''}>Anterior</button>
+        ${pages.map(page => {
+          if (page === '...') {
+            return '<span class="pagination-ellipsis">...</span>';
+          }
+          return `<button class="pagination-btn page-number ${page === currentPage ? 'active' : ''}" data-page="${page}">${page}</button>`;
+        }).join('')}
+        <button class="pagination-btn next" ${currentPage === totalPages ? 'disabled' : ''}>Siguiente</button>
+      </div>
+      <div class="pagination-info">
+        Página ${currentPage} de ${totalPages}
+      </div>
     `;
     
     // Actualizar el contenedor de paginación
     paginationContainer.innerHTML = paginationHTML;
     
+    // Añadir estilos para mejorar la apariencia
+    const style = document.createElement('style');
+    if (!document.querySelector('#pagination-styles')) {
+      style.id = 'pagination-styles';
+      style.textContent = `
+        .pagination {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin-top: 20px;
+          padding: 10px;
+        }
+        .pagination-controls {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .pagination-btn {
+          padding: 8px 12px;
+          border: 1px solid #e2e8f0;
+          background-color: white;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .pagination-btn:hover:not([disabled]) {
+          background-color: #f7fafc;
+          border-color: #cbd5e0;
+        }
+        .pagination-btn.active {
+          background-color: #4299e1;
+          color: white;
+          border-color: #4299e1;
+        }
+        .pagination-btn[disabled] {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .pagination-ellipsis {
+          padding: 8px 12px;
+          color: #718096;
+        }
+        .pagination-info {
+          margin-top: 10px;
+          font-size: 0.875rem;
+          color: #718096;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
     // Configurar eventos de paginación
     this.setupPaginationEvents(currentPage, totalPages);
     
+    console.log('Paginación renderizada correctamente');
   } catch (error) {
     console.error('Error al renderizar paginación:', error);
   }
@@ -284,12 +347,20 @@ export function renderPagination(currentPage, totalPages) {
  */
 export function setupPaginationEvents(currentPage, totalPages) {
   try {
+    console.log('Configurando eventos de paginación:', { currentPage, totalPages });
+    
     // Botón de página anterior
     const prevButton = this.container.querySelector('.pagination-btn.prev');
     if (prevButton) {
-      prevButton.addEventListener('click', () => {
+      // Eliminar eventos anteriores para evitar duplicados
+      const newPrevButton = prevButton.cloneNode(true);
+      prevButton.parentNode.replaceChild(newPrevButton, prevButton);
+      
+      newPrevButton.addEventListener('click', () => {
+        console.log('Botón anterior clickeado, página actual:', currentPage);
         if (currentPage > 1) {
-          this.loadArticles(currentPage - 1, this.currentCategory);
+          // Pasar también el término de búsqueda actual
+          this.loadArticles(currentPage - 1, this.currentCategory, this.currentSearch);
         }
       });
     }
@@ -297,9 +368,15 @@ export function setupPaginationEvents(currentPage, totalPages) {
     // Botón de página siguiente
     const nextButton = this.container.querySelector('.pagination-btn.next');
     if (nextButton) {
-      nextButton.addEventListener('click', () => {
+      // Eliminar eventos anteriores para evitar duplicados
+      const newNextButton = nextButton.cloneNode(true);
+      nextButton.parentNode.replaceChild(newNextButton, nextButton);
+      
+      newNextButton.addEventListener('click', () => {
+        console.log('Botón siguiente clickeado, página actual:', currentPage);
         if (currentPage < totalPages) {
-          this.loadArticles(currentPage + 1, this.currentCategory);
+          // Pasar también el término de búsqueda actual
+          this.loadArticles(currentPage + 1, this.currentCategory, this.currentSearch);
         }
       });
     }
@@ -307,13 +384,21 @@ export function setupPaginationEvents(currentPage, totalPages) {
     // Botones de número de página
     const pageButtons = this.container.querySelectorAll('.pagination-btn.page-number');
     pageButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const page = parseInt(button.dataset.page);
+      // Eliminar eventos anteriores para evitar duplicados
+      const newButton = button.cloneNode(true);
+      button.parentNode.replaceChild(newButton, button);
+      
+      newButton.addEventListener('click', () => {
+        const page = parseInt(newButton.dataset.page);
+        console.log('Botón de página clickeado:', page);
         if (page && page !== currentPage) {
-          this.loadArticles(page, this.currentCategory);
+          // Pasar también el término de búsqueda actual
+          this.loadArticles(page, this.currentCategory, this.currentSearch);
         }
       });
     });
+    
+    console.log('Eventos de paginación configurados correctamente');
   } catch (error) {
     console.error('Error al configurar eventos de paginación:', error);
   }
