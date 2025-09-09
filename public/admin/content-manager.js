@@ -688,7 +688,14 @@ export class ContentManager {
       });
       
       if (response.ok) {
-        return await response.json();
+        // A successful DELETE might not return a body. 
+        // If the status is 200 or 204 (No Content), consider it a success.
+        if (response.status === 204) {
+            return { success: true };
+        }
+        // If there is a body, parse it. Otherwise, return success.
+        const text = await response.text();
+        return text ? JSON.parse(text) : { success: true };
       }
       
       const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
