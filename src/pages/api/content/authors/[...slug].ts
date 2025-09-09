@@ -549,22 +549,30 @@ async function handleDeleteAuthor(slug: string, db: any, headers: HeadersInit) {
             });
         }
 
-        await db.prepare(`DELETE FROM authors WHERE slug = ?`).bind(slug).run();
-        console.log(`[authors/...slug.ts] Author deleted successfully: ${authorExists.name} (${slug})`);
+        const result = await db.prepare(`DELETE FROM authors WHERE slug = ?`).bind(slug).run();
 
-        return new Response(JSON.stringify({
+        if (result.meta.changes > 0) {
+          console.log(`[authors/...slug.ts] Author deleted successfully: ${authorExists.name} (${slug})`);
+          return new Response(JSON.stringify({
             success: true,
             message: 'Author deleted successfully',
             slug: slug
-        }), { headers });
+          }), { headers });
+        } else {
+          console.warn(`[authors/...slug.ts] Deletion failed. Author not found during delete operation: ${slug}`);
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Author not found during deletion'
+          }), {
+            status: 404,
+            headers
+          });
+        }
     } catch (error: any) {
         console.error(`[authors/...slug.ts] Error deleting author ${slug}:`, error);
-        return new Response(JSON.stringify({
-            success: false,
-            error: 'Failed to delete author'
-        }), {
+        return new Response(JSON.stringify({ error: error.message || 'Server Error' }), {
             status: 500,
-            headers
+            headers: commonHeaders
         });
     }
 }
