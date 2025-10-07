@@ -14,9 +14,12 @@ interface Props {
   heroImage: string;
   category: string;
   author: string;
+  authorSlug?: string;
+  authorBio?: string;
+  authorAvatar?: string;
 }
 
-const { title, description, pubDate, updatedDate, heroImage, category, author } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, category, author, authorSlug, authorBio, authorAvatar } = Astro.props;
 ---
 
 <BaseLayout title={title} description={description} image={heroImage}>
@@ -58,17 +61,31 @@ const { title, description, pubDate, updatedDate, heroImage, category, author } 
         <aside class="sidebar">
           <div class="author-widget">
             <h3>Sobre el autor</h3>
-            <div class="author-info">
-              <div class="author-avatar">
-                <img 
-                  src="/author-placeholder.jpg" 
-                  alt={author} 
-                  onerror="this.onerror=null; this.src='/images/CAAY Logo sin fondo.png'; this.classList.add('fallback-author-image');"
-                />
+            {authorSlug ? (
+              <a href={`/authors/${authorSlug}`} class="author-info author-link">
+                <div class="author-avatar">
+                  <img 
+                    src={authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=random&color=fff&size=256`}
+                    alt={author} 
+                    onerror="this.onerror=null; this.src='/images/CAAY Logo sin fondo.png'; this.classList.add('fallback-author-image');"
+                  />
+                </div>
+                <div class="author-name">{author}</div>
+                <p class="author-bio">{authorBio || 'Colaborador del colectivo Abya Yala.'}</p>
+              </a>
+            ) : (
+              <div class="author-info">
+                <div class="author-avatar">
+                  <img 
+                    src={authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=random&color=fff&size=256`}
+                    alt={author} 
+                    onerror="this.onerror=null; this.src='/images/CAAY Logo sin fondo.png'; this.classList.add('fallback-author-image');"
+                  />
+                </div>
+                <div class="author-name">{author}</div>
+                <p class="author-bio">{authorBio || 'Colaborador del colectivo Abya Yala.'}</p>
               </div>
-              <div class="author-name">{author}</div>
-              <p class="author-bio">Periodista especializado en temas agrarios y de sostenibilidad. Colaborador del colectivo Abya Yala desde 2020.</p>
-            </div>
+            )}
           </div>
           
           <div class="categories-widget">
@@ -229,6 +246,27 @@ const { title, description, pubDate, updatedDate, heroImage, category, author } 
     flex-direction: column;
     align-items: center;
     text-align: center;
+  }
+  
+  .author-link {
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    padding: 0.5rem;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .author-link:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.5);
+  }
+  
+  .author-link .author-name {
+    color: var(--color-primary);
   }
   
   .author-avatar {

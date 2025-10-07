@@ -118,6 +118,17 @@ const currentUrl = `${SITE_URL}/news/${slug}/`;
 // Usar el contenido del artículo
 const contentHtml = article.content || '<p>No hay contenido disponible</p>';
 
+// Obtener información del autor si está disponible
+let authorSlug = '';
+let authorBio = '';
+let authorAvatar = '';
+
+if (article.author_info) {
+  authorSlug = article.author_info.slug || '';
+  authorBio = article.author_info.bio || '';
+  authorAvatar = article.author_info.avatar || '';
+}
+
 console.log('DEPURACIÓN: Renderizado completado');
 
 
@@ -131,21 +142,10 @@ console.log('DEPURACIÓN: Renderizado completado');
   heroImage={article?.featured_image || "/blog-placeholder-1.jpg"}
   category={article?.category || 'general'}
   author={article?.author || "Autor Desconocido"}
+  authorSlug={authorSlug}
+  authorBio={authorBio}
+  authorAvatar={authorAvatar}
 >
-  {/* Barra de depuración (visible solo en desarrollo) */}
-  <div class="debug-bar">
-    <details>
-      <summary>Información de depuración</summary>
-      <ul>
-        <li><strong>Slug:</strong> {Astro.params.slug}</li>
-        <li><strong>URL:</strong> {Astro.url.href}</li>
-        <li><strong>Hora:</strong> {new Date().toLocaleString()}</li>
-        <li><strong>Categoría:</strong> {article?.category}</li>
-        <li><strong>Artículos relacionados:</strong> {relatedArticles?.length || 0}</li>
-      </ul>
-    </details>
-  </div>
-
   <div class="news-header">
     <CategoryTag category={article?.category || 'general'} absolute={false} />
     <h1>{article?.title || 'Artículo no disponible'}</h1>
@@ -189,29 +189,6 @@ console.log('DEPURACIÓN: Renderizado completado');
 </NewsLayout>
 
 <style>
-  .debug-bar {
-    background: #fffde7;
-    padding: 10px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-    border: 1px solid #ffe0b2;
-  }
-  
-  .debug-bar details summary {
-    cursor: pointer;
-    font-weight: bold;
-    color: #e65100;
-  }
-  
-  .debug-bar ul {
-    margin-top: 10px;
-    padding-left: 20px;
-  }
-  
-  .debug-bar li {
-    margin-bottom: 5px;
-  }
-  
   .no-related {
     margin-top: 30px;
     padding: 15px;
