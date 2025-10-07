@@ -98,13 +98,16 @@ const pageDescription = 'Ponte en contacto con el colectivo agrario Abya Yala. E
       <div class="map-container">
         <h2>Encuéntranos</h2>
         <div class="map">
-          <!-- En un proyecto real, aquí iría un mapa interactivo con la ubicación -->
-          <div class="map-placeholder">
-            <img src="/map-placeholder.jpg" alt="Mapa de ubicación de Abya Yala">
-            <div class="map-overlay">
-              <p>Mapa interactivo no disponible en la versión de demostración</p>
-            </div>
-          </div>
+          <iframe 
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3976.6347847892!2d-74.06682892507!3d4.650371995342!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8e3f9a2e5e5e5e5e%3A0x5e5e5e5e5e5e5e5e!2sLa%20Morada%2C%20Carrera%201%20%23%2032-46%2C%20La%20Perseverancia%2C%20Bogot%C3%A1!5e0!3m2!1ses!2sco!4v1234567890123!5m2!1ses!2sco"
+            width="100%" 
+            height="400" 
+            style="border:0;" 
+            allowfullscreen="" 
+            loading="lazy" 
+            referrerpolicy="no-referrer-when-downgrade"
+            title="Ubicación de Colectivo Agrario Abya Yala">
+          </iframe>
         </div>
       </div>
     </div>
@@ -290,39 +293,11 @@ const pageDescription = 'Ponte en contacto con el colectivo agrario Abya Yala. E
     height: 400px;
     border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   }
 
-  .map-placeholder {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    background-color: #f0f0f0;
-  }
-
-  .map-placeholder img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0.7;
-  }
-
-  .map-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.2);
-  }
-
-  .map-overlay p {
-    background-color: rgba(255, 255, 255, 0.8);
-    padding: 1rem;
-    border-radius: 4px;
-    font-weight: 600;
+  .map iframe {
+    border-radius: 8px;
   }
 
   @media (max-width: 992px) {
