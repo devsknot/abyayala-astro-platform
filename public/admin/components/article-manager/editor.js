@@ -513,7 +513,7 @@ export function initializeEditor(content) {
       selector: '#tinymce-editor',
       height: 500,
       menubar: false,
-      language: 'es_MX',
+      language: 'es',
       
       // Plugins necesarios
       plugins: [
@@ -541,10 +541,18 @@ export function initializeEditor(content) {
           const formData = new FormData();
           formData.append('file', blobInfo.blob(), blobInfo.filename());
           
-          // Obtener token de autenticación
-          const authData = localStorage.getItem('abyayala_cms_auth');
+          // Obtener headers de autenticación usando el método del ContentManager
           const headers = {};
           
+          // Intentar obtener el token JWT de Cloudflare Access
+          const cfJwt = this.getCookie('CF_Authorization');
+          if (cfJwt) {
+            headers['CF-Access-Jwt-Assertion'] = cfJwt;
+            headers['CF-Access-Client-Id'] = 'browser-client';
+          }
+          
+          // También intentar con localStorage
+          const authData = localStorage.getItem('abyayala_cms_auth');
           if (authData) {
             try {
               const auth = JSON.parse(authData);
@@ -556,6 +564,8 @@ export function initializeEditor(content) {
             }
           }
           
+          console.log('Subiendo imagen con headers:', Object.keys(headers));
+          
           const response = await fetch('/api/media/upload', {
             method: 'POST',
             body: formData,
@@ -563,10 +573,13 @@ export function initializeEditor(content) {
           });
           
           if (!response.ok) {
-            throw new Error('Error al subir imagen');
+            const errorText = await response.text();
+            console.error('Error al subir imagen:', response.status, errorText);
+            throw new Error(`Error al subir imagen: ${response.status}`);
           }
           
           const data = await response.json();
+          console.log('Imagen subida correctamente:', data);
           return data.url || data.file?.url || data.path;
         } catch (error) {
           console.error('Error uploading image:', error);
@@ -980,4 +993,16 @@ export async function deleteArticle(slug) {
       console.error('Error adicional al recargar la lista:', loadError);
     }
   }
+}
+
+/**
+ * Obtiene el valor de una cookie por su nombre
+ * @param {string} name - Nombre de la cookie
+ * @returns {string|null} Valor de la cookie o null si no existe
+ */
+export function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
 }
