@@ -290,7 +290,21 @@ console.log('DEPURACIÓN: Renderizado completado');
     max-width: 100%;
     height: auto;
     border-radius: 8px;
-    margin: 1.5rem 0;
+    margin: 1.5rem auto;
+    display: block;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .news-content :global(figure) {
+    margin: 2rem 0;
+  }
+  
+  .news-content :global(figcaption) {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+    font-style: italic;
   }
   
   .news-content :global(p) {

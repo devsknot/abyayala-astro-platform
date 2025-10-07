@@ -473,7 +473,7 @@ export function loadFeaturedImage(featuredImage) {
 }
 
 /**
- * Inicializa el editor de contenido
+ * Inicializa el editor de contenido con TinyMCE
  * @param {string} content - Contenido a cargar en el editor
  */
 export function initializeEditor(content) {
@@ -489,130 +489,260 @@ export function initializeEditor(content) {
     // Limpiar cualquier contenido previo del editor
     editorContainer.innerHTML = '';
     
-    // Verificar nuevamente que el contenido sea válido
+    // Verificar que el contenido sea válido
     if (content) {
-      console.log(`Preparando editor para contenido de ${content.length} caracteres`);
-      console.log('Muestra del contenido a cargar:', content.substring(0, 100) + '...');
+      console.log(`Preparando TinyMCE para contenido de ${content.length} caracteres`);
     } else {
-      console.warn('Contenido vacío o no válido para el editor');
-      content = ''; // Asegurar que sea una cadena vacía y no undefined
+      console.warn('Contenido vacío para el editor');
+      content = '';
     }
     
-    // Importar dinámicamente el editor (usando ruta absoluta para evitar problemas)
-    import('/admin/components/content-editor.js')
-      .then(module => {
-        try {
-          const ContentEditor = module.ContentEditor;
-          
-          // Inicializar el editor con el nuevo módulo
-          this.editor = new ContentEditor(editorContainer);
-          
-          // Esperar un momento para asegurar que el editor esté completamente inicializado
-          setTimeout(() => {
-            try {
-              // Establecer el contenido
-              if (this.editor && typeof this.editor.setContent === 'function') {
-                // Verificar que el contenido sea válido
-                if (content && typeof content === 'string') {
-                  console.log(`Estableciendo contenido en el editor (${content.length} caracteres)`);
-                  console.log('Muestra del contenido a establecer:', content.substring(0, 100) + '...');
-                  
-                  // Establecer el contenido en el editor
-                  this.editor.setContent(content);
-                  console.log('Contenido establecido en el editor correctamente');
-                  
-                  // Verificar que el contenido se haya establecido correctamente
-                  const editorContent = this.editor.getContent();
-                  console.log(`Contenido verificado: ${editorContent ? 'OK' : 'FALLO'} (${editorContent ? editorContent.length : 0} caracteres)`);
-                  
-                  // Si el contenido no se estableció correctamente, intentar nuevamente
-                  if (!editorContent || editorContent.length === 0) {
-                    console.warn('El contenido no se estableció correctamente, intentando nuevamente...');
-                    setTimeout(() => {
-                      this.editor.setContent(content);
-                      console.log('Segundo intento de establecer contenido completado');
-                    }, 500);
-                  }
-                } else {
-                  console.warn('Contenido inválido o vacío:', content);
-                  this.editor.setContent(''); // Establecer contenido vacío como fallback
-                }
-              } else {
-                console.error('El editor no tiene el método setContent o no está correctamente inicializado');
-              }
-            } catch (contentError) {
-              console.error('Error al establecer contenido:', contentError);
-              // Intentar con un enfoque alternativo
-              try {
-                const editorArea = editorContainer.querySelector('.editor-area');
-                if (editorArea) {
-                  console.log('Intentando establecer contenido directamente en el área editable');
-                  editorArea.innerHTML = content || '';
-                }
-              } catch (fallbackError) {
-                console.error('Error en el fallback para establecer contenido:', fallbackError);
-              }
-            } finally {
-              this.hideLoading();
-            }
-          }, 1000); // Aumentar el tiempo de espera para asegurar que el editor esté completamente inicializado
-          
-        } catch (initError) {
-          console.error('Error al instanciar el editor:', initError);
-          
-          // Fallback a un textarea simple si falla la inicialización
-          const textarea = document.createElement('textarea');
-          textarea.className = 'editor-fallback';
-          textarea.style.width = '100%';
-          textarea.style.minHeight = '300px';
-          textarea.style.padding = '10px';
-          textarea.style.border = '1px solid #ddd';
-          textarea.value = content || '';
-          
-          editorContainer.innerHTML = '';
-          editorContainer.appendChild(textarea);
-          
-          // Crear un editor simple
-          this.editor = {
-            setContent: (c) => { textarea.value = c || ''; },
-            getContent: () => textarea.value,
-            destroy: () => { editorContainer.innerHTML = ''; }
-          };
-          
-          this.hideLoading();
+    // Crear textarea para TinyMCE
+    const textarea = document.createElement('textarea');
+    textarea.id = 'tinymce-editor';
+    textarea.value = content || '';
+    editorContainer.appendChild(textarea);
+    
+    // Destruir instancia previa de TinyMCE si existe
+    if (tinymce.get('tinymce-editor')) {
+      tinymce.get('tinymce-editor').remove();
+    }
+    
+    // Inicializar TinyMCE
+    tinymce.init({
+      selector: '#tinymce-editor',
+      height: 500,
+      menubar: false,
+      language: 'es_MX',
+      
+      // Plugins necesarios
+      plugins: [
+        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+        'insertdatetime', 'media', 'table', 'help', 'wordcount'
+      ],
+      
+      // Toolbar con botón de imagen
+      toolbar: 'undo redo | blocks | ' +
+        'bold italic forecolor | alignleft aligncenter ' +
+        'alignright alignjustify | bullist numlist outdent indent | ' +
+        'image media link | removeformat | code | help',
+      
+      // Integración con tu biblioteca de medios
+      file_picker_callback: (callback, value, meta) => {
+        if (meta.filetype === 'image') {
+          this.openMediaLibraryForTinyMCE(callback);
         }
-      })
-      .catch(importError => {
-        console.error('Error al importar el editor:', importError);
-        
-        // Fallback a un textarea simple si falla la importación
-        const textarea = document.createElement('textarea');
-        textarea.className = 'editor-fallback';
-        textarea.style.width = '100%';
-        textarea.style.minHeight = '300px';
-        textarea.style.padding = '10px';
-        textarea.style.border = '1px solid #ddd';
-        textarea.value = content || '';
-        
-        editorContainer.innerHTML = '';
-        editorContainer.appendChild(textarea);
-        
-        // Crear un editor simple
-        this.editor = {
-          setContent: (c) => { textarea.value = c || ''; },
-          getContent: () => textarea.value,
-          destroy: () => { editorContainer.innerHTML = ''; }
-        };
-        
-        this.hideLoading();
-      });
+      },
+      
+      // Subida directa a R2
+      images_upload_handler: async (blobInfo, progress) => {
+        try {
+          const formData = new FormData();
+          formData.append('file', blobInfo.blob(), blobInfo.filename());
+          
+          // Obtener token de autenticación
+          const authData = localStorage.getItem('abyayala_cms_auth');
+          const headers = {};
+          
+          if (authData) {
+            try {
+              const auth = JSON.parse(authData);
+              if (auth.token) {
+                headers['Authorization'] = `Bearer ${auth.token}`;
+              }
+            } catch (e) {
+              console.warn('Error al parsear auth data:', e);
+            }
+          }
+          
+          const response = await fetch('/api/media/upload', {
+            method: 'POST',
+            body: formData,
+            headers: headers
+          });
+          
+          if (!response.ok) {
+            throw new Error('Error al subir imagen');
+          }
+          
+          const data = await response.json();
+          return data.url || data.file?.url || data.path;
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          throw error;
+        }
+      },
+      
+      // Configuración de contenido
+      content_style: `
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
+          font-size: 14px;
+          line-height: 1.6;
+          padding: 10px;
+        }
+        img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 8px;
+          margin: 1rem 0;
+        }
+        p {
+          margin-bottom: 1rem;
+        }
+        h2 {
+          font-size: 1.5rem;
+          font-weight: bold;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+        }
+        h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          margin-top: 1.5rem;
+          margin-bottom: 0.75rem;
+        }
+      `,
+      
+      // Permitir todos los elementos HTML
+      extended_valid_elements: 'img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name|style]',
+      
+      // Configuración adicional
+      relative_urls: false,
+      remove_script_host: false,
+      convert_urls: true,
+      
+      // Callback cuando TinyMCE esté listo
+      setup: (editor) => {
+        editor.on('init', () => {
+          console.log('TinyMCE inicializado correctamente');
+          editor.setContent(content || '');
+          this.hideLoading();
+        });
+      }
+    });
+    
+    // Crear interfaz del editor para compatibilidad
+    this.editor = {
+      setContent: (c) => {
+        const ed = tinymce.get('tinymce-editor');
+        if (ed) ed.setContent(c || '');
+      },
+      getContent: () => {
+        const ed = tinymce.get('tinymce-editor');
+        return ed ? ed.getContent() : '';
+      },
+      destroy: () => {
+        const ed = tinymce.get('tinymce-editor');
+        if (ed) ed.remove();
+      }
+    };
+    
   } catch (error) {
-    console.error('Error al inicializar editor:', error);
+    console.error('Error al inicializar TinyMCE:', error);
     if (this.notificationManager) {
       this.notificationManager.error('Error al inicializar el editor');
     }
     this.hideLoading();
   }
+}
+
+/**
+ * Abre la biblioteca de medios para seleccionar una imagen desde TinyMCE
+ * @param {Function} callback - Función callback de TinyMCE para devolver la URL
+ */
+export function openMediaLibraryForTinyMCE(callback) {
+  // Crear modal para la biblioteca de medios
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  modal.style.position = 'fixed';
+  modal.style.top = '0';
+  modal.style.left = '0';
+  modal.style.right = '0';
+  modal.style.bottom = '0';
+  modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+  modal.style.display = 'flex';
+  modal.style.alignItems = 'center';
+  modal.style.justifyContent = 'center';
+  modal.style.zIndex = '10000';
+  
+  modal.innerHTML = `
+    <div style="background: white; border-radius: 8px; padding: 24px; max-width: 900px; width: 90%; max-height: 80vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="font-size: 1.25rem; font-weight: bold; margin: 0;">Seleccionar Imagen</h3>
+        <button id="close-media-modal" style="background: #6b7280; color: white; padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer;">
+          Cancelar
+        </button>
+      </div>
+      <div id="media-loading" style="text-align: center; padding: 40px;">
+        <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f4f6; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p style="margin-top: 16px; color: #6b7280;">Cargando imágenes...</p>
+      </div>
+      <div id="media-grid" style="display: none; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px;"></div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Cerrar modal
+  modal.querySelector('#close-media-modal').onclick = () => {
+    document.body.removeChild(modal);
+  };
+  
+  // Cargar imágenes de MediaManager
+  this.mediaManager.getMediaFiles().then(files => {
+    const loading = modal.querySelector('#media-loading');
+    const grid = modal.querySelector('#media-grid');
+    
+    loading.style.display = 'none';
+    grid.style.display = 'grid';
+    
+    if (!files || files.length === 0) {
+      grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #6b7280; padding: 40px;">No hay imágenes disponibles</p>';
+      return;
+    }
+    
+    files.forEach(file => {
+      const imgContainer = document.createElement('div');
+      imgContainer.style.cursor = 'pointer';
+      imgContainer.style.border = '2px solid transparent';
+      imgContainer.style.borderRadius = '8px';
+      imgContainer.style.overflow = 'hidden';
+      imgContainer.style.transition = 'all 0.2s';
+      
+      imgContainer.onmouseover = () => {
+        imgContainer.style.borderColor = '#3b82f6';
+        imgContainer.style.transform = 'scale(1.05)';
+      };
+      imgContainer.onmouseout = () => {
+        imgContainer.style.borderColor = 'transparent';
+        imgContainer.style.transform = 'scale(1)';
+      };
+      
+      const img = document.createElement('img');
+      img.src = file.url || file.path;
+      img.alt = file.name || 'Imagen';
+      img.style.width = '100%';
+      img.style.height = '150px';
+      img.style.objectFit = 'cover';
+      
+      imgContainer.onclick = () => {
+        callback(file.url || file.path, { alt: file.name || '' });
+        document.body.removeChild(modal);
+      };
+      
+      imgContainer.appendChild(img);
+      grid.appendChild(imgContainer);
+    });
+  }).catch(error => {
+    console.error('Error al cargar imágenes:', error);
+    const grid = modal.querySelector('#media-grid');
+    const loading = modal.querySelector('#media-loading');
+    loading.style.display = 'none';
+    grid.style.display = 'block';
+    grid.innerHTML = '<p style="text-align: center; color: #ef4444; padding: 40px;">Error al cargar imágenes</p>';
+  });
 }
 
 /**
