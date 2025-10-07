@@ -3,8 +3,26 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { SITE_TITLE } from '../consts';
 import NewsletterSignup from '../components/NewsletterSignup.astro';
 
+// Configuración para SSR
+export const prerender = false;
+
 const pageTitle = `Sobre Nosotros | ${SITE_TITLE}`;
 const pageDescription = 'Conoce más sobre el colectivo agrario Abya Yala, nuestra misión, visión y los valores que guían nuestro trabajo por la soberanía alimentaria y la agricultura sostenible.';
+
+// Obtener autores de la API
+let authors = [];
+try {
+  const response = await fetch(`${Astro.url.origin}/api/content/authors`);
+  if (response.ok) {
+    const data = await response.json();
+    authors = data.authors || [];
+    console.log(`Autores obtenidos para página About: ${authors.length}`);
+  } else {
+    console.error('Error al obtener autores:', await response.text());
+  }
+} catch (error) {
+  console.error('Error al cargar autores:', error);
+}
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
@@ -62,43 +80,31 @@ const pageDescription = 'Conoce más sobre el colectivo agrario Abya Yala, nuest
 
       <div class="team-section">
         <h2 class="section-title">Nuestro Equipo</h2>
-        <div class="team-grid">
-          <div class="team-member">
-            <div class="member-photo">
-              <img src="/team-placeholder-1.jpg" alt="Juan Mendoza" />
-            </div>
-            <h3>Juan Mendoza</h3>
-            <p class="member-role">Coordinador General</p>
-            <p class="member-bio">Agricultor con más de 20 años de experiencia en agroecología. Fundador del colectivo Abya Yala y defensor incansable de la soberanía alimentaria.</p>
+        {authors.length > 0 ? (
+          <div class="team-grid">
+            {authors.map(author => (
+              <a href={`/authors/${author.slug}`} class="team-member">
+                <div class="member-photo">
+                  <img 
+                    src={author.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(author.name)}&background=random&color=fff&size=256`}
+                    alt={author.name}
+                  />
+                </div>
+                <h3>{author.name}</h3>
+                {author.email && (
+                  <p class="member-role">{author.email}</p>
+                )}
+                {author.bio && (
+                  <p class="member-bio">{author.bio.substring(0, 150)}{author.bio.length > 150 ? '...' : ''}</p>
+                )}
+              </a>
+            ))}
           </div>
-
-          <div class="team-member">
-            <div class="member-photo">
-              <img src="/team-placeholder-2.jpg" alt="Elena Vargas" />
-            </div>
-            <h3>Elena Vargas</h3>
-            <p class="member-role">Ingeniera Agrónoma</p>
-            <p class="member-bio">Especialista en sistemas de riego sostenibles y adaptación al cambio climático. Coordina los proyectos técnicos del colectivo.</p>
+        ) : (
+          <div class="no-team-message">
+            <p>Nuestro equipo está creciendo. Pronto compartiremos más información sobre quienes hacen posible este proyecto.</p>
           </div>
-
-          <div class="team-member">
-            <div class="member-photo">
-              <img src="/team-placeholder-3.jpg" alt="Roberto Mamani" />
-            </div>
-            <h3>Roberto Mamani</h3>
-            <p class="member-role">Responsable de Formación</p>
-            <p class="member-bio">Educador popular y guardián de semillas. Organiza los talleres y encuentros de intercambio de conocimientos entre comunidades.</p>
-          </div>
-
-          <div class="team-member">
-            <div class="member-photo">
-              <img src="/team-placeholder-4.jpg" alt="Laura Martínez" />
-            </div>
-            <h3>Laura Martínez</h3>
-            <p class="member-role">Comunicadora</p>
-            <p class="member-bio">Periodista especializada en temas rurales. Responsable de la plataforma de noticias y la estrategia de comunicación del colectivo.</p>
-          </div>
-        </div>
+        )}
       </div>
 
       <div class="achievements-section">
@@ -267,6 +273,18 @@ const pageDescription = 'Conoce más sobre el colectivo agrario Abya Yala, nuest
 
   .team-member {
     text-align: center;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    padding: 1rem;
+    border-radius: 8px;
+  }
+
+  .team-member:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    background-color: var(--color-bg-alt, #f9f9f9);
   }
 
   .member-photo {
@@ -276,6 +294,11 @@ const pageDescription = 'Conoce más sobre el colectivo agrario Abya Yala, nuest
     overflow: hidden;
     margin: 0 auto 1.5rem;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.3s ease;
+  }
+
+  .team-member:hover .member-photo {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
   }
 
   .member-photo img {
@@ -294,11 +317,24 @@ const pageDescription = 'Conoce más sobre el colectivo agrario Abya Yala, nuest
     font-weight: 600;
     color: var(--color-primary);
     margin-bottom: 0.75rem;
+    font-size: 0.9rem;
   }
 
   .member-bio {
     font-size: 0.95rem;
     line-height: 1.5;
+    color: var(--color-text-secondary);
+  }
+
+  .no-team-message {
+    text-align: center;
+    padding: 3rem 2rem;
+    background-color: var(--color-bg-alt, #f9f9f9);
+    border-radius: 8px;
+  }
+
+  .no-team-message p {
+    font-size: 1.1rem;
     color: var(--color-text-secondary);
   }
 
