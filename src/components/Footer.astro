@@ -41,7 +41,8 @@ const today = new Date();
 		
 		<div class="footer-bottom">
 			<div class="copyright">
-				&copy; {today.getFullYear()} {SITE_TITLE} - Colectivo Agrario. Todos los derechos reservados.
+				<div>&copy; {today.getFullYear()} {SITE_TITLE} - Colectivo Agrario. Todos los derechos reservados.</div>
+				<div class="developed-by">Desarrollado por <a href="https://knot.com.co" target="_blank" rel="noopener noreferrer">KNOT</a></div>
 			</div>
 			<div class="social-links">
 				<a href="https://facebook.com/abyayala" target="_blank" aria-label="Facebook">
@@ -205,6 +206,24 @@ const today = new Date();
 	.copyright {
 		font-size: 0.85rem;
 		opacity: 0.9;
+	}
+	
+	.developed-by {
+		margin-top: 0.5rem;
+		font-size: 0.8rem;
+		opacity: 0.8;
+	}
+	
+	.developed-by a {
+		color: var(--color-accent);
+		text-decoration: none;
+		font-weight: 600;
+		transition: opacity 0.2s ease;
+	}
+	
+	.developed-by a:hover {
+		opacity: 1;
+		text-decoration: underline;
 	}
 	
 	.social-links {
