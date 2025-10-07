@@ -32,13 +32,6 @@ import { SITE_TITLE } from '../consts';
 			</div>
 			
 			<div class="actions">
-				<a href="/search" class="search-icon" aria-label="Buscar">
-					<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="11" cy="11" r="8"></circle>
-						<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-					</svg>
-				</a>
-				
 				<div class="social-links">
 					<a href="https://facebook.com/abyayala" target="_blank" aria-label="Facebook">
 						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -95,7 +88,6 @@ import { SITE_TITLE } from '../consts';
 		
 		<a href="/about" class="mobile-link">Nosotros</a>
 		<a href="/contact" class="mobile-link">Contacto</a>
-		<a href="/search" class="mobile-link">Buscar</a>
 		
 		<div class="mobile-social">
 			<a href="https://facebook.com/abyayala" target="_blank" aria-label="Facebook" class="mobile-social-link">
@@ -185,23 +177,6 @@ import { SITE_TITLE } from '../consts';
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-	}
-	
-	.search-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: var(--color-text);
-		border: none;
-		padding: 0.5rem;
-		border-radius: 50%;
-		transition: background-color 0.3s ease;
-	}
-	
-	.search-icon:hover {
-		background-color: rgba(0, 0, 0, 0.05);
-		color: var(--color-primary);
-		border: none;
 	}
 	
 	.social-links {
@@ -405,10 +380,6 @@ import { SITE_TITLE } from '../consts';
 		
 		.actions {
 			gap: 0.5rem;
-		}
-		
-		.search-icon {
-			display: none;
 		}
 	}
 	
