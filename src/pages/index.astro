@@ -315,21 +315,17 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
     display: flex;
     flex-direction: column;
     gap: 2rem;
-    height: calc(100vh - 120px); /* Altura del viewport completo menos un margen */
     margin-bottom: 2rem;
-    max-height: 900px; /* Altura máxima para pantallas muy grandes */
   }
 
   .featured-row-main {
     width: 100%;
-    height: 40%; /* 40% del alto para la primera fila */
-    min-height: 300px;
-    max-height: 400px; /* Altura máxima para el artículo principal */
+    min-height: 400px;
+    max-height: 500px; /* Altura máxima para el artículo principal */
   }
 
   .featured-row-secondary {
     width: 100%;
-    height: 60%; /* 60% del alto para la segunda fila */
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
@@ -346,23 +342,17 @@ const noArticlesMessage = "No hay artículos disponibles en este momento. Por fa
   }
   
   /* Aseguramos que las cards ocupen todo el espacio disponible */
-  .featured-row-main :global(.news-card),
   .featured-row-secondary :global(.news-card) {
     height: 100%;
     display: flex;
     flex-direction: column;
   }
 
-  /* Aseguramos que las imágenes ocupen el espacio adecuado */
-  .featured-row-main :global(.news-card-image) {
-    height: 100%;
-    max-height: 100%;
-    overflow: hidden;
-  }
-
-  .featured-row-secondary :global(.news-card-image) {
-    height: 180px;
-    overflow: hidden;
+  /* Para la noticia principal, permitir que crezca naturalmente */
+  .featured-row-main :global(article) {
+    height: auto;
+    min-height: 400px;
+    max-height: 500px;
   }
 
   /* Ajustes responsivos */
