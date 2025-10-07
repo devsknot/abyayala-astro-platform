@@ -81,7 +81,7 @@ const pageDescription = author.bio ? author.bio.substring(0, 160) : `Artículos 
           {author.articles && author.articles.length > 0 ? (
             <div class="space-y-8">
               {author.articles.map(article => (
-                <a href={`/blog/${article.slug}`} class="block bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300">
+                <a href={`/news/${article.slug}`} class="block bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300">
                   <h3 class="text-xl font-bold text-gray-900">{article.title}</h3>
                   <p class="text-sm text-gray-500 mt-2">
                     <FormattedDate date={new Date(article.pub_date)} />
