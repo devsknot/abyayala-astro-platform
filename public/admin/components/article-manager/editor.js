@@ -1,4 +1,16 @@
 /**
+ * Obtiene el valor de una cookie por su nombre
+ * @param {string} name - Nombre de la cookie
+ * @returns {string|null} Valor de la cookie o null si no existe
+ */
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
+
+/**
  * Edita un artículo existente
  * @param {string} slug - Slug del artículo a editar
  */
@@ -508,6 +520,9 @@ export function initializeEditor(content) {
       tinymce.get('tinymce-editor').remove();
     }
     
+    // Guardar referencia a 'this' para usar en callbacks de TinyMCE
+    const self = this;
+    
     // Inicializar TinyMCE
     tinymce.init({
       selector: '#tinymce-editor',
@@ -531,7 +546,7 @@ export function initializeEditor(content) {
       // Integración con tu biblioteca de medios
       file_picker_callback: (callback, value, meta) => {
         if (meta.filetype === 'image') {
-          this.openMediaLibraryForTinyMCE(callback);
+          self.openMediaLibraryForTinyMCE(callback);
         }
       },
       
@@ -541,11 +556,11 @@ export function initializeEditor(content) {
           const formData = new FormData();
           formData.append('file', blobInfo.blob(), blobInfo.filename());
           
-          // Obtener headers de autenticación usando el método del ContentManager
+          // Obtener headers de autenticación
           const headers = {};
           
           // Intentar obtener el token JWT de Cloudflare Access
-          const cfJwt = this.getCookie('CF_Authorization');
+          const cfJwt = getCookie('CF_Authorization');
           if (cfJwt) {
             headers['CF-Access-Jwt-Assertion'] = cfJwt;
             headers['CF-Access-Client-Id'] = 'browser-client';
@@ -993,16 +1008,4 @@ export async function deleteArticle(slug) {
       console.error('Error adicional al recargar la lista:', loadError);
     }
   }
-}
-
-/**
- * Obtiene el valor de una cookie por su nombre
- * @param {string} name - Nombre de la cookie
- * @returns {string|null} Valor de la cookie o null si no existe
- */
-export function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-  return null;
 }
