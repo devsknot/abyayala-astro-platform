@@ -932,6 +932,9 @@ export function createArticle() {
       }
     }
     
+    // Configurar eventos de autogeneración de slug
+    this.setupSlugGeneration();
+    
     // Inicializar el editor con contenido vacío
     setTimeout(() => this.initializeEditor(''), 500);
     

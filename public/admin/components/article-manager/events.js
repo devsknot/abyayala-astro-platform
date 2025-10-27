@@ -362,6 +362,46 @@ export function setupEvents() {
 }
 
 /**
+ * Configura los eventos de autogeneración de slug
+ */
+export function setupSlugGeneration() {
+  console.log('Configurando eventos de autogeneración de slug...');
+  
+  const titleInput = this.container.querySelector('#article-title');
+  const slugInput = this.container.querySelector('#article-slug');
+  
+  if (!titleInput || !slugInput) {
+    console.warn('No se encontraron los campos de título o slug');
+    return;
+  }
+  
+  // Remover event listeners anteriores clonando los elementos
+  const newTitleInput = titleInput.cloneNode(true);
+  const newSlugInput = slugInput.cloneNode(true);
+  titleInput.parentNode.replaceChild(newTitleInput, titleInput);
+  slugInput.parentNode.replaceChild(newSlugInput, slugInput);
+  
+  // Configurar nuevos event listeners
+  newTitleInput.addEventListener('input', () => {
+    // Solo generar el slug si no ha sido editado manualmente
+    if (!newSlugInput.dataset.edited || newSlugInput.dataset.edited === 'false') {
+      const title = newTitleInput.value.trim();
+      const slug = this.generateSlug(title);
+      newSlugInput.value = slug;
+      console.log('Slug generado:', slug);
+    }
+  });
+  
+  // Marcar el slug como editado cuando el usuario lo modifica
+  newSlugInput.addEventListener('input', () => {
+    newSlugInput.dataset.edited = 'true';
+    console.log('Slug marcado como editado manualmente');
+  });
+  
+  console.log('Eventos de slug configurados correctamente');
+}
+
+/**
  * Genera un slug a partir de un texto
  * @param {string} text - Texto a convertir en slug
  * @returns {string} Slug generado
