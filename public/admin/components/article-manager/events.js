@@ -367,13 +367,39 @@ export function setupEvents() {
  * @returns {string} Slug generado
  */
 export function generateSlug(text) {
+  if (!text) return '';
+  
+  // Mapa de caracteres especiales del español y otros idiomas
+  const charMap = {
+    'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+    'à': 'a', 'è': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u',
+    'ä': 'a', 'ë': 'e', 'ï': 'i', 'ö': 'o', 'ü': 'u',
+    'â': 'a', 'ê': 'e', 'î': 'i', 'ô': 'o', 'û': 'u',
+    'ñ': 'n', 'ç': 'c',
+    'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u',
+    'À': 'a', 'È': 'e', 'Ì': 'i', 'Ò': 'o', 'Ù': 'u',
+    'Ä': 'a', 'Ë': 'e', 'Ï': 'i', 'Ö': 'o', 'Ü': 'u',
+    'Â': 'a', 'Ê': 'e', 'Î': 'i', 'Ô': 'o', 'Û': 'u',
+    'Ñ': 'n', 'Ç': 'c'
+  };
+  
   return text
-    .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '') // Remover caracteres especiales
-    .replace(/\s+/g, '-') // Cambiar espacios por guiones
-    .replace(/-+/g, '-') // Evitar guiones duplicados
-    .substring(0, 50); // Limitar longitud
+    .toLowerCase()
+    // Reemplazar caracteres especiales
+    .split('')
+    .map(char => charMap[char] || char)
+    .join('')
+    // Remover caracteres que no sean letras, números, espacios o guiones
+    .replace(/[^a-z0-9\s-]/g, '')
+    // Cambiar espacios por guiones
+    .replace(/\s+/g, '-')
+    // Evitar guiones duplicados
+    .replace(/-+/g, '-')
+    // Remover guiones al inicio y al final
+    .replace(/^-+|-+$/g, '')
+    // Limitar longitud
+    .substring(0, 60);
 }
 
 /**
