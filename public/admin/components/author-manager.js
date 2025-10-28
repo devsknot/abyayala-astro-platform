@@ -1,6 +1,6 @@
 // Gestor de autores para el CMS
 import { notifications } from './notification.js';
-import { AvatarBuilder } from './avatar-builder/AvatarBuilder.js';
+import { AvatarWizard } from './avatar-builder/AvatarWizard.js';
 
 export class AuthorManager {
   constructor(contentManager) {
@@ -9,7 +9,8 @@ export class AuthorManager {
     this.container = null;
     this.isLoading = false;
     this.currentEditingAuthor = null;
-    this.avatarBuilder = null;
+    this.avatarWizard = new AvatarWizard();
+    this.currentAvatarConfig = null;
   }
 
   // Inicializar el gestor de autores
@@ -20,25 +21,37 @@ export class AuthorManager {
       return;
     }
 
-    // Cargar estilos del Avatar Builder
-    this.loadAvatarBuilderStyles();
+    // Cargar estilos del Avatar Wizard
+    this.loadAvatarWizardStyles();
 
     await this.loadAuthors();
     this.render();
     this.attachEventListeners();
   }
   
-  // Cargar estilos del Avatar Builder
-  loadAvatarBuilderStyles() {
-    if (document.getElementById('avatar-builder-styles')) {
+  // Cargar estilos del Avatar Wizard
+  loadAvatarWizardStyles() {
+    if (document.getElementById('avatar-wizard-styles')) {
       return;
     }
     
-    const link = document.createElement('link');
-    link.id = 'avatar-builder-styles';
-    link.rel = 'stylesheet';
-    link.href = '/admin/components/avatar-builder/styles.css';
-    document.head.appendChild(link);
+    const link1 = document.createElement('link');
+    link1.id = 'avatar-wizard-styles';
+    link1.rel = 'stylesheet';
+    link1.href = '/admin/components/avatar-builder/wizard-styles.css';
+    document.head.appendChild(link1);
+    
+    const link2 = document.createElement('link');
+    link2.id = 'avatar-builder-styles';
+    link2.rel = 'stylesheet';
+    link2.href = '/admin/components/avatar-builder/styles.css';
+    document.head.appendChild(link2);
+    
+    const link3 = document.createElement('link');
+    link3.id = 'avatar-section-styles';
+    link3.rel = 'stylesheet';
+    link3.href = '/admin/components/avatar-builder/author-avatar-styles.css';
+    document.head.appendChild(link3);
   }
 
   // Cargar autores desde la API
@@ -186,7 +199,24 @@ export class AuthorManager {
               <div>
                 <div class="mb-4">
                   <label class="block text-sm font-medium text-gray-700 mb-2">Avatar Personalizado</label>
-                  <div id="avatar-builder-container"></div>
+                  <div class="avatar-section">
+                    <div class="avatar-preview-container" id="avatar-preview-container">
+                      <img id="author-avatar-preview" src="" alt="Avatar" style="display: none;" />
+                      <div id="avatar-placeholder" class="avatar-placeholder">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                      </div>
+                    </div>
+                    <button type="button" id="edit-avatar-btn" class="btn-edit-avatar">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                      <span id="avatar-btn-text">Crear Avatar</span>
+                    </button>
+                  </div>
                 </div>
                 
                 <div class="mb-4">
@@ -353,8 +383,8 @@ export class AuthorManager {
         formTitle.textContent = 'Crear Nuevo Autor';
       }
       
-      // Inicializar Avatar Builder
-      this.initializeAvatarBuilder(this.currentEditingAuthor);
+      // Cargar avatar existente si hay
+      this.loadExistingAvatar(this.currentEditingAuthor);
       
       console.log('Editor de autores mostrado correctamente');
     } catch (error) {
@@ -362,37 +392,69 @@ export class AuthorManager {
     }
   }
   
-  // Inicializar Avatar Builder
-  initializeAvatarBuilder(author = null) {
-    const container = document.getElementById('avatar-builder-container');
-    if (!container) {
-      console.error('No se encontró el contenedor del Avatar Builder');
-      return;
+  // Abrir wizard de avatar
+  openAvatarWizard() {
+    this.avatarWizard.open(
+      this.currentAvatarConfig,
+      (config) => {
+        // Callback cuando se guarda
+        this.currentAvatarConfig = config;
+        this.updateAvatarPreview(config);
+      },
+      () => {
+        // Callback cuando se cancela
+        console.log('Avatar wizard cancelado');
+      }
+    );
+  }
+  
+  // Actualizar preview del avatar
+  updateAvatarPreview(config) {
+    const preview = this.container.querySelector('#author-avatar-preview');
+    const placeholder = this.container.querySelector('#avatar-placeholder');
+    const btnText = this.container.querySelector('#avatar-btn-text');
+    
+    if (config && config.url) {
+      if (preview) {
+        preview.src = config.url;
+        preview.style.display = 'block';
+      }
+      if (placeholder) {
+        placeholder.style.display = 'none';
+      }
+      if (btnText) {
+        btnText.textContent = 'Editar Avatar';
+      }
+    } else {
+      if (preview) {
+        preview.style.display = 'none';
+      }
+      if (placeholder) {
+        placeholder.style.display = 'flex';
+      }
+      if (btnText) {
+        btnText.textContent = 'Crear Avatar';
+      }
     }
-    
-    // Crear nueva instancia del Avatar Builder
-    this.avatarBuilder = new AvatarBuilder(container);
-    
-    // Si hay un autor con configuración de avatar, cargarla
+  }
+  
+  // Cargar avatar existente
+  loadExistingAvatar(author) {
     if (author && author.avatar_config) {
       try {
         const config = typeof author.avatar_config === 'string' 
           ? JSON.parse(author.avatar_config) 
           : author.avatar_config;
-        this.avatarBuilder.loadConfig(config);
+        this.currentAvatarConfig = config;
+        this.updateAvatarPreview(config);
       } catch (e) {
         console.error('Error al cargar configuración de avatar:', e);
-        // Si hay error, usar el nombre del autor como semilla
-        this.avatarBuilder.currentConfig.seed = author.name || '';
-        this.avatarBuilder.render();
+        this.currentAvatarConfig = null;
+        this.updateAvatarPreview(null);
       }
-    } else if (author && author.name) {
-      // Si no hay configuración pero hay nombre, usar el nombre como semilla
-      this.avatarBuilder.currentConfig.seed = author.name;
-      this.avatarBuilder.render();
     } else {
-      // Renderizar con configuración por defecto
-      this.avatarBuilder.render();
+      this.currentAvatarConfig = null;
+      this.updateAvatarPreview(null);
     }
   }
   
@@ -468,6 +530,14 @@ export class AuthorManager {
         if (!this.currentEditingAuthor || slugInput.value === this.generateSlug(this.currentEditingAuthor.name)) {
           slugInput.value = this.generateSlug(nameInput.value);
         }
+      });
+    }
+    
+    // Botón para editar avatar
+    const editAvatarBtn = this.container.querySelector('#edit-avatar-btn');
+    if (editAvatarBtn) {
+      editAvatarBtn.addEventListener('click', () => {
+        this.openAvatarWizard();
       });
     }
     
@@ -564,8 +634,8 @@ export class AuthorManager {
     const emailInput = this.container.querySelector('#authorEmail');
     const bioInput = this.container.querySelector('#authorBio');
     
-    // Obtener configuración del avatar desde Avatar Builder
-    const avatarConfig = this.avatarBuilder ? this.avatarBuilder.getConfig() : null;
+    // Obtener configuración del avatar
+    const avatarConfig = this.currentAvatarConfig;
     
     // Recopilar datos de redes sociales
     const twitterInput = this.container.querySelector('#social_twitter');
