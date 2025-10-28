@@ -217,7 +217,7 @@ async function handleGetAuthors(db: any, headers: HeadersInit) {
     console.log('[authors/...slug.ts] Retrieving all authors');
     try {
         const { results } = await db.prepare(`
-            SELECT id, slug, name, bio, email, avatar, social_media, created_at, updated_at
+            SELECT id, slug, name, bio, email, avatar, avatar_config, social_media, created_at, updated_at
             FROM authors
             ORDER BY name ASC
         `).all();
@@ -259,7 +259,7 @@ async function handleGetAuthor(slug: string, db: any, headers: HeadersInit) {
     console.log(`[authors/...slug.ts] Retrieving author with slug: ${slug}`);
     try {
         const author = await db.prepare(`
-            SELECT id, slug, name, bio, email, avatar, social_media, created_at, updated_at
+            SELECT id, slug, name, bio, email, avatar, avatar_config, social_media, created_at, updated_at
             FROM authors
             WHERE slug = ?
         `).bind(slug).first();
@@ -354,17 +354,19 @@ async function handleCreateAuthor(authorData: any, db: any, headers: HeadersInit
         }
 
         const socialMediaString = JSON.stringify(authorData.social_media || null);
+        const avatarConfigString = authorData.avatar_config || null;
         console.log(`[authors/...slug.ts] Social media data processed for author: ${authorData.slug}`);
 
         const result = await db.prepare(`
-            INSERT INTO authors (slug, name, bio, email, avatar, social_media)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO authors (slug, name, bio, email, avatar, avatar_config, social_media)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         `).bind(
             authorData.slug,
             authorData.name,
             authorData.bio || '',
             authorData.email || '',
             authorData.avatar || '',
+            avatarConfigString,
             socialMediaString
         ).run();
 
@@ -449,7 +451,8 @@ async function handleUpdateAuthor(slug: string, authorData: any, db: any, header
             name: 'name',
             bio: 'bio',
             email: 'email',
-            avatar: 'avatar'
+            avatar: 'avatar',
+            avatar_config: 'avatar_config'
         };
 
         for (const key in fieldMapping) {
