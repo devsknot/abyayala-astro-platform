@@ -1,5 +1,6 @@
 // Gestor de autores para el CMS
 import { notifications } from './notification.js';
+import { AvatarBuilder } from './avatar-builder/AvatarBuilder.js';
 
 export class AuthorManager {
   constructor(contentManager) {
@@ -8,6 +9,7 @@ export class AuthorManager {
     this.container = null;
     this.isLoading = false;
     this.currentEditingAuthor = null;
+    this.avatarBuilder = null;
   }
 
   // Inicializar el gestor de autores
@@ -18,9 +20,25 @@ export class AuthorManager {
       return;
     }
 
+    // Cargar estilos del Avatar Builder
+    this.loadAvatarBuilderStyles();
+
     await this.loadAuthors();
     this.render();
     this.attachEventListeners();
+  }
+  
+  // Cargar estilos del Avatar Builder
+  loadAvatarBuilderStyles() {
+    if (document.getElementById('avatar-builder-styles')) {
+      return;
+    }
+    
+    const link = document.createElement('link');
+    link.id = 'avatar-builder-styles';
+    link.rel = 'stylesheet';
+    link.href = '/admin/components/avatar-builder/styles.css';
+    document.head.appendChild(link);
   }
 
   // Cargar autores desde la API
@@ -167,14 +185,8 @@ export class AuthorManager {
               
               <div>
                 <div class="mb-4">
-                  <label for="authorAvatar" class="block text-sm font-medium text-gray-700 mb-1">Avatar URL</label>
-                  <input type="text" id="authorAvatar" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
-                  <div class="mt-2 flex items-center">
-                    <div class="avatar-preview w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                      <img id="avatarPreview" src="" alt="Avatar Preview" style="display: none; width: 100%; height: 100%; object-fit: cover;">
-                      <span class="text-gray-400" id="avatarPlaceholder">Sin avatar</span>
-                    </div>
-                  </div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Avatar Personalizado</label>
+                  <div id="avatar-builder-container"></div>
                 </div>
                 
                 <div class="mb-4">
@@ -341,9 +353,46 @@ export class AuthorManager {
         formTitle.textContent = 'Crear Nuevo Autor';
       }
       
+      // Inicializar Avatar Builder
+      this.initializeAvatarBuilder(this.currentEditingAuthor);
+      
       console.log('Editor de autores mostrado correctamente');
     } catch (error) {
       console.error('Error al mostrar editor de autores:', error);
+    }
+  }
+  
+  // Inicializar Avatar Builder
+  initializeAvatarBuilder(author = null) {
+    const container = document.getElementById('avatar-builder-container');
+    if (!container) {
+      console.error('No se encontró el contenedor del Avatar Builder');
+      return;
+    }
+    
+    // Crear nueva instancia del Avatar Builder
+    this.avatarBuilder = new AvatarBuilder(container);
+    
+    // Si hay un autor con configuración de avatar, cargarla
+    if (author && author.avatar_config) {
+      try {
+        const config = typeof author.avatar_config === 'string' 
+          ? JSON.parse(author.avatar_config) 
+          : author.avatar_config;
+        this.avatarBuilder.loadConfig(config);
+      } catch (e) {
+        console.error('Error al cargar configuración de avatar:', e);
+        // Si hay error, usar el nombre del autor como semilla
+        this.avatarBuilder.currentConfig.seed = author.name || '';
+        this.avatarBuilder.render();
+      }
+    } else if (author && author.name) {
+      // Si no hay configuración pero hay nombre, usar el nombre como semilla
+      this.avatarBuilder.currentConfig.seed = author.name;
+      this.avatarBuilder.render();
+    } else {
+      // Renderizar con configuración por defecto
+      this.avatarBuilder.render();
     }
   }
   
@@ -514,7 +563,9 @@ export class AuthorManager {
     const slugInput = this.container.querySelector('#authorSlug');
     const emailInput = this.container.querySelector('#authorEmail');
     const bioInput = this.container.querySelector('#authorBio');
-    const avatarInput = this.container.querySelector('#authorAvatar');
+    
+    // Obtener configuración del avatar desde Avatar Builder
+    const avatarConfig = this.avatarBuilder ? this.avatarBuilder.getConfig() : null;
     
     // Recopilar datos de redes sociales
     const twitterInput = this.container.querySelector('#social_twitter');
@@ -534,7 +585,8 @@ export class AuthorManager {
       slug: slugInput.value.trim(),
       email: emailInput.value.trim(),
       bio: bioInput.value.trim(),
-      avatar: avatarInput.value.trim(),
+      avatar: avatarConfig ? avatarConfig.url : '',
+      avatar_config: avatarConfig ? JSON.stringify(avatarConfig) : '',
       social_media: Object.keys(socialMedia).length > 0 ? socialMedia : null
     };
     
