@@ -18,6 +18,7 @@ export class AvatarBuilder {
     
     // Mapeo de colores hexadecimales a nombres
     this.colorNames = {
+      // Background colors
       'b6e3f4': 'Azul Claro',
       'c0aede': 'Púrpura',
       'ffd5dc': 'Rosa',
@@ -29,24 +30,69 @@ export class AvatarBuilder {
       '69d2e7': 'Turquesa',
       'f88c49': 'Naranja',
       'f9c9b6': 'Melocotón',
-      'fc909f': 'Rosa Coral'
+      'fc909f': 'Rosa Coral',
+      // Skin colors
+      '614335': 'Piel Oscura',
+      'd08b5b': 'Piel Morena',
+      'ae5d29': 'Piel Bronceada',
+      'edb98a': 'Piel Canela',
+      'ffdbb4': 'Piel Clara',
+      'fd9841': 'Piel Dorada',
+      'f8d25c': 'Piel Amarilla',
+      // Hair colors
+      'a55728': 'Castaño',
+      '2c1b18': 'Negro',
+      'b58143': 'Café Claro',
+      'd6b370': 'Rubio',
+      '724133': 'Café Oscuro',
+      '4a312c': 'Marrón',
+      'f59797': 'Rosa Pastel',
+      'ecdcbf': 'Platino',
+      'c93305': 'Rojo',
+      'e8e1e1': 'Gris Plateado',
+      // Bottts base colors
+      'ffb300': 'Ámbar',
+      '1e88e5': 'Azul Brillante',
+      '546e7a': 'Gris Azulado',
+      '6d4c41': 'Café',
+      '00acc1': 'Cian',
+      'f4511e': 'Naranja Intenso',
+      '5e35b1': 'Morado',
+      '43a047': 'Verde',
+      '757575': 'Gris',
+      '3949ab': 'Índigo',
+      '039be5': 'Azul Cielo',
+      '7cb342': 'Verde Lima',
+      'c0ca33': 'Lima',
+      'fb8c00': 'Naranja',
+      'd81b60': 'Rosa Fucsia',
+      '8e24aa': 'Púrpura Oscuro',
+      'e53935': 'Rojo',
+      '00897b': 'Verde Azulado',
+      'fdd835': 'Amarillo'
     };
     
-    // Opciones de personalización por estilo
+    // Opciones de personalización por estilo (basado en schema oficial v9)
     this.styleOptions = {
       avataaars: {
         backgroundColor: ['b6e3f4', 'c0aede', 'ffd5dc', 'ffdfbf', 'd1d4f9', 'c0e8f9'],
-        skinColor: ['tanned', 'yellow', 'pale', 'light', 'brown', 'darkBrown', 'black'],
-        top: ['noHair', 'hat', 'hijab', 'turban'],
-        hairColor: ['auburn', 'black', 'blonde', 'brown', 'pastelPink', 'platinum', 'red', 'silverGray'],
-        eyes: ['default', 'happy', 'hearts', 'side', 'squint', 'surprised', 'wink', 'winkWacky'],
-        eyebrows: ['default', 'angry', 'angryNatural', 'defaultNatural', 'flatNatural', 'raisedExcited', 'raisedExcitedNatural', 'sadConcerned', 'sadConcernedNatural', 'unibrowNatural', 'upDown', 'upDownNatural'],
-        mouth: ['default', 'concerned', 'disbelief', 'eating', 'grimace', 'sad', 'screamOpen', 'serious', 'smile', 'tongue', 'twinkle', 'vomit']
+        skinColor: ['614335', 'd08b5b', 'ae5d29', 'edb98a', 'ffdbb4', 'fd9841', 'f8d25c'],
+        top: ['hat', 'hijab', 'turban', 'winterHat1', 'winterHat02', 'winterHat03', 'winterHat04', 'bob', 'bun', 'curly', 'curvy', 'dreads', 'frida', 'fro', 'froBand', 'longButNotTooLong', 'miaWallace', 'shavedSides', 'straight02', 'straight01', 'straightAndStrand', 'dreads01', 'dreads02', 'frizzle', 'shaggy', 'shaggyMullet', 'shortCurly', 'shortFlat', 'shortRound', 'shortWaved', 'sides', 'theCaesar', 'theCaesarAndSidePart', 'bigHair'],
+        hairColor: ['a55728', '2c1b18', 'b58143', 'd6b370', '724133', '4a312c', 'f59797', 'ecdcbf', 'c93305', 'e8e1e1'],
+        eyes: ['closed', 'cry', 'default', 'eyeRoll', 'happy', 'hearts', 'side', 'squint', 'surprised', 'winkWacky', 'wink', 'xDizzy'],
+        eyebrows: ['angryNatural', 'defaultNatural', 'flatNatural', 'frownNatural', 'raisedExcitedNatural', 'sadConcernedNatural', 'unibrowNatural', 'upDownNatural', 'angry', 'default', 'raisedExcited', 'sadConcerned', 'upDown'],
+        mouth: ['concerned', 'default', 'disbelief', 'eating', 'grimace', 'sad', 'screamOpen', 'serious', 'smile', 'tongue', 'twinkle', 'vomit'],
+        accessories: ['kurt', 'prescription01', 'prescription02', 'round', 'sunglasses', 'wayfarers', 'eyepatch']
       },
       bottts: {
         backgroundColor: ['b6e3f4', 'c0aede', 'ffd5dc', 'ffdfbf', 'd1d4f9', 'c0e8f9'],
-        eyes: ['bulging', 'eva', 'frame1', 'frame2', 'glow', 'happy', 'hearts', 'robocop', 'round', 'roundFrame01', 'roundFrame02', 'sensor', 'shade01'],
-        mouth: ['bite', 'diagram', 'grill01', 'grill02', 'grill03', 'smile01', 'smile02', 'square01', 'square02']
+        baseColor: ['ffb300', '1e88e5', '546e7a', '6d4c41', '00acc1', 'f4511e', '5e35b1', '43a047', '757575', '3949ab', '039be5', '7cb342', 'c0ca33', 'fb8c00', 'd81b60', '8e24aa', 'e53935', '00897b', 'fdd835'],
+        eyes: ['bulging', 'dizzy', 'eva', 'frame1', 'frame2', 'glow', 'happy', 'hearts', 'robocop', 'round', 'roundFrame01', 'roundFrame02', 'sensor', 'shade01'],
+        face: ['round01', 'round02', 'square01', 'square02', 'square03', 'square04'],
+        mouth: ['bite', 'diagram', 'grill01', 'grill02', 'grill03', 'smile01', 'smile02', 'square01', 'square02'],
+        sides: ['antenna01', 'antenna02', 'cables01', 'cables02', 'round', 'square', 'squareAssymetric'],
+        texture: ['camo01', 'camo02', 'circuits', 'dirty01', 'dirty02', 'dots', 'grunge01', 'grunge02'],
+        top: ['antenna', 'antennaCrooked', 'bulb01', 'glowingBulb01', 'glowingBulb02', 'horns', 'lights', 'pyramid', 'radar']
       }
     };
   }
