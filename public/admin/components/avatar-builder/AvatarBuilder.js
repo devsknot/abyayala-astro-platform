@@ -13,44 +13,38 @@ export class AvatarBuilder {
     // Estilos disponibles de DiceBear
     this.styles = [
       { id: 'avataaars', name: 'Avataaars', description: 'Estilo ilustrado popular' },
-      { id: 'bottts', name: 'Bottts', description: 'Robots adorables' },
-      { id: 'personas', name: 'Personas', description: 'Personas realistas' },
-      { id: 'lorelei', name: 'Lorelei', description: 'Estilo moderno' },
-      { id: 'adventurer', name: 'Aventurero', description: 'Personajes de aventura' },
-      { id: 'big-ears', name: 'Big Ears', description: 'Orejas grandes' },
-      { id: 'pixel-art', name: 'Pixel Art', description: 'Estilo retro 8-bit' }
+      { id: 'bottts', name: 'Bottts', description: 'Robots adorables' }
     ];
+    
+    // Mapeo de colores hexadecimales a nombres
+    this.colorNames = {
+      'b6e3f4': 'Azul Claro',
+      'c0aede': 'Púrpura',
+      'ffd5dc': 'Rosa',
+      'ffdfbf': 'Durazno',
+      'd1d4f9': 'Lavanda',
+      'c0e8f9': 'Celeste',
+      '0a5b83': 'Azul Oscuro',
+      '1c799f': 'Azul',
+      '69d2e7': 'Turquesa',
+      'f88c49': 'Naranja',
+      'f9c9b6': 'Melocotón',
+      'fc909f': 'Rosa Coral'
+    };
     
     // Opciones de personalización por estilo
     this.styleOptions = {
       avataaars: {
         backgroundColor: ['b6e3f4', 'c0aede', 'ffd5dc', 'ffdfbf', 'd1d4f9', 'c0e8f9'],
-        eyes: ['close', 'cry', 'default', 'dizzy', 'eyeRoll', 'happy', 'hearts', 'side', 'squint', 'surprised', 'wink', 'winkWacky'],
-        mouth: ['concerned', 'default', 'disbelief', 'eating', 'grimace', 'sad', 'screamOpen', 'serious', 'smile', 'tongue', 'twinkle', 'vomit']
+        eyes: ['default', 'happy', 'hearts', 'side', 'squint', 'surprised', 'wink', 'winkWacky'],
+        eyebrows: ['default', 'angry', 'angryNatural', 'defaultNatural', 'flatNatural', 'raisedExcited', 'raisedExcitedNatural', 'sadConcerned', 'sadConcernedNatural', 'unibrowNatural', 'upDown', 'upDownNatural'],
+        mouth: ['default', 'concerned', 'disbelief', 'eating', 'grimace', 'sad', 'screamOpen', 'serious', 'smile', 'tongue', 'twinkle', 'vomit'],
+        top: ['eyepatch', 'hat', 'hijab', 'turban', 'winterHat1', 'winterHat2', 'winterHat3', 'winterHat4', 'longHairBigHair', 'longHairBob', 'longHairBun', 'longHairCurly', 'longHairCurvy', 'longHairDreads', 'longHairFrida', 'longHairFro', 'longHairFroBand', 'longHairNotTooLong', 'longHairShavedSides', 'longHairMiaWallace', 'longHairStraight', 'longHairStraight2', 'longHairStraightStrand', 'shortHairDreads01', 'shortHairDreads02', 'shortHairFrizzle', 'shortHairShaggyMullet', 'shortHairShortCurly', 'shortHairShortFlat', 'shortHairShortRound', 'shortHairShortWaved', 'shortHairSides', 'shortHairTheCaesar', 'shortHairTheCaesarSidePart']
       },
       bottts: {
         backgroundColor: ['b6e3f4', 'c0aede', 'ffd5dc', 'ffdfbf', 'd1d4f9', 'c0e8f9'],
-        eyes: ['bulging', 'dizzy', 'eva', 'frame1', 'frame2', 'glow', 'happy', 'hearts', 'robocop', 'round', 'roundFrame01', 'roundFrame02', 'sensor', 'shade01'],
-        mouth: ['bite', 'diagram', 'grill01', 'grill02', 'grill03', 'smile01', 'smile02', 'square01', 'square02'],
-        primaryColor: ['0a5b83', '1c799f', '69d2e7', 'f88c49', 'f9c9b6', 'fc909f']
-      },
-      personas: {
-        backgroundColor: ['b6e3f4', 'c0aede', 'ffd5dc', 'ffdfbf', 'd1d4f9', 'c0e8f9'],
-        eyes: ['open', 'sleep', 'wink'],
-        hair: ['long01', 'long02', 'long03', 'short01', 'short02', 'short03', 'short04'],
-        hairColor: ['0e0e0e', '3eac2c', '6a4e35', '85c2c6', 'a55728', 'e5d7a3']
-      },
-      lorelei: {
-        backgroundColor: ['b6e3f4', 'c0aede', 'ffd5dc', 'ffdfbf', 'd1d4f9', 'c0e8f9']
-      },
-      adventurer: {
-        backgroundColor: ['b6e3f4', 'c0aede', 'ffd5dc', 'ffdfbf', 'd1d4f9', 'c0e8f9']
-      },
-      'big-ears': {
-        backgroundColor: ['b6e3f4', 'c0aede', 'ffd5dc', 'ffdfbf', 'd1d4f9', 'c0e8f9']
-      },
-      'pixel-art': {
-        backgroundColor: ['b6e3f4', 'c0aede', 'ffd5dc', 'ffdfbf', 'd1d4f9', 'c0e8f9']
+        eyes: ['bulging', 'eva', 'frame1', 'frame2', 'glow', 'happy', 'hearts', 'robocop', 'round', 'roundFrame01', 'roundFrame02', 'sensor', 'shade01'],
+        mouth: ['bite', 'diagram', 'grill01', 'grill02', 'grill03', 'smile01', 'smile02', 'square01', 'square02']
       }
     };
   }
@@ -336,6 +330,12 @@ export class AvatarBuilder {
    * Formatea el valor de una opción para mostrar
    */
   formatValue(value) {
+    // Si es un color hexadecimal, mostrar el nombre
+    if (this.colorNames[value]) {
+      return this.colorNames[value];
+    }
+    
+    // Formatear nombres de opciones
     return value
       .replace(/([A-Z])/g, ' $1')
       .replace(/^./, str => str.toUpperCase())
