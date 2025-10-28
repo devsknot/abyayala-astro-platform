@@ -26,9 +26,7 @@ export class AvatarBuilder {
       avataaars: {
         backgroundColor: ['b6e3f4', 'c0aede', 'ffd5dc', 'ffdfbf', 'd1d4f9', 'c0e8f9'],
         eyes: ['close', 'cry', 'default', 'dizzy', 'eyeRoll', 'happy', 'hearts', 'side', 'squint', 'surprised', 'wink', 'winkWacky'],
-        mouth: ['concerned', 'default', 'disbelief', 'eating', 'grimace', 'sad', 'screamOpen', 'serious', 'smile', 'tongue', 'twinkle', 'vomit'],
-        hairColor: ['auburn', 'black', 'blonde', 'brown', 'pastelPink', 'platinum', 'red', 'silverGray'],
-        skinColor: ['tanned', 'yellow', 'pale', 'light', 'brown', 'darkBrown', 'black']
+        mouth: ['concerned', 'default', 'disbelief', 'eating', 'grimace', 'sad', 'screamOpen', 'serious', 'smile', 'tongue', 'twinkle', 'vomit']
       },
       bottts: {
         backgroundColor: ['b6e3f4', 'c0aede', 'ffd5dc', 'ffdfbf', 'd1d4f9', 'c0e8f9'],
@@ -255,8 +253,22 @@ export class AvatarBuilder {
     const hiddenInput = this.container.querySelector('#avatar-url');
     const url = this.getAvatarUrl();
     
+    console.log('Actualizando preview con URL:', url);
+    
     if (previewImg) {
+      // Agregar evento de error para debug
+      previewImg.onerror = () => {
+        console.error('Error al cargar imagen del avatar:', url);
+      };
+      
+      previewImg.onload = () => {
+        console.log('Avatar cargado correctamente');
+      };
+      
       previewImg.src = url;
+      previewImg.style.display = 'block';
+    } else {
+      console.error('No se encontró el elemento #avatar-preview-img');
     }
     
     if (hiddenInput) {
