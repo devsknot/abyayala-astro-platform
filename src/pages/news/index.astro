@@ -1,7 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { SITE_TITLE } from '../../consts';
-import DatePicker from '../../components/DatePicker.astro';
 import NewsCard from '../../components/NewsCard.astro';
 import { getDb } from '../../db';
 import { listArticles, searchArticles } from '../../lib/repo/articles';
@@ -22,8 +21,22 @@ const pageNumber = Math.max(1, parseInt(currentPage) || 1);
 // Verificar si hay parámetros de búsqueda en la URL
 const searchQuery = url.searchParams.get('query') || '';
 const searchCategory = url.searchParams.get('category') || '';
-const searchDateFrom = url.searchParams.get('dateFrom') || '';
-const searchDateTo = url.searchParams.get('dateTo') || '';
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const rawDateFrom = DATE_RE.test(url.searchParams.get('dateFrom') || '') ? url.searchParams.get('dateFrom')! : '';
+const searchDateTo = DATE_RE.test(url.searchParams.get('dateTo') || '') ? url.searchParams.get('dateTo')! : '';
+
+// Período rápido (último mes / 3 meses / año). Un rango de fechas explícito tiene prioridad.
+const PERIODS = [
+  { value: '', label: 'Todo', days: 0 },
+  { value: 'month', label: 'Último mes', days: 30 },
+  { value: 'quarter', label: '3 meses', days: 90 },
+  { value: 'year', label: 'Último año', days: 365 },
+];
+const periodParam = url.searchParams.get('period') || '';
+const activePeriod = rawDateFrom || searchDateTo ? undefined : PERIODS.find((p) => p.value === periodParam && p.days);
+const searchPeriod = activePeriod?.value ?? '';
+const searchDateFrom = rawDateFrom
+  || (activePeriod ? new Date(Date.now() - activePeriod.days * 86_400_000).toISOString().slice(0, 10) : '');
 
 // Definir un tipo para la respuesta de la API
 interface ArticleResponse {
@@ -109,19 +122,47 @@ const { page, totalPages, hasNextPage, hasPrevPage } = pagination;
 const pageTitle = `Noticias - ${SITE_TITLE}`;
 const pageDescription = "Archivo de noticias del Colectivo Agrario Abya Yala.";
 
-// Inicializar las variables de filtro
-const initialCategory = "";
-const initialDateFrom = null;
-const initialDateTo = null;
-const initialSearchTerm = "";
-
 // No necesitamos hacer slicing manualmente ya que la API ya nos devuelve los artículos paginados
 // Construir base de URL para parámetros de navegación
+const currentFilters = {
+  query: searchQuery,
+  category: searchCategory,
+  period: searchPeriod,
+  dateFrom: rawDateFrom,
+  dateTo: searchDateTo,
+};
+
+/** URL de /news con los filtros actuales más los cambios indicados (siempre vuelve a la página 1). */
+function filtersHref(changes: Partial<typeof currentFilters> = {}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries({ ...currentFilters, ...changes })) {
+    if (value) params.set(key, value);
+  }
+  const qs = params.toString();
+  return qs ? `/news?${qs}` : '/news';
+}
+
+const formatDay = (iso: string) =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+
+const activeFilters = [
+  searchQuery && { label: `“${searchQuery}”`, href: filtersHref({ query: '' }) },
+  searchCategory && {
+    label: categories.find((c) => c.id === searchCategory)?.name ?? searchCategory,
+    href: filtersHref({ category: '' }),
+  },
+  activePeriod && { label: activePeriod.label, href: filtersHref({ period: '' }) },
+  rawDateFrom && { label: `Desde ${formatDay(rawDateFrom)}`, href: filtersHref({ dateFrom: '' }) },
+  searchDateTo && { label: `Hasta ${formatDay(searchDateTo)}`, href: filtersHref({ dateTo: '' }) },
+].filter(Boolean) as { label: string; href: string }[];
+
+const hasFilters = activeFilters.length > 0;
+const totalItems = pagination.totalItems;
+
 let urlParams = '';
-if (searchQuery) urlParams += `&query=${encodeURIComponent(searchQuery)}`;
-if (searchCategory) urlParams += `&category=${encodeURIComponent(searchCategory)}`;
-if (searchDateFrom) urlParams += `&dateFrom=${encodeURIComponent(searchDateFrom)}`;
-if (searchDateTo) urlParams += `&dateTo=${encodeURIComponent(searchDateTo)}`;
+for (const [key, value] of Object.entries(currentFilters)) {
+  if (value) urlParams += `&${key}=${encodeURIComponent(value)}`;
+}
 
 // Preparar URLs para navegación
 const previousPage = pagination.hasPrevPage ? `?page=${pagination.page - 1}${urlParams}` : null;
@@ -137,56 +178,87 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}${urlPara
         <p class="lead">Explora todas nuestras noticias, desde las más recientes hasta las más antiguas.</p>
       </div>
 
-      <div class="category-filters">
-        <div class="filter-group">
-          <label for="category-filter">Categoría:</label>
-          <select id="category-filter" class="filter-select">
-            <option value="">Todas las categorías</option>
-            {categories.map(category => (
-              <option value={category.id}>{category.name}</option>
-            ))}
-          </select>
-        </div>
-        
-        <div class="filter-group">
-          <label for="time-period">Período:</label>
-          <select id="time-period" class="filter-select">
-            <option value="all">Todos</option>
-            <option value="month">Último mes</option>
-            <option value="quarter">Últimos 3 meses</option>
-            <option value="year">Último año</option>
-          </select>
-        </div>
-        
-        <div class="search-filter">
-          <input type="text" id="search-input" placeholder="Buscar noticias..." />
-          <button type="button" id="search-button" aria-label="Buscar">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
+      <form class="archive-search" id="archive-search" action="/news" method="get" role="search">
+        <div class="search-main">
+          <label class="field field-search">
+            <span class="sr-only">Buscar noticias</span>
+            <svg class="field-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="search" name="query" value={searchQuery} placeholder="Buscar por título, tema o palabra clave…" maxlength="200" autocomplete="off" />
+          </label>
+
+          <label class="field field-select">
+            <span class="sr-only">Categoría</span>
+            <svg class="field-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <select name="category" data-autosubmit>
+              <option value="">Todas las categorías</option>
+              {categories.map((category) => (
+                <option value={category.id} selected={category.id === searchCategory}>{category.name}</option>
+              ))}
+            </select>
+          </label>
+
+          {searchPeriod && <input type="hidden" name="period" value={searchPeriod} />}
+
+          <button type="submit" class="btn-search">
+            <span>Buscar</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
           </button>
         </div>
-        
-        <button id="clear-filters" class="clear-filters-btn">
-          Limpiar filtros
-        </button>
-      </div>
-      
-      <div class="filter-row">
-        <div class="filter-group date-filter">
-          <label for="date-from">Desde:</label>
-          <DatePicker id="date-from" />
-        </div>
 
-        <div class="filter-group date-filter">
-          <label for="date-to">Hasta:</label>
-          <DatePicker id="date-to" />
+        <div class="search-secondary">
+          <div class="period-chips" role="group" aria-label="Período">
+            {PERIODS.map((p) => {
+              const isActive = p.value === searchPeriod && !rawDateFrom && !searchDateTo;
+              return (
+                <a
+                  class:list={['chip', { 'is-active': isActive }]}
+                  href={filtersHref({ period: p.value, dateFrom: '', dateTo: '' })}
+                  aria-current={isActive ? 'true' : undefined}
+                >{p.label}</a>
+              );
+            })}
+          </div>
+
+          <details class="date-range" open={Boolean(rawDateFrom || searchDateTo)}>
+            <summary class:list={['chip', 'chip-outline', { 'is-active': rawDateFrom || searchDateTo }]}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              Rango de fechas
+            </summary>
+            <div class="date-range-panel">
+              <label class="date-field">
+                <span>Desde</span>
+                <input type="date" name="dateFrom" value={rawDateFrom} max={searchDateTo || undefined} />
+              </label>
+              <span class="date-sep" aria-hidden="true">→</span>
+              <label class="date-field">
+                <span>Hasta</span>
+                <input type="date" name="dateTo" value={searchDateTo} min={rawDateFrom || undefined} />
+              </label>
+              <button type="submit" class="btn-apply">Aplicar</button>
+            </div>
+          </details>
         </div>
+      </form>
+
+      <div class="results-bar">
+        <p class="results-count" aria-live="polite">
+          {hasFilters
+            ? <><strong>{totalItems}</strong> {totalItems === 1 ? 'resultado' : 'resultados'}</>
+            : <><strong>{totalItems}</strong> noticias en el archivo</>}
+        </p>
+        {hasFilters && (
+          <div class="active-filters">
+            {activeFilters.map((f) => (
+              <a class="filter-pill" href={f.href} aria-label={`Quitar filtro ${f.label}`}>
+                {f.label}
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </a>
+            ))}
+            <a class="clear-all" href="/news">Limpiar todo</a>
+          </div>
+        )}
       </div>
 
-      <div class="active-filters" id="active-filters"></div>
-      
       <div class="news-grid" id="news-grid">
         {articles && articles.length > 0 ? articles.map((article: Article) => {
           // Estandarización de campos
@@ -224,7 +296,15 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}${urlPara
           );
         }) : (
           <div class="no-results">
-            <p>No se encontraron noticias. Por favor, inténtelo de nuevo más tarde.</p>
+            {hasFilters ? (
+              <>
+                <p class="no-results-title">No encontramos noticias con esos filtros</p>
+                <p>Prueba con otras palabras, otra categoría o un período más amplio.</p>
+                <a class="clear-all" href="/news">Ver todas las noticias</a>
+              </>
+            ) : (
+              <p>No hay noticias publicadas todavía.</p>
+            )}
           </div>
         )}
       </div>
@@ -282,114 +362,394 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}${urlPara
     margin: 0 auto;
   }
   
-  .category-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    align-items: center;
-    justify-content: space-between;
-    background-color: var(--color-bg-alt);
-    padding: 1rem;
-    border-radius: 8px;
-  }
-  
-  .filter-group {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .filter-select {
-    padding: 0.5rem;
-    border-radius: 4px;
-    border: 1px solid var(--color-border);
-    background-color: white;
-    font-size: 0.9rem;
-  }
-  
-  .search-filter {
-    display: flex;
-    flex: 1;
-    max-width: 300px;
-    position: relative;
-  }
-  
-  .search-filter input {
-    width: 100%;
-    padding: 0.5rem 2.5rem 0.5rem 0.75rem;
-    border-radius: 4px;
-    border: 1px solid var(--color-border);
-    font-size: 0.9rem;
-  }
-  
-  .search-filter button {
+  /* ---------- Buscador del archivo ---------- */
+  .sr-only {
     position: absolute;
-    right: 0.5rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--color-text-muted);
-    cursor: pointer;
+    width: 1px;
+    height: 1px;
     padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .archive-search {
+    max-width: 1000px;
+    margin: 0 auto 1.75rem;
+    padding: 1.25rem;
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    box-shadow: 0 1px 2px rgba(15, 74, 123, 0.04), 0 12px 32px -12px rgba(26, 91, 146, 0.18);
+  }
+
+  .search-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 240px auto;
+    gap: 0.75rem;
+  }
+
+  .field {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: center;
   }
-  
-  .search-filter button:hover {
+
+  .field-icon {
+    position: absolute;
+    left: 1rem;
+    color: var(--color-text-tertiary);
+    pointer-events: none;
+    transition: color 0.2s;
+  }
+
+  .field input,
+  .field select {
+    width: 100%;
+    height: 52px;
+    padding: 0 1rem 0 2.85rem;
+    font: inherit;
+    font-size: 1rem;
+    color: var(--color-text);
+    background: var(--color-background-alt);
+    border: 1.5px solid transparent;
+    border-radius: 14px;
+    outline: none;
+    transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .field input::placeholder {
+    color: var(--color-text-tertiary);
+  }
+
+  .field select {
+    appearance: none;
+    padding-right: 2.5rem;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+  }
+
+  .field input:hover,
+  .field select:hover {
+    border-color: var(--color-border-dark);
+  }
+
+  .field input:focus,
+  .field select:focus {
+    background-color: #fff;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(26, 91, 146, 0.12);
+  }
+
+  .field:focus-within .field-icon {
     color: var(--color-primary);
   }
-  
-  .filter-row {
+
+  .btn-search {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 52px;
+    padding: 0 1.6rem;
+    font: inherit;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: 0 6px 16px -6px rgba(26, 91, 146, 0.55);
+    transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
+  }
+
+  .btn-search:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 10px 22px -8px rgba(26, 91, 146, 0.6);
+  }
+
+  .btn-search:active {
+    transform: translateY(1px);
+  }
+
+  .btn-search svg {
+    transition: transform 0.2s;
+  }
+
+  .btn-search:hover svg {
+    transform: translateX(3px);
+  }
+
+  .search-secondary {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    align-items: flex-end;
+    align-items: flex-start;
+    gap: 0.75rem 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
   }
-  
-  .date-filter {
-    flex: 1;
-    min-width: 200px;
+
+  .period-chips {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 0.5rem;
   }
-  
-  .clear-filters-btn {
-    padding: 0.5rem 1rem;
-    background-color: #f3f4f6;
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    font-size: 0.9rem;
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    background: var(--color-background-alt);
+    border: 1px solid transparent;
+    border-radius: 999px;
+    text-decoration: none;
     cursor: pointer;
-    transition: all 0.2s;
+    user-select: none;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
   }
-  
-  .clear-filters-btn:hover {
-    background-color: #e5e7eb;
+
+  .chip:hover {
+    color: var(--color-primary);
+    background: #e6eef6;
   }
-  
-  .active-filter {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    margin-right: 0.5rem;
-    margin-bottom: 0.5rem;
-    background-color: var(--color-primary-light, #e6f0ff);
-    color: var(--color-primary-dark, #00499e);
-    border-radius: 4px;
-    font-size: 0.85rem;
+
+  .chip.is-active {
+    color: #fff;
+    background: var(--color-primary);
   }
-  
+
+  .chip-outline {
+    background: transparent;
+    border-color: var(--color-border-dark);
+  }
+
+  .chip:focus-visible,
+  .btn-search:focus-visible,
+  .btn-apply:focus-visible,
+  .filter-pill:focus-visible,
+  .clear-all:focus-visible {
+    outline: 3px solid rgba(26, 91, 146, 0.35);
+    outline-offset: 2px;
+  }
+
+  .date-range {
+    margin-left: auto;
+  }
+
+  .date-range summary {
+    list-style: none;
+  }
+
+  .date-range summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .date-range-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 1rem;
+    background: var(--color-background-alt);
+    border-radius: 14px;
+    animation: panel-in 0.18s ease-out;
+  }
+
+  @keyframes panel-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .date-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-tertiary);
+  }
+
+  .date-field input {
+    height: 42px;
+    padding: 0 0.75rem;
+    font: inherit;
+    font-size: 0.95rem;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--color-text);
+    background: #fff;
+    border: 1.5px solid var(--color-border);
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .date-field input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(26, 91, 146, 0.12);
+  }
+
+  .date-sep {
+    padding-bottom: 0.6rem;
+    color: var(--color-text-tertiary);
+  }
+
+  .btn-apply {
+    height: 42px;
+    padding: 0 1.1rem;
+    font: inherit;
+    font-weight: 600;
+    color: var(--color-primary);
+    background: #fff;
+    border: 1.5px solid var(--color-primary);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .btn-apply:hover {
+    color: #fff;
+    background: var(--color-primary);
+  }
+
+  .results-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    max-width: 1000px;
+    margin: 0 auto 1.5rem;
+  }
+
+  .results-count {
+    margin: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .results-count strong {
+    color: var(--color-text);
+  }
+
   .active-filters {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 0.5rem;
-    margin-bottom: 1.5rem;
   }
-  
+
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.6rem 0.35rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-primary-dark);
+    background: #e6eef6;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+
+  .filter-pill svg {
+    opacity: 0.6;
+    transition: opacity 0.2s;
+  }
+
+  .filter-pill:hover {
+    background: #d4e2f0;
+  }
+
+  .filter-pill:hover svg {
+    opacity: 1;
+  }
+
+  .clear-all {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--color-text-tertiary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .clear-all:hover {
+    color: var(--color-primary);
+  }
+
+  .no-results {
+    grid-column: 1 / -1;
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--color-text-secondary);
+  }
+
+  .no-results-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  @media (max-width: 860px) {
+    .search-main {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .field-search {
+      grid-column: 1 / -1;
+    }
+
+    .date-range {
+      margin-left: 0;
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .archive-search {
+      padding: 1rem;
+      border-radius: 16px;
+    }
+
+    .search-main {
+      grid-template-columns: 1fr;
+    }
+
+    .btn-search {
+      width: 100%;
+    }
+
+    .date-range-panel {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .date-sep {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .date-range-panel,
+    .btn-search,
+    .btn-search svg {
+      animation: none;
+      transition: none;
+    }
+  }
+
   .news-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -540,451 +900,19 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}${urlPara
 </style>
 
 <script>
-  // Funcionalidad de búsqueda del lado del servidor
-  document.addEventListener('DOMContentLoaded', () => {
-    const categoryFilter = document.getElementById('category-filter') as HTMLSelectElement;
-    const searchInput = document.getElementById('search-input') as HTMLInputElement;
-    const searchBtn = document.getElementById('search-button');
-    const dateFromInput = document.getElementById('date-from') as HTMLInputElement;
-    const dateToInput = document.getElementById('date-to') as HTMLInputElement;
-    const activeFiltersElement = document.getElementById('active-filters');
-    
-    // Obtener parámetros de búsqueda actuales de la URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentQuery = urlParams.get('query') || '';
-    const currentCategory = urlParams.get('category') || '';
-    const currentDateFrom = urlParams.get('dateFrom') || '';
-    const currentDateTo = urlParams.get('dateTo') || '';
-    
-    // Establecer valores en los campos de búsqueda según los parámetros de la URL
-    if (searchInput) searchInput.value = currentQuery;
-    if (categoryFilter) categoryFilter.value = currentCategory;
-    if (dateFromInput && currentDateFrom) dateFromInput.value = currentDateFrom;
-    if (dateToInput && currentDateTo) dateToInput.value = currentDateTo;
-    
-    // Definir función para actualizar los filtros activos que se muestran
-    function updateActiveFilters(searchTerm: string, category: string, dateFrom: Date | null, dateTo: Date | null) {
-      if (!activeFiltersElement) return;
-      
-      activeFiltersElement.innerHTML = '';
-      
-      // Si hay filtros activos, crear las etiquetas
-      if (searchTerm || category || dateFrom || dateTo) {
-        activeFiltersElement.innerHTML = '<h3>Filtros activos:</h3>';
-        
-        // Crear una etiqueta para cada filtro activo
-        if (searchTerm) {
-          const filterTag = document.createElement('div');
-          filterTag.className = 'filter-tag';
-          filterTag.innerHTML = `
-            <span>Búsqueda: ${searchTerm}</span>
-            <button class="clear-filter" data-type="search">&times;</button>
-          `;
-          activeFiltersElement.appendChild(filterTag);
-        }
-        
-        if (category) {
-          const filterTag = document.createElement('div');
-          filterTag.className = 'filter-tag';
-          filterTag.innerHTML = `
-            <span>Categoría: ${category}</span>
-            <button class="clear-filter" data-type="category">&times;</button>
-          `;
-          activeFiltersElement.appendChild(filterTag);
-        }
-        
-        if (dateFrom) {
-          const filterTag = document.createElement('div');
-          filterTag.className = 'filter-tag';
-          filterTag.innerHTML = `
-            <span>Desde: ${dateFrom.toLocaleDateString()}</span>
-            <button class="clear-filter" data-type="dateFrom">&times;</button>
-          `;
-          activeFiltersElement.appendChild(filterTag);
-        }
-        
-        if (dateTo) {
-          const filterTag = document.createElement('div');
-          filterTag.className = 'filter-tag';
-          filterTag.innerHTML = `
-            <span>Hasta: ${dateTo.toLocaleDateString()}</span>
-            <button class="clear-filter" data-type="dateTo">&times;</button>
-          `;
-          activeFiltersElement.appendChild(filterTag);
-        }
-        
-        // Botón para limpiar todos los filtros
-        const clearAllBtn = document.createElement('button');
-        clearAllBtn.className = 'clear-all-filters-btn';
-        clearAllBtn.textContent = 'Limpiar todos los filtros';
-        activeFiltersElement.appendChild(clearAllBtn);
-        
-        // Evento para limpiar todos los filtros - redirigir a la página sin filtros
-        clearAllBtn.addEventListener('click', () => {
-          // Redirigir a la página de noticias sin filtros
-          window.location.href = window.location.pathname;
-        });
-        
-        // Eventos para botones de eliminación de filtros individuales
-        document.querySelectorAll('.clear-filter').forEach(button => {
-          button.addEventListener('click', (e) => {
-            const type = (e.currentTarget as HTMLElement).getAttribute('data-type');
-            const urlParams = new URLSearchParams(window.location.search);
-            
-            // Eliminar el parámetro específico según el tipo
-            if (type === 'search') {
-              urlParams.delete('query');
-            } else if (type === 'category') {
-              urlParams.delete('category');
-            } else if (type === 'dateFrom') {
-              urlParams.delete('dateFrom');
-            } else if (type === 'dateTo') {
-              urlParams.delete('dateTo');
-            }
-            
-            // Mantener la página 1 al eliminar filtros
-            urlParams.set('page', '1');
-            
-            // Redirigir con los parámetros actualizados
-            const newUrl = urlParams.toString() ? `?${urlParams.toString()}` : window.location.pathname;
-            window.location.href = newUrl;
-          });
-        });
-      }
-    }
-    
-    // Actualizar filtros activos con los valores actuales
-    updateActiveFilters(
-      currentQuery,
-      currentCategory,
-      currentDateFrom ? new Date(currentDateFrom) : null,
-      currentDateTo ? new Date(currentDateTo) : null
-    );
-    
-    // Función para realizar la búsqueda del lado del servidor
-    function performServerSearch() {
-      // Obtener valores del formulario
-      const query = searchInput?.value || '';
-      const category = categoryFilter?.value || '';
-      const dateFrom = dateFromInput?.value || '';
-      const dateTo = dateToInput?.value || '';
-      
-      // Construir URL con parámetros de búsqueda
-      const params = new URLSearchParams();
-      // Solo añadir parámetros si tienen valor
-      if (query) params.set('query', query);
-      if (category) params.set('category', category);
-      if (dateFrom) params.set('dateFrom', dateFrom);
-      if (dateTo) params.set('dateTo', dateTo);
-      
-      // Mantener la página 1 al cambiar filtros
-      params.set('page', '1');
-      
-      // Navegar a la URL con los parámetros
-      window.location.href = `?${params.toString()}`;
-    }
-    
-    // Implementar un debounce para la búsqueda
-    let searchTimeout: ReturnType<typeof setTimeout> | null = null;
-    function debouncedSearch() {
-      if (searchTimeout) clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(performServerSearch, 500);
-    }
-    
-    // Vincular eventos a los controles de búsqueda
-    searchBtn?.addEventListener('click', (e) => {
-      e.preventDefault();
-      performServerSearch();
-    });
-    
-    // Evento para buscar al presionar Enter en el campo de búsqueda
-    searchInput?.addEventListener('keyup', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        performServerSearch();
-      }
-    });
-    
-    // Eventos para selectores
-    categoryFilter?.addEventListener('change', performServerSearch);
-    
-    // Eventos para los selectores de fecha
-    // Usamos change para evitar demasiadas solicitudes mientras el usuario selecciona
-    dateFromInput?.addEventListener('change', performServerSearch);
-    dateToInput?.addEventListener('change', performServerSearch);
+  // La búsqueda la resuelve el servidor; aquí solo se envía el formulario al cambiar la categoría.
+  const form = document.getElementById('archive-search') as HTMLFormElement | null;
+  form?.querySelectorAll<HTMLSelectElement>('[data-autosubmit]').forEach((el) => {
+    el.addEventListener('change', () => form.requestSubmit());
   });
-</script>
-
-<script>
-  import DatePicker from '../../scripts/datePicker.js';
-  
-  document.addEventListener('DOMContentLoaded', () => {
-    // Obtener parámetros de búsqueda de la URL para inicializar los datepickers
-    const urlParams = new URLSearchParams(window.location.search);
-    const dateFromParam = urlParams.get('dateFrom');
-    const dateToParam = urlParams.get('dateTo');
-    
-    // Inicializar selectores de fecha con valores de la URL si existen
-    const dateFromPicker = new DatePicker('date-from', dateFromParam || '');
-    const dateToPicker = new DatePicker('date-to', dateToParam || '');
-    
-    // Elementos del DOM
-    const searchInput = document.getElementById('search-input') as HTMLInputElement;
-    const categoryFilter = document.getElementById('category-select') as HTMLSelectElement;
-    const clearFiltersBtn = document.getElementById('clear-filters') as HTMLButtonElement;
-    const newsItems = document.querySelectorAll('.news-card');
-    const noResultsElement = document.querySelector('.no-results') as HTMLElement;
-    const activeFiltersElement = document.getElementById('active-filters');
-    
-    // Variables para paginación
-    const itemsPerPage = 9;
-    let currentPage = 1;
-    let filteredItems = Array.from(newsItems);
-    
-    // Elementos de paginación
-    const prevButton = document.querySelector('.pagination-prev') as HTMLButtonElement;
-    const nextButton = document.querySelector('.pagination-next') as HTMLButtonElement;
-    const currentPageElement = document.querySelector('.current-page');
-    const totalPagesElement = document.querySelector('.total-pages');
-    
-    // Función para aplicar todos los filtros
-    function applyFilters() {
-      const searchTerm = searchInput.value.toLowerCase().trim();
-      const selectedCategory = categoryFilter.value;
-      const dateFrom = dateFromPicker.getSelectedDate() ?? null;
-      const dateTo = dateToPicker.getSelectedDate() ?? null;
-      
-      // Actualizar filtros activos
-      updateActiveFilters(searchTerm, selectedCategory, dateFrom, dateTo);
-      
-      // Filtrar elementos
-      filteredItems = Array.from(newsItems).filter(item => {
-        const title = item.querySelector('.news-title')?.textContent?.toLowerCase() || '';
-        const description = item.querySelector('.news-excerpt')?.textContent?.toLowerCase() || '';
-        const category = (item as HTMLElement).dataset.category?.toLowerCase() || '';
-        const dateStr = (item as HTMLElement).dataset.date || '';
-        const itemDate = dateStr ? new Date(dateStr) : null;
-        
-        // Filtrar por término de búsqueda
-        const matchesSearch = !searchTerm || 
-          title.includes(searchTerm) || 
-          description.includes(searchTerm) || 
-          category.includes(searchTerm);
-        
-        // Filtrar por categoría
-        const matchesCategory = selectedCategory === '' || 
-          category === selectedCategory.toLowerCase();
-        
-        // Filtrar por rango de fechas
-        let matchesDateRange = true;
-        if (itemDate) {
-          if (dateFrom && dateTo) {
-            matchesDateRange = itemDate >= dateFrom && itemDate <= dateTo;
-          } else if (dateFrom) {
-            matchesDateRange = itemDate >= dateFrom;
-          } else if (dateTo) {
-            matchesDateRange = itemDate <= dateTo;
-          }
-        }
-        
-        return matchesSearch && matchesCategory && matchesDateRange;
-      });
-      
-      // Actualizar la UI
-      updateUI();
-    }
-    
-    // Función para actualizar la UI después de filtrar
-    function updateUI() {
-      // Ocultar todos los elementos
-      newsItems.forEach(item => {
-        (item as HTMLElement).style.display = 'none';
-      });
-      
-      // Calcular paginación
-      const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
-      if (currentPage > totalPages) {
-        currentPage = totalPages || 1;
-      }
-      
-      // Actualizar elementos de paginación
-      if (currentPageElement) currentPageElement.textContent = currentPage.toString();
-      if (totalPagesElement) totalPagesElement.textContent = totalPages.toString();
-      
-      // Habilitar/deshabilitar botones de paginación
-      if (prevButton) prevButton.disabled = currentPage <= 1;
-      if (nextButton) nextButton.disabled = currentPage >= totalPages;
-      
-      // Mostrar elementos de la página actual
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const endIndex = Math.min(startIndex + itemsPerPage, filteredItems.length);
-      
-      for (let i = startIndex; i < endIndex; i++) {
-        (filteredItems[i] as HTMLElement).style.display = '';
-      }
-      
-      // Mostrar mensaje de no resultados si es necesario
-      if (noResultsElement) {
-        noResultsElement.style.display = filteredItems.length === 0 ? 'block' : 'none';
-      }
-    }
-    
-    // Función para actualizar los filtros activos
-    function updateActiveFilters(searchTerm: string, category: string, dateFrom: Date | null, dateTo: Date | null) {
-      if (!activeFiltersElement) return;
-      
-      activeFiltersElement.innerHTML = '';
-      
-      // Añadir filtro de búsqueda
-      if (searchTerm) {
-        addActiveFilter('Búsqueda', searchTerm, () => {
-          searchInput.value = '';
-          applyFilters();
-        });
-      }
-      
-      // Añadir filtro de categoría
-      if (category && category !== '') {
-        const categoryText = categoryFilter.options[categoryFilter.selectedIndex].text;
-        addActiveFilter('Categoría', categoryText, () => {
-          categoryFilter.value = '';
-          applyFilters();
-        });
-      }
-      
-      // Añadir filtro de fecha desde
-      if (dateFrom) {
-        const formattedDate = formatDate(dateFrom);
-        addActiveFilter('Desde', formattedDate, () => {
-          dateFromPicker.clearDate();
-          applyFilters();
-        });
-      }
-      
-      // Añadir filtro de fecha hasta
-      if (dateTo) {
-        const formattedDate = formatDate(dateTo);
-        addActiveFilter('Hasta', formattedDate, () => {
-          dateToPicker.clearDate();
-          applyFilters();
-        });
-      }
-    }
-    
-    // Función para añadir un filtro activo
-    function addActiveFilter(label: string, value: string, removeCallback: () => void) {
-      const filterElement = document.createElement('div');
-      filterElement.className = 'active-filter';
-      filterElement.innerHTML = `
-        <span>${label}: ${value}</span>
-        <button type="button" aria-label="Eliminar filtro">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      `;
-      
-      const removeButton = filterElement.querySelector('button');
-      if (removeButton) {
-        removeButton.addEventListener('click', removeCallback);
-      }
-      
-      activeFiltersElement?.appendChild(filterElement);
-    }
-    
-    // Función para formatear fecha
-    function formatDate(date: Date): string {
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
-    }
-    
-    // Función para limpiar todos los filtros
-    function clearAllFilters() {
-      searchInput.value = '';
-      categoryFilter.value = '';
-      dateFromPicker.clearDate();
-      dateToPicker.clearDate();
-      currentPage = 1;
-      applyFilters();
-    }
-    
-    // Eventos
-    if (searchInput) {
-      searchInput.addEventListener('input', () => {
-        currentPage = 1;
-        applyFilters();
-      });
-    }
-    
-    if (categoryFilter) {
-      categoryFilter.addEventListener('change', () => {
-        currentPage = 1;
-        applyFilters();
-      });
-    }
-    
-    // Manejar el botón principal de limpiar filtros
-    if (clearFiltersBtn) {
-      clearFiltersBtn.addEventListener('click', clearAllFilters);
-    }
-    
-    // Manejar todos los botones con clase clear-filters-btn
-    document.querySelectorAll('.clear-filters-btn').forEach(button => {
-      button.addEventListener('click', clearAllFilters);
+  // URLs limpias: no se envían los campos vacíos.
+  form?.addEventListener('submit', () => {
+    form.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[name]').forEach((el) => {
+      if (!el.value) el.disabled = true;
     });
-    
-    // Eventos de fecha - usando un enfoque más robusto
-    const dateFromInput = document.getElementById('date-from');
-    if (dateFromInput) {
-      dateFromInput.addEventListener('change', () => {
-        currentPage = 1;
-        applyFilters();
-      });
-    }
-    
-    const dateToInput = document.getElementById('date-to');
-    if (dateToInput) {
-      dateToInput.addEventListener('change', () => {
-        currentPage = 1;
-        applyFilters();
-      });
-    }
-    
-    // También escuchar eventos en los contenedores de fecha por si el componente DatePicker emite eventos personalizados
-    document.querySelector('.date-from')?.addEventListener('dateSelected', () => {
-      currentPage = 1;
-      applyFilters();
-    });
-    
-    document.querySelector('.date-to')?.addEventListener('dateSelected', () => {
-      currentPage = 1;
-      applyFilters();
-    });
-    
-    // Eventos de paginación
-    if (prevButton) {
-      prevButton.addEventListener('click', () => {
-        if (currentPage > 1) {
-          currentPage--;
-          updateUI();
-        }
-      });
-    }
-    
-    if (nextButton) {
-      nextButton.addEventListener('click', () => {
-        const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
-        if (currentPage < totalPages) {
-          currentPage++;
-          updateUI();
-        }
-      });
-    }
-    
-    // Inicializar la UI
-    applyFilters();
+  });
+  // Al volver con el botón atrás, el formulario puede restaurarse con campos deshabilitados.
+  window.addEventListener('pageshow', () => {
+    form?.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[name]').forEach((el) => (el.disabled = false));
   });
 </script>
