@@ -931,7 +931,12 @@ button.kpi:hover { box-shadow: var(--shadow-md); border-color: var(--border-stro
 .health-warning { background: var(--ochre-50); color: var(--ochre-700); }
 .health-critical { background: var(--red-50); color: var(--red-500); }
 .health-info { background: var(--blue-50); color: var(--blue-600); }
-.health-fix { margin-top: 8px; }
+.health-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.health-panel { margin-top: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
+.health-articles { list-style: none; margin: 0; padding: 4px; max-height: 280px; overflow-y: auto; }
+.health-articles .list-main { padding: 6px 8px; }
+.health-panel-empty { display: block; padding: 10px 12px; font-size: 0.85rem; color: var(--text-2); }
+.health-panel .list-loading { padding: 10px 12px; }
 .health-text { flex: 1; min-width: 0; }
 .health-label { display: block; font-size: 0.9rem; font-weight: 600; color: var(--text); }
 .health-help { display: block; font-size: 0.8rem; color: var(--text-3); line-height: 1.4; }

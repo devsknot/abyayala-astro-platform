@@ -12,6 +12,44 @@ async function rows(db: Database, query: ReturnType<typeof sql>): Promise<Row[]>
   return (await db.all(query)) as Row[];
 }
 
+// Indicadores de salud del contenido: la misma condición sirve para contar y para listar.
+// Son SQL fijo del servidor (nunca entrada del usuario), por eso se insertan con sql.raw.
+export const HEALTH_CONDITIONS = {
+  withoutImage: `coalesce(a.featured_image, '') = ''`,
+  legacyBrokenImage: `a.featured_image LIKE 'media/uploads/%'`,
+  withoutDescription: `coalesce(trim(a.description), '') = ''`,
+  withoutAuthor: `au.id IS NULL`,
+  uncategorized: `c.id IS NULL`,
+  base64Images: `instr(coalesce(a.content, ''), 'data:image') > 0`,
+} as const;
+
+export type HealthKey = keyof typeof HEALTH_CONDITIONS;
+const HEALTH_KEYS = Object.keys(HEALTH_CONDITIONS) as HealthKey[];
+
+export const isHealthKey = (value: string | null): value is HealthKey =>
+  value != null && Object.hasOwn(HEALTH_CONDITIONS, value);
+
+const HEALTH_FROM = sql`FROM articles a
+  LEFT JOIN authors au ON au.id = a.author_id
+  LEFT JOIN categories c ON c.id = a.category`;
+
+/** Artículos afectados por un indicador de salud, para revisarlos a mano desde el panel. */
+export async function listHealthIssue(db: Database, key: HealthKey) {
+  const result = await rows(
+    db,
+    sql`SELECT a.slug, a.title, a.pub_date AS pubDate, c.name AS category
+        ${HEALTH_FROM}
+        WHERE ${sql.raw(HEALTH_CONDITIONS[key])}
+        ORDER BY a.pub_date DESC, a.id DESC`,
+  );
+  return result.map((r) => ({
+    slug: String(r.slug),
+    title: String(r.title ?? ''),
+    pubDate: (r.pubDate as string) ?? null,
+    category: (r.category as string) ?? null,
+  }));
+}
+
 export async function getContentStats(db: Database) {
   const [counts, health, byCategory, byYear, recentArticles, largestArticles, recentActivity] = await Promise.all([
     rows(
@@ -22,16 +60,8 @@ export async function getContentStats(db: Database) {
     ),
     rows(
       db,
-      sql`SELECT
-            sum(coalesce(a.featured_image, '') = '') AS withoutImage,
-            sum(a.featured_image LIKE 'media/uploads/%') AS legacyBrokenImage,
-            sum(coalesce(a.description, '') = '') AS withoutDescription,
-            sum(au.id IS NULL) AS withoutAuthor,
-            sum(c.id IS NULL) AS uncategorized,
-            sum(instr(coalesce(a.content, ''), 'data:image') > 0) AS base64Images
-          FROM articles a
-          LEFT JOIN authors au ON au.id = a.author_id
-          LEFT JOIN categories c ON c.id = a.category`,
+      sql`SELECT ${sql.raw(HEALTH_KEYS.map((key) => `sum(${HEALTH_CONDITIONS[key]}) AS ${key}`).join(', '))}
+          ${HEALTH_FROM}`,
     ),
     rows(
       db,

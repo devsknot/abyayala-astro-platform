@@ -4,7 +4,7 @@ import { apiRequest } from '../utils/api.js';
 import { notifications } from './notification.js';
 import { escapeHtml } from '../utils/html.js';
 import { icon } from '../utils/icons.js';
-import { formatBytes, formatNumber, formatRelative, formatDateTime, toDate } from '../utils/format.js';
+import { formatBytes, formatNumber, formatRelative, formatDate, formatDateTime, toDate } from '../utils/format.js';
 
 const STATS_URL = '/api/admin/stats';
 
@@ -54,6 +54,7 @@ const HEALTH_ITEMS = [
 ];
 
 const MAINTENANCE_URL = '/api/admin/maintenance';
+const HEALTH_URL = '/api/admin/health';
 
 const FIX_COPY = {
   images: {
@@ -250,6 +251,9 @@ export class Dashboard {
       case 'fix':
         if (target.dataset.fix) this.openFix(target.dataset.fix, target);
         break;
+      case 'health-list':
+        if (target.dataset.issue) this.toggleHealthList(target.dataset.issue, target);
+        break;
       default:
         break;
     }
@@ -355,17 +359,22 @@ export class Dashboard {
       const tone = ok ? 'ok' : item.severity;
       const statusLabel = ok ? 'Correcto' : ({ critical: 'Requiere atención', warning: 'Revisar', info: 'Informativo' }[item.severity]);
       const statusIcon = ok ? 'check' : (item.severity === 'info' ? 'info' : 'alert');
-      const action = !ok && item.fix
-        ? `<button type="button" class="btn btn-secondary btn-sm health-fix" data-action="fix" data-fix="${item.fix}">${icon('wrench', { size: 14 })}<span>Reparar</span><span class="sr-only">: ${escapeHtml(item.label)}</span></button>`
-        : '';
+      const panelId = `health-panel-${item.key}`;
+      const actions = ok ? '' : `
+        <span class="health-actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-action="health-list" data-issue="${item.key}" aria-expanded="false" aria-controls="${panelId}">${icon('articles', { size: 14 })}<span>Ver artículos</span><span class="sr-only">: ${escapeHtml(item.label)}</span></button>
+          ${item.fix ? `<button type="button" class="btn btn-secondary btn-sm" data-action="fix" data-fix="${item.fix}">${icon('wrench', { size: 14 })}<span>Reparar</span><span class="sr-only">: ${escapeHtml(item.label)}</span></button>` : ''}
+        </span>
+        <div class="health-panel" id="${panelId}" hidden></div>
+      `;
       return `
         <li class="health-item">
           <span class="health-status health-${tone}">${icon(statusIcon, { size: 16 })}<span class="sr-only">${statusLabel}:</span></span>
-          <span class="health-text">
+          <div class="health-text">
             <span class="health-label">${escapeHtml(item.label)}</span>
             <span class="health-help">${escapeHtml(item.help)}</span>
-            ${action}
-          </span>
+            ${actions}
+          </div>
           <span class="health-count health-count-${tone}">${escapeHtml(formatNumber(item.count))}</span>
         </li>
       `;
@@ -429,6 +438,48 @@ export class Dashboard {
         </div>
       </section>
     `;
+  }
+
+  /** Despliega (y carga la primera vez) los artículos de un indicador para revisarlos a mano. */
+  async toggleHealthList(issue, button) {
+    const panel = this.container.querySelector(`#health-panel-${issue}`);
+    if (!panel) return;
+    const open = button.getAttribute('aria-expanded') !== 'true';
+    button.setAttribute('aria-expanded', String(open));
+    button.querySelector('span').textContent = open ? 'Ocultar artículos' : 'Ver artículos';
+    panel.hidden = !open;
+    if (!open || panel.dataset.loaded) return;
+
+    panel.innerHTML = '<span class="list-loading" role="status">Cargando artículos…</span>';
+    try {
+      const data = await apiRequest(HEALTH_URL, { query: { issue } });
+      if (this.destroyed) return;
+      const articles = Array.isArray(data.articles) ? data.articles : [];
+      panel.dataset.loaded = 'true';
+      panel.innerHTML = articles.length === 0
+        ? '<span class="health-panel-empty">No queda ningún artículo con este problema.</span>'
+        : `<ul class="health-articles">${articles.map(article => {
+          const slug = String(article.slug || '');
+          const meta = [article.pubDate ? formatDate(article.pubDate) : '', article.category || ''].filter(Boolean).join(' · ');
+          return `
+            <li class="list-row">
+              <button type="button" class="list-main" data-action="edit-article" data-slug="${escapeHtml(slug)}" title="Editar">
+                <span class="list-title">${escapeHtml(article.title || slug || 'Sin título')}</span>
+                ${meta ? `<span class="list-meta">${escapeHtml(meta)}</span>` : ''}
+              </button>
+              <a class="btn-icon" href="/news/${encodeURIComponent(slug)}" target="_blank" rel="noopener" title="Ver en el sitio">${icon('external', { size: 16 })}<span class="sr-only">Ver en el sitio (pestaña nueva)</span></a>
+            </li>
+          `;
+        }).join('')}</ul>`;
+    } catch (error) {
+      if (this.destroyed) return;
+      console.error('Error al cargar la lista:', error);
+      panel.innerHTML = '';
+      const message = document.createElement('span');
+      message.className = 'health-panel-empty';
+      message.textContent = error.message || 'No se pudo cargar la lista.';
+      panel.appendChild(message);
+    }
   }
 
   // === Reparaciones ===
