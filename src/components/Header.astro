@@ -1,6 +1,9 @@
 ---
 import HeaderLink from './HeaderLink.astro';
 import { SITE_TITLE } from '../consts';
+import { getSiteCategories } from '../lib/site';
+
+const categories = await getSiteCategories(Astro.locals);
 ---
 
 <header>
@@ -18,13 +21,7 @@ import { SITE_TITLE } from '../consts';
 				<div class="dropdown">
 					<HeaderLink href="/categories" class="dropdown-trigger">Categorías</HeaderLink>
 					<div class="dropdown-content">
-						<HeaderLink href="/category/agricultura">Agricultura</HeaderLink>
-						<HeaderLink href="/category/comunidad">Comunidad</HeaderLink>
-						<HeaderLink href="/category/sostenibilidad">Sostenibilidad</HeaderLink>
-						<HeaderLink href="/category/politica-agraria">Política Agraria</HeaderLink>
-						<HeaderLink href="/category/tecnologia-rural">Tecnología Rural</HeaderLink>
-						<HeaderLink href="/category/cultura">Cultura</HeaderLink>
-						<HeaderLink href="/category/eventos">Eventos</HeaderLink>
+						{categories.map((cat) => <HeaderLink href={`/category/${cat.id}`}>{cat.name}</HeaderLink>)}
 					</div>
 				</div>
 				<HeaderLink href="/about">Nosotros</HeaderLink>
@@ -76,13 +73,7 @@ import { SITE_TITLE } from '../consts';
 				</svg>
 			</button>
 			<div class="mobile-dropdown-content">
-				<a href="/category/agricultura" class="mobile-link">Agricultura</a>
-				<a href="/category/comunidad" class="mobile-link">Comunidad</a>
-				<a href="/category/sostenibilidad" class="mobile-link">Sostenibilidad</a>
-				<a href="/category/politica-agraria" class="mobile-link">Política Agraria</a>
-				<a href="/category/tecnologia-rural" class="mobile-link">Tecnología Rural</a>
-				<a href="/category/cultura" class="mobile-link">Cultura</a>
-				<a href="/category/eventos" class="mobile-link">Eventos</a>
+				{categories.map((cat) => <a href={`/category/${cat.id}`} class="mobile-link">{cat.name}</a>)}
 			</div>
 		</div>
 		
