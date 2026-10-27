@@ -4,28 +4,36 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "start": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
+    "preview": "npm run build && wrangler pages dev dist",
+    "check": "astro check",
     "astro": "astro",
-    "init-db": "node scripts/init-database.js",
-    "predeploy": "rimraf node_modules && npm ci --omit=dev",
-    "deploy": "npm run build && npx wrangler pages deploy dist --project-name abyayala-astro-platform --branch main --env production"
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply abyayala-cms --local",
+    "db:migrate:remote": "wrangler d1 migrations apply abyayala-cms --remote",
+    "db:migrations:list": "wrangler d1 migrations list abyayala-cms --remote",
+    "db:studio": "drizzle-kit studio",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name abyayala-astro-platform --branch main",
+    "db:seed:local": "wrangler d1 execute abyayala-cms --local --file scripts/seed-local.sql"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^12.4.1",
-    "@astrojs/mdx": "^4.2.3",
     "@astrojs/rss": "^4.0.11",
     "@astrojs/sitemap": "^3.3.0",
     "@astrojs/tailwind": "^6.0.2",
     "astro": "^5.5.6",
-    "node-fetch": "^3.3.2",
+    "drizzle-orm": "^0.45.4",
+    "jose": "^6.2.13",
     "tailwindcss": "^3.4.17",
-    "tinymce": "^8.1.2",
-    "wrangler": "^3.69.1"
+    "xss": "^1.0.17"
   },
   "devDependencies": {
-    "rimraf": "^3.0.2",
-    "sharp": "^0.34.1"
+    "@astrojs/check": "^0.9.12",
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "drizzle-kit": "^0.31.11",
+    "node-fetch": "^3.3.2",
+    "sharp": "^0.34.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^3.114.17"
   }
 }

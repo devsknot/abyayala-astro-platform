@@ -1,32 +1,19 @@
 /// <reference types="astro/client" />
 
-// src/env.d.ts
-// Defines the types for context.locals provided by the Cloudflare adapter.
-declare namespace App {
-    interface Locals extends Runtime {
-        // Add other custom properties to `locals` here if needed
-    }
+// Bindings y variables del entorno de Cloudflare Pages (ver wrangler.toml).
+interface Env {
+    DB: import('@cloudflare/workers-types').D1Database;
+    R2_BUCKET: import('@cloudflare/workers-types').R2Bucket;
+    ENVIRONMENT: string;
+    CF_ACCESS_TEAM_DOMAIN: string;
+    CF_ACCESS_AUD: string;
 }
 
-// Define the Runtime type based on Cloudflare Pages environment
-// See: https://developers.cloudflare.com/workers/runtime-apis/bindings/
-interface Runtime {
-    env: {
-        // D1 Databases (defined in Cloudflare dashboard or wrangler.toml)
-        DB: D1Database;
+type Runtime = import('@astrojs/cloudflare').Runtime<Env>;
 
-        // R2 Buckets (defined in Cloudflare dashboard or wrangler.toml)
-        R2_BUCKET: R2Bucket;
-
-        // Environment Variables (defined in Cloudflare dashboard or wrangler.toml)
-        ENVIRONMENT: string;
-        R2_ACCESS_KEY_ID: string;    // Secret, but accessed via env
-        R2_SECRET_ACCESS_KEY: string; // Secret, but accessed via env
-
-        // Add other bindings (KV, Services, etc.) or variables if defined
-    };
-    // Cloudflare specific properties (optional, uncomment if used)
-    // cf?: CfProperties;
-    // waitUntil?: (promise: Promise<any>) => void;
-    // passThroughOnException?: () => void;
+declare namespace App {
+    interface Locals extends Runtime {
+        // Usuario autenticado vía Cloudflare Access (lo rellena src/middleware.ts)
+        user?: import('./lib/auth').AccessUser | null;
+    }
 }

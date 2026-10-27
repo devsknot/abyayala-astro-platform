@@ -1,494 +1,84 @@
 // src/pages/api/content/categories/[...slug].ts
+// GET    /api/content/categories        → { success, categories }
+// GET    /api/content/categories/:id    → { success, category }
+// POST / PUT /:id / DELETE /:id         → requieren sesión (ver middleware)
+// El identificador de una categoría es su slug (columna `id`).
 import type { APIContext } from 'astro';
+import { getDb } from '../../../../db';
+import { error, json, NO_STORE, PUBLIC_CACHE, readJson, serverError, slugParam } from '../../../../lib/http';
+import { logActivity } from '../../../../lib/repo/activities';
+import { countArticlesBy, SLUG_RE } from '../../../../lib/repo/articles';
+import {
+  createCategory,
+  deleteCategory,
+  getCategory,
+  listCategories,
+  updateCategory,
+  type CategoryInput,
+} from '../../../../lib/repo/categories';
 
-// Common headers for CORS and JSON
-const commonHeaders = {
-  'Access-Control-Allow-Origin': '*', // Adjust in production if needed
-  'Content-Type': 'application/json'
-};
-
-// === MAIN HANDLERS (Exported for Astro) ===
-
-// Handle GET requests (all categories or specific one)
-export async function GET(context: APIContext) {
-  console.log(`[categories/...slug.ts] GET invoked. Slug: ${context.params.slug}`);
-  const slug = context.params.slug; // Slug is undefined for '/api/content/categories'
-  const db = context.locals.runtime.env.DB;
-  const env = context.locals.runtime.env;
-
+export async function GET({ params, locals }: APIContext) {
   try {
-    if (slug) {
-      return handleGetCategory(slug, db, commonHeaders);
-    } else {
-      return handleGetCategories(db, commonHeaders);
-    }
-  } catch (error: any) {
-    console.error('Error in GET /api/content/categories:', error);
-    return new Response(JSON.stringify({ error: error.message || 'Server Error' }), {
-      status: 500,
-      headers: commonHeaders
-    });
+    const db = getDb(locals);
+    const id = slugParam(params.slug);
+    if (!id) return json({ success: true, categories: await listCategories(db) }, { headers: PUBLIC_CACHE });
+    const category = await getCategory(db, id);
+    if (!category) return error(404, 'Categoría no encontrada');
+    return json({ success: true, category }, { headers: PUBLIC_CACHE });
+  } catch (err) {
+    return serverError('categories:GET', err, 'No se pudieron obtener las categorías');
   }
 }
 
-// Handle POST requests (create category)
-export async function POST(context: APIContext) {
-  console.log(`[categories/...slug.ts] POST invoked.`);
-  const db = context.locals.runtime.env.DB;
-  const env = context.locals.runtime.env;
-
+export async function POST({ request, locals }: APIContext) {
+  const data = await readJson<CategoryInput>(request);
+  const id = (data?.slug || data?.id || '').trim();
+  if (!id || !data?.name?.trim()) return error(400, 'El slug y el nombre son obligatorios');
+  if (!SLUG_RE.test(id)) return error(400, 'El slug solo puede tener minúsculas, números y guiones');
   try {
-    const authenticated = await verifyAuthentication(context.request, env);
-    if (!authenticated) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: commonHeaders
-      });
-    }
-
-    const categoryData = await context.request.json();
-    return handleCreateCategory(categoryData, db, commonHeaders);
-
-  } catch (error: any) {
-    console.error('Error in POST /api/content/categories:', error);
-    // Handle JSON parsing error specifically
-    if (error instanceof SyntaxError) {
-       return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-        status: 400,
-        headers: commonHeaders
-      });
-    }
-    return new Response(JSON.stringify({ error: error.message || 'Server Error' }), {
-      status: 500,
-      headers: commonHeaders
-    });
+    const db = getDb(locals);
+    if (await getCategory(db, id)) return error(409, 'Ya existe una categoría con ese slug');
+    const category = await createCategory(db, id, data);
+    await logActivity(db, locals.user, { type: 'create', entity_type: 'category', entity_id: id, entity_title: category.name });
+    return json({ success: true, message: 'Categoría creada', category }, { status: 201, headers: NO_STORE });
+  } catch (err) {
+    return serverError('categories:POST', err, 'No se pudo crear la categoría');
   }
 }
 
-// Handle PUT requests (update category)
-export async function PUT(context: APIContext) {
-  console.log(`[categories/...slug.ts] PUT invoked. Slug: ${context.params.slug}`);
-  const slug = context.params.slug;
-  const db = context.locals.runtime.env.DB;
-  const env = context.locals.runtime.env;
-
-  if (!slug) {
-    return new Response(JSON.stringify({ error: 'Missing category slug for update' }), {
-      status: 400,
-      headers: commonHeaders
-    });
+export async function PUT({ params, request, locals }: APIContext) {
+  const id = slugParam(params.slug);
+  if (!id) return error(400, 'Falta el slug de la categoría');
+  const data = await readJson<CategoryInput>(request);
+  if (!data || (data.name === undefined && data.description === undefined)) {
+    return error(400, 'No se enviaron datos para actualizar');
   }
-
+  if (data.slug && data.slug !== id) return error(400, 'No se puede cambiar el slug de una categoría');
+  if (data.name !== undefined && !data.name.trim()) return error(400, 'El nombre no puede estar vacío');
   try {
-    const authenticated = await verifyAuthentication(context.request, env);
-    if (!authenticated) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: commonHeaders
-      });
-    }
-
-    const categoryData = await context.request.json();
-    return handleUpdateCategory(slug, categoryData, db, commonHeaders);
-
-  } catch (error: any) {
-    console.error(`Error in PUT /api/content/categories/${slug}:`, error);
-    if (error instanceof SyntaxError) {
-       return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-        status: 400,
-        headers: commonHeaders
-      });
-    }
-    return new Response(JSON.stringify({ error: error.message || 'Server Error' }), {
-      status: 500,
-      headers: commonHeaders
-    });
+    const db = getDb(locals);
+    if (!(await getCategory(db, id))) return error(404, 'Categoría no encontrada');
+    const category = await updateCategory(db, id, data);
+    await logActivity(db, locals.user, { type: 'edit', entity_type: 'category', entity_id: id, entity_title: category?.name });
+    return json({ success: true, message: 'Categoría actualizada', category }, { headers: NO_STORE });
+  } catch (err) {
+    return serverError('categories:PUT', err, 'No se pudo actualizar la categoría');
   }
 }
 
-// Handle DELETE requests (delete category)
-export async function DELETE(context: APIContext) {
-  console.log(`[categories/...slug.ts] DELETE invoked. Slug: ${context.params.slug}`);
-  const slug = context.params.slug;
-  const db = context.locals.runtime.env.DB;
-  const env = context.locals.runtime.env;
-
-  if (!slug) {
-    return new Response(JSON.stringify({ error: 'Missing category slug for delete' }), {
-      status: 400,
-      headers: commonHeaders
-    });
-  }
-
+export async function DELETE({ params, locals }: APIContext) {
+  const id = slugParam(params.slug);
+  if (!id) return error(400, 'Falta el slug de la categoría');
   try {
-    const authenticated = await verifyAuthentication(context.request, env);
-    if (!authenticated) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: commonHeaders
-      });
-    }
-
-    return handleDeleteCategory(slug, db, commonHeaders);
-
-  } catch (error: any) {
-    console.error(`Error in DELETE /api/content/categories/${slug}:`, error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message || 'Server Error'
-    }), {
-      status: 500,
-      headers: commonHeaders
-    });
-  }
-}
-
-// Handle OPTIONS requests (CORS preflight)
-export async function OPTIONS(context: APIContext) {
-    console.log(`[categories/...slug.ts] OPTIONS invoked.`);
-    return new Response(null, {
-      status: 204,
-      headers: {
-        ...commonHeaders,
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, CF-Access-Jwt-Assertion, CF-Access-Client-Id',
-        'Access-Control-Max-Age': '86400'
-      }
-    });
-}
-
-// === HELPER FUNCTIONS (Adapted from original file) ===
-
-// Verify authentication (simplified for Astro context)
-async function verifyAuthentication(request: Request, env: any) {
-  // Development environment allows access
-  if (env.ENVIRONMENT === 'development') {
-    console.log('Auth check: Development environment, access granted.');
-    return true;
-  }
-
-  // GET requests are public
-  if (request.method === 'GET') {
-     console.log('Auth check: GET request, access granted.');
-    return true;
-  }
-
-  // Check Cloudflare Access headers in production
-  const jwt = request.headers.get('CF-Access-Jwt-Assertion');
-  // const clientId = request.headers.get('CF-Access-Client-Id'); // clientId check removed as per original logic
-
-  console.log(`Auth check: Production. JWT found: ${!!jwt}`);
-  return !!jwt; // Check if JWT exists
-}
-
-// Get all categories
-async function handleGetCategories(db: any, headers: HeadersInit) {
-  console.log('[categories/...slug.ts] Retrieving all categories');
-  try {
-    const { results } = await db.prepare(`
-      SELECT * FROM categories
-      ORDER BY name ASC
-    `).all();
-    
-    console.log(`[categories/...slug.ts] Retrieved ${results.length} categories`);
-    
-    // Mostrar detalles para las primeras categorías para depuración
-    if (results.length > 0) {
-      const previewCategory = results[0];
-      console.log(`[categories/...slug.ts] First category: ${previewCategory.name}, Slug: ${previewCategory.slug}`);
-    }
-    
-    return new Response(JSON.stringify({
-      success: true,
-      categories: results || []
-    }), { headers });
-  } catch (error: any) {
-    console.error('[categories/...slug.ts] Error fetching categories:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Failed to fetch categories'
-    }), { status: 500, headers });
-  }
-}
-
-// Get a specific category by slug
-async function handleGetCategory(slug: string, db: any, headers: HeadersInit) {
-  console.log(`[categories/...slug.ts] Retrieving category with id: ${slug}`);
-  try {
-    const category = await db.prepare(`
-      SELECT * FROM categories
-      WHERE id = ?
-    `).bind(slug).first();
-
-    if (!category) {
-      console.warn(`[categories/...slug.ts] Category not found: ${slug}`);
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Category not found'
-      }), {
-        status: 404,
-        headers
-      });
-    }
-    
-    console.log(`[categories/...slug.ts] Retrieved category: ${category.name} (${category.slug})`);
-    return new Response(JSON.stringify({
-      success: true,
-      category: category
-    }), { headers });
-  } catch (error: any) {
-    console.error(`[categories/...slug.ts] Error fetching category ${slug}:`, error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Failed to fetch category'
-    }), { status: 500, headers });
-  }
-}
-
-// Create a new category
-async function handleCreateCategory(categoryData: any, db: any, headers: HeadersInit) {
-  console.log(`[categories/...slug.ts] Creating new category: ${categoryData.name || 'Unnamed'}, Slug: ${categoryData.slug || 'no-slug'}`);
-  
-  // Basic validation
-  if (!categoryData || !categoryData.slug || !categoryData.name) {
-    console.warn('[categories/...slug.ts] Missing required fields for category creation');
-    return new Response(JSON.stringify({
-      success: false, 
-      error: 'Slug and name are required'
-    }), {
-      status: 400,
-      headers
-    });
-  }
-
-  try {
-    // Check if id already exists
-    const existingCategory = await db.prepare(`
-      SELECT id FROM categories WHERE id = ?
-    `).bind(categoryData.slug).first();
-
-    if (existingCategory) {
-      console.warn(`[categories/...slug.ts] Category id already exists: ${categoryData.slug}`);
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Category ID (slug) already exists'
-      }), {
-        status: 409, // Conflict
-        headers
-      });
-    }
-
-    console.log(`[categories/...slug.ts] Inserting new category: ${categoryData.name} (${categoryData.slug})`);
-    
-    // Insert new category
-    const result = await db.prepare(`
-      INSERT INTO categories (id, name, description)
-      VALUES (?, ?, ?)
-    `).bind(
-      categoryData.slug, // The frontend sends the slug value in the 'slug' property
-      categoryData.name,
-      categoryData.description || ''
-    ).run();
-
-    // Fetch the newly created category to return it
-    const newCategory = await db.prepare(`
-      SELECT * FROM categories WHERE id = ?
-    `).bind(categoryData.slug).first();
-
-    console.log(`[categories/...slug.ts] Category created successfully: ${categoryData.name}`);
-    
-    return new Response(JSON.stringify({
-      success: true,
-      message: 'Category created successfully',
-      category: newCategory
-    }), {
-      status: 201, // Created
-      headers
-    });
-
-  } catch (error: any) {
-    console.error('[categories/...slug.ts] Error creating category:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Failed to create category'
-    }), {
-      status: 500,
-      headers
-    });
-  }
-}
-
-// Update an existing category
-async function handleUpdateCategory(slug: string, categoryData: any, db: any, headers: HeadersInit) {
-  console.log(`[categories/...slug.ts] Updating category with id: ${slug}`);
-  
-  // Basic validation
-  if (!categoryData || (!categoryData.name && !categoryData.description && !categoryData.slug)) {
-    console.warn(`[categories/...slug.ts] No update data provided for category: ${slug}`);
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'No update data provided'
-    }), {
-      status: 400,
-      headers
-    });
-  }
-  
-  // Prevent changing the id/slug via this method
-  if (categoryData.slug && categoryData.slug !== slug) {
-    console.warn(`[categories/...slug.ts] Attempted to change id from ${slug} to ${categoryData.slug}`);
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Changing the category ID (slug) is not supported.'
-    }), {
-      status: 400,
-      headers
-    });
-  }
-
-  try {
-    // Check if category exists
-    const categoryExists = await db.prepare(`SELECT id, name FROM categories WHERE id = ?`).bind(slug).first();
-    if (!categoryExists) {
-      console.warn(`[categories/...slug.ts] Category not found for update: ${slug}`);
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Category not found'
-      }), {
-        status: 404,
-        headers
-      });
-    }
-
-    console.log(`[categories/...slug.ts] Found category to update: ${categoryExists.name} (${slug})`);
-    
-    // Build update query dynamically (only update provided fields)
-    let setClauses = [];
-    let bindings = [];
-    if (categoryData.name) {
-      setClauses.push('name = ?');
-      bindings.push(categoryData.name);
-      console.log(`[categories/...slug.ts] Updating name for category ${slug} to: ${categoryData.name}`);
-    }
-    if (categoryData.hasOwnProperty('description')) { // Allow setting empty description
-      setClauses.push('description = ?');
-      bindings.push(categoryData.description);
-      console.log(`[categories/...slug.ts] Updating description for category ${slug}`);
-    }
-
-    if (setClauses.length === 0) {
-      console.warn(`[categories/...slug.ts] No valid fields provided for update of category ${slug}`);
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'No valid fields provided for update'
-      }), {
-        status: 400,
-        headers
-      });
-    }
-
-    // Add updated_at field
-    setClauses.push('updated_at = datetime("now")');
-    
-    bindings.push(slug); // For the WHERE clause
-    const query = `UPDATE categories SET ${setClauses.join(', ')} WHERE id = ?`;
-    console.log(`[categories/...slug.ts] Running update query for category ${slug}`);
-
-    await db.prepare(query).bind(...bindings).run();
-
-    // Fetch the updated category
-    const updatedCategory = await db.prepare(`SELECT * FROM categories WHERE id = ?`).bind(slug).first();
-
-    console.log(`[categories/...slug.ts] Category updated successfully: ${updatedCategory.name} (${slug})`);
-    return new Response(JSON.stringify({
-      success: true,
-      message: 'Category updated successfully',
-      category: updatedCategory
-    }), { headers });
-
-  } catch (error: any) {
-    console.error(`[categories/...slug.ts] Error updating category ${slug}:`, error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Failed to update category'
-    }), {
-      status: 500,
-      headers
-    });
-  }
-}
-
-// Delete a category
-async function handleDeleteCategory(slug: string, db: any, headers: HeadersInit) {
-  console.log(`[categories/...slug.ts] Deleting category with id: ${slug}`);
-  
-  try {
-    // Check if category exists
-    const categoryExists = await db.prepare(`SELECT id, name FROM categories WHERE id = ?`).bind(slug).first();
-    if (!categoryExists) {
-      console.warn(`[categories/...slug.ts] Category not found for deletion: ${slug}`);
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Category not found'
-      }), {
-        status: 404,
-        headers
-      });
-    }
-    
-    console.log(`[categories/...slug.ts] Found category to delete: ${categoryExists.name} (${slug})`);
-
-    // Check if category is in use by articles before deleting
-    // The 'articles' table uses a 'category' column which holds the category id/slug.
-    const articlesUsingCategory = await db.prepare(`
-        SELECT COUNT(*) as count FROM articles WHERE category = ?
-    `).bind(slug).first();
-
-    if (articlesUsingCategory && articlesUsingCategory.count > 0) {
-      console.warn(`[categories/...slug.ts] Cannot delete category '${slug}' as it is currently used by ${articlesUsingCategory.count} article(s)`);
-      return new Response(JSON.stringify({
-        success: false,
-        error: `Cannot delete category '${slug}' as it is currently used by ${articlesUsingCategory.count} article(s).`
-      }), {
-        status: 409, // Conflict
-        headers
-      });
-    }
-
-    // Delete the category
-    const result = await db.prepare(`DELETE FROM categories WHERE id = ?`).bind(slug).run();
-    console.log(`[categories/...slug.ts] Deletion query executed for category ${slug}. Result:`, JSON.stringify(result));
-
-    if (result.meta.changes > 0) {
-      console.log(`[categories/...slug.ts] Category deleted successfully: ${slug}`);
-      return new Response(JSON.stringify({
-        success: true,
-        message: 'Category deleted successfully',
-        slug: slug
-      }), {
-        status: 200,
-        headers
-      });
-    } else {
-      // Should not happen if existence check passed, but as a fallback
-      console.warn(`[categories/...slug.ts] Unexpected: Category not found during deletion: ${slug}`);
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Category not found or already deleted'
-      }), {
-        status: 404,
-        headers
-      });
-    }
-
-  } catch (error: any) {
-    console.error(`[categories/...slug.ts] Error deleting category ${slug}:`, error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Failed to delete category'
-    }), {
-      status: 500,
-      headers
-    });
+    const db = getDb(locals);
+    const category = await getCategory(db, id);
+    if (!category) return error(404, 'Categoría no encontrada');
+    const count = await countArticlesBy(db, 'category', id);
+    if (count > 0) return error(409, `No se puede eliminar: hay ${count} artículo(s) en esta categoría`);
+    await deleteCategory(db, id);
+    await logActivity(db, locals.user, { type: 'delete', entity_type: 'category', entity_id: id, entity_title: category.name });
+    return json({ success: true, message: 'Categoría eliminada', slug: id }, { headers: NO_STORE });
+  } catch (err) {
+    return serverError('categories:DELETE', err, 'No se pudo eliminar la categoría');
   }
 }

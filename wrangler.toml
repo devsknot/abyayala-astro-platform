@@ -9,11 +9,18 @@ bucket_name = "abyayala-media"
 preview_bucket_name = "abyayala-media-dev"
 
 # Configuración de D1 (Base de datos)
+# Las migraciones se generan con drizzle-kit (npm run db:generate) y se aplican
+# con wrangler (npm run db:migrate:local / db:migrate:remote).
 [[d1_databases]]
 binding = "DB"
 database_name = "abyayala-cms"
 database_id = "a50d9255-3be0-47bd-800c-85fb362c197f"
+migrations_dir = "migrations"
 
 # Variables de entorno
 [vars]
 ENVIRONMENT = "production"
+# Cloudflare Access (Zero Trust): se usan para verificar el JWT en el servidor.
+# No son secretos: el AUD identifica la aplicación "Abya Yala CMS".
+CF_ACCESS_TEAM_DOMAIN = "devknot.cloudflareaccess.com"
+CF_ACCESS_AUD = "d27c011ad5ee41d30152859cb5a5a2d02f9de0fda084a9de4f2a470891244e0b"
