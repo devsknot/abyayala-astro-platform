@@ -1,5 +1,6 @@
 // Gestor de categorías para el CMS
 import { notifications } from './notification.js';
+import { escapeHtml } from '../utils/html.js';
 
 export class CategoryManager {
   constructor(contentManager) {
@@ -159,21 +160,13 @@ export class CategoryManager {
       return '';
     }
     
-    console.log('Renderizando tabla de categorías:', this.categories);
-    
     return this.categories.map(category => {
-      // Ensure we use the category's 'id' for all operations
-      const categoryId = category.id || '';
-      
-      if (!categoryId) {
-        console.error('Category is missing an ID:', category);
-      }
-      
+      const categoryId = escapeHtml(category.id || '');
       return `
         <tr class="hover:bg-gray-50" data-slug="${categoryId}">
-          <td class="py-3 px-4 border-b">${category.name || 'Sin nombre'}</td>
+          <td class="py-3 px-4 border-b">${escapeHtml(category.name || 'Sin nombre')}</td>
           <td class="py-3 px-4 border-b">${categoryId}</td>
-          <td class="py-3 px-4 border-b">${category.description || '-'}</td>
+          <td class="py-3 px-4 border-b">${escapeHtml(category.description || '-')}</td>
           <td class="py-3 px-4 border-b text-center">
             <button class="edit-category bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded-md text-xs mr-2 transition duration-300" data-slug="${categoryId}">
               Editar
@@ -190,7 +183,6 @@ export class CategoryManager {
   // Mostrar el editor de categorías
   showCategoryEditor() {
     try {
-      console.log('Mostrando editor de categorías...');
       
       const categoriesList = this.container.querySelector('.categories-list');
       const categoryEditor = this.container.querySelector('.category-editor');
@@ -207,7 +199,6 @@ export class CategoryManager {
         categoryEditor.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
       
-      console.log('Editor de categorías mostrado correctamente');
     } catch (error) {
       console.error('Error al mostrar editor de categorías:', error);
     }
@@ -216,7 +207,6 @@ export class CategoryManager {
   // Mostrar la lista de categorías
   showCategoriesList() {
     try {
-      console.log('Mostrando lista de categorías...');
       
       const categoriesList = this.container.querySelector('.categories-list');
       const categoryEditor = this.container.querySelector('.category-editor');
@@ -235,7 +225,6 @@ export class CategoryManager {
       // Resetear el formulario
       this.resetForm();
       
-      console.log('Lista de categorías mostrada correctamente');
     } catch (error) {
       console.error('Error al mostrar lista de categorías:', error);
     }
@@ -264,11 +253,18 @@ export class CategoryManager {
     const cancelEditBtn = this.container.querySelector('#cancelEditCategory');
     if (cancelEditBtn) {
       cancelEditBtn.addEventListener('click', () => {
-        console.log('Cancelando edición de categoría');
         this.showCategoriesList();
       });
     }
     
+    // Botón de eliminar del editor: un único listener que usa la categoría en edición
+    const deleteButton = this.container.querySelector('#deleteCategory');
+    if (deleteButton) {
+      deleteButton.addEventListener('click', () => {
+        if (this.currentEditingCategory) this.confirmDeleteCategory(this.currentEditingCategory.id);
+      });
+    }
+
     // Formulario de categoría
     const categoryForm = this.container.querySelector('#categoryForm');
     if (categoryForm) {
@@ -282,7 +278,7 @@ export class CategoryManager {
       nameInput.addEventListener('input', () => {
         // Solo generar slug automáticamente si no estamos editando una categoría existente
         // o si el usuario no ha modificado manualmente el slug
-        if (!this.currentEditingCategory || slugInput.value === this.generateSlug(this.currentEditingCategory.name)) {
+        if (!this.currentEditingCategory) {
           slugInput.value = this.generateSlug(nameInput.value);
         }
       });
@@ -303,7 +299,6 @@ export class CategoryManager {
             return;
           }
           
-          console.log(`Editando categoría con slug: ${slug}`);
           this.editCategory(slug);
         }
         
@@ -318,7 +313,6 @@ export class CategoryManager {
             return;
           }
           
-          console.log(`Confirmando eliminación de categoría con slug: ${slug}`);
           this.confirmDeleteCategory(slug);
         }
       });
@@ -367,12 +361,10 @@ export class CategoryManager {
       
       if (this.currentEditingCategory) {
         // Actualizar categoría existente
-        console.log(`Actualizando categoría con ID: ${this.currentEditingCategory.id}`, categoryData);
         await this.contentManager.updateCategory(this.currentEditingCategory.id, categoryData);
         notifications.success('Categoría actualizada correctamente');
       } else {
         // Crear nueva categoría
-        console.log('Creando nueva categoría:', categoryData);
         await this.contentManager.createCategory(categoryData);
         notifications.success('Categoría creada correctamente');
       }
@@ -394,7 +386,6 @@ export class CategoryManager {
   // Editar categoría
   async editCategory(slug) {
     try {
-      console.log(`Buscando categoría con ID/slug: ${slug}`);
       
       // En la base de datos, el campo 'id' se usa como slug
       const category = this.categories.find(c => c.id === slug);
@@ -423,17 +414,20 @@ export class CategoryManager {
       const descriptionInput = this.container.querySelector('#categoryDescription');
       
       if (nameInput) nameInput.value = category.name || '';
-      if (slugInput) slugInput.value = category.id || ''; // Usar el ID como slug
+      if (slugInput) {
+        // El id de una categoría no se puede cambiar (lo referencian los artículos)
+        slugInput.value = category.id || '';
+        slugInput.readOnly = true;
+        slugInput.classList.add('bg-gray-100');
+      }
       if (descriptionInput) descriptionInput.value = category.description || '';
       
       // Mostrar botón de eliminar
       const deleteButton = this.container.querySelector('#deleteCategory');
       if (deleteButton) {
         deleteButton.style.display = 'block';
-        deleteButton.addEventListener('click', () => this.confirmDeleteCategory(slug));
       }
       
-      console.log(`Categoría '${category.name}' (ID: ${category.id}) cargada para edición`);
     } catch (error) {
       console.error(`Error al cargar la categoría: ${error.message}`);
       notifications.error(`Error al cargar la categoría: ${error.message}`);
@@ -442,7 +436,6 @@ export class CategoryManager {
 
   // Confirmar eliminación de categoría
   async confirmDeleteCategory(slug) {
-    console.log(`Confirmando eliminación de categoría con ID/slug: ${slug}`);
     
     // En la base de datos, el campo 'id' se usa como slug
     const category = this.categories.find(c => c.id === slug);
@@ -480,7 +473,7 @@ export class CategoryManager {
       this.attachEventListeners();
     } catch (error) {
       // Mostrar mensaje específico si la categoría está en uso
-      if (error.message.includes('está siendo utilizada')) {
+      if (error.status === 409 || /utilizad|en uso|in use/i.test(error.message || '')) {
         notifications.error('No se puede eliminar la categoría porque está siendo utilizada en artículos. Debes cambiar la categoría de esos artículos primero.');
       } else {
         notifications.error(`Error al eliminar la categoría: ${error.message}`);
@@ -508,13 +501,16 @@ export class CategoryManager {
     const deleteButton = this.container.querySelector('#deleteCategory');
     if (deleteButton) {
       deleteButton.style.display = 'none';
-      // Eliminar event listeners anteriores
-      deleteButton.replaceWith(deleteButton.cloneNode(true));
+    }
+
+    const slugInput = this.container.querySelector('#categorySlug');
+    if (slugInput) {
+      slugInput.readOnly = false;
+      slugInput.classList.remove('bg-gray-100');
     }
     
     // Limpiar categoría en edición
     this.currentEditingCategory = null;
     
-    console.log('Formulario de categoría reseteado');
   }
 }

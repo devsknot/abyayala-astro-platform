@@ -2,6 +2,7 @@
  * Avatar Wizard - Modal wizard para crear/editar avatares
  */
 import { AvatarBuilder } from './AvatarBuilder.js';
+import { buildAvatarUrl, normalizeStyle, randomSeed } from './dicebear.js';
 
 export class AvatarWizard {
   constructor() {
@@ -340,6 +341,8 @@ export class AvatarWizard {
    */
   updateStep() {
     const body = document.getElementById('wizard-body');
+    const saveBtn = document.getElementById('wizard-save-btn');
+    if (saveBtn && this.currentStep === 'choice') saveBtn.style.display = 'none';
     if (body) {
       body.innerHTML = this.renderStep();
       this.attachStepEvents();
@@ -355,15 +358,14 @@ export class AvatarWizard {
     
     if (!styleSelect || !preview) return;
 
-    const style = styleSelect.value;
-    const seed = Math.random().toString(36).substring(7);
-    
-    // Crear configuración aleatoria
+    const style = normalizeStyle(styleSelect.value);
+    const seed = randomSeed();
+
     this.currentConfig = {
-      style: style,
-      seed: seed,
+      style,
+      seed,
       options: {},
-      url: `https://api.dicebear.com/9.x/${style}/svg?seed=${seed}`
+      url: buildAvatarUrl(style, seed)
     };
 
     // Actualizar preview

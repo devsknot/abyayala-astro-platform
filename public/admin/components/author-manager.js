@@ -1,6 +1,7 @@
 // Gestor de autores para el CMS
 import { notifications } from './notification.js';
 import { AvatarWizard } from './avatar-builder/AvatarWizard.js';
+import { escapeHtml, attrUrl, safeUrl } from '../utils/html.js';
 
 export class AuthorManager {
   constructor(contentManager) {
@@ -64,9 +65,8 @@ export class AuthorManager {
       this.authors = response.authors || [];
       
       // Ordenar autores por nombre
-      this.authors.sort((a, b) => a.name.localeCompare(b.name));
+      this.authors.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       
-      console.log('Autores cargados:', this.authors);
       
       this.isLoading = false;
       this.updateLoadingState();
@@ -106,7 +106,6 @@ export class AuthorManager {
         input.disabled = this.isLoading;
       });
       
-      console.log(`Estado de carga actualizado: ${this.isLoading ? 'Cargando' : 'Completado'}`);
     } catch (error) {
       console.error('Error al actualizar estado de carga:', error);
     }
@@ -273,7 +272,6 @@ export class AuthorManager {
   // Renderizar lista de autores
   renderAuthorsList() {
     try {
-      console.log('Renderizando lista de autores...');
       
       const authorsTableBody = this.container.querySelector('#authorsTableBody');
       const emptyAuthorsMessage = this.container.querySelector('#emptyAuthorsMessage');
@@ -292,7 +290,6 @@ export class AuthorManager {
       }
       
       if (this.authors.length === 0) {
-        console.log('No hay autores para mostrar');
         return;
       }
       
@@ -311,12 +308,14 @@ export class AuthorManager {
         const row = document.createElement('tr');
         row.className = 'border-b border-gray-200 hover:bg-gray-50';
         
+        const avatarUrl = attrUrl(author.avatar);
+        const slug = escapeHtml(author.slug);
         row.innerHTML = `
           <td class="px-6 py-4 whitespace-nowrap">
             <div class="flex items-center">
               <div class="flex-shrink-0 h-10 w-10">
-                ${author.avatar 
-                  ? `<img class="h-10 w-10 rounded-full object-cover" src="${author.avatar}" alt="${author.name}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(author.name || 'U')}&background=random';">` 
+                ${avatarUrl
+                  ? `<img class="h-10 w-10 rounded-full object-cover author-avatar-img" src="${avatarUrl}" alt="${escapeHtml(author.name)}">` 
                   : `<div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -325,21 +324,21 @@ export class AuthorManager {
                 }
               </div>
               <div class="ml-4">
-                <div class="text-sm font-medium text-gray-900">${author.name || 'Sin nombre'}</div>
+                <div class="text-sm font-medium text-gray-900">${escapeHtml(author.name || 'Sin nombre')}</div>
               </div>
             </div>
           </td>
           <td class="px-6 py-4 whitespace-nowrap">
-            <div class="text-sm text-gray-900">${author.slug}</div>
+            <div class="text-sm text-gray-900">${slug}</div>
           </td>
           <td class="px-6 py-4 whitespace-nowrap">
-            <div class="text-sm text-gray-500">${author.email || 'Sin email'}</div>
+            <div class="text-sm text-gray-500">${escapeHtml(author.email || 'Sin email')}</div>
           </td>
           <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-            <button class="text-indigo-600 hover:text-indigo-900 mr-3 edit-author" data-slug="${author.slug}">
+            <button class="text-indigo-600 hover:text-indigo-900 mr-3 edit-author" data-slug="${slug}">
               Editar
             </button>
-            <button class="text-red-600 hover:text-red-900 delete-author" data-slug="${author.slug}">
+            <button class="text-red-600 hover:text-red-900 delete-author" data-slug="${slug}">
               Eliminar
             </button>
           </td>
@@ -351,7 +350,6 @@ export class AuthorManager {
       // Agregar todos los autores a la tabla
       authorsTableBody.appendChild(fragment);
       
-      console.log(`${this.authors.length} autores renderizados correctamente`);
     } catch (error) {
       console.error('Error al renderizar lista de autores:', error);
       notifications.error('Error al mostrar la lista de autores');
@@ -361,7 +359,6 @@ export class AuthorManager {
   // Mostrar el editor de autores
   showAuthorEditor() {
     try {
-      console.log('Mostrando editor de autores...');
       
       const authorsList = this.container.querySelector('.authors-list');
       const authorEditor = this.container.querySelector('.author-editor');
@@ -386,7 +383,6 @@ export class AuthorManager {
       // Cargar avatar existente si hay
       this.loadExistingAvatar(this.currentEditingAuthor);
       
-      console.log('Editor de autores mostrado correctamente');
     } catch (error) {
       console.error('Error al mostrar editor de autores:', error);
     }
@@ -403,7 +399,6 @@ export class AuthorManager {
       },
       () => {
         // Callback cuando se cancela
-        console.log('Avatar wizard cancelado');
       }
     );
   }
@@ -414,9 +409,10 @@ export class AuthorManager {
     const placeholder = this.container.querySelector('#avatar-placeholder');
     const btnText = this.container.querySelector('#avatar-btn-text');
     
-    if (config && config.url) {
+    const url = safeUrl(config && config.url);
+    if (url) {
       if (preview) {
-        preview.src = config.url;
+        preview.src = url;
         preview.style.display = 'block';
       }
       if (placeholder) {
@@ -440,28 +436,28 @@ export class AuthorManager {
   
   // Cargar avatar existente
   loadExistingAvatar(author) {
+    this.currentAvatarConfig = null;
     if (author && author.avatar_config) {
       try {
-        const config = typeof author.avatar_config === 'string' 
-          ? JSON.parse(author.avatar_config) 
+        const config = typeof author.avatar_config === 'string'
+          ? JSON.parse(author.avatar_config)
           : author.avatar_config;
-        this.currentAvatarConfig = config;
-        this.updateAvatarPreview(config);
+        if (config && typeof config === 'object') {
+          this.currentAvatarConfig = config;
+          this.updateAvatarPreview(config);
+          return;
+        }
       } catch (e) {
         console.error('Error al cargar configuración de avatar:', e);
-        this.currentAvatarConfig = null;
-        this.updateAvatarPreview(null);
       }
-    } else {
-      this.currentAvatarConfig = null;
-      this.updateAvatarPreview(null);
     }
+    // Autor con avatar (URL) pero sin configuración del wizard: mostrar la imagen actual
+    this.updateAvatarPreview(author && author.avatar ? { url: author.avatar } : null);
   }
   
   // Mostrar la lista de autores
   showAuthorsList() {
     try {
-      console.log('Mostrando lista de autores...');
       
       const authorsList = this.container.querySelector('.authors-list');
       const authorEditor = this.container.querySelector('.author-editor');
@@ -480,7 +476,6 @@ export class AuthorManager {
       // Resetear el formulario
       this.resetForm();
       
-      console.log('Lista de autores mostrada correctamente');
     } catch (error) {
       console.error('Error al mostrar lista de autores:', error);
     }
@@ -509,7 +504,6 @@ export class AuthorManager {
     const cancelEditBtn = this.container.querySelector('#cancelEditAuthor');
     if (cancelEditBtn) {
       cancelEditBtn.addEventListener('click', () => {
-        console.log('Cancelando edición de autor');
         this.showAuthorsList();
       });
     }
@@ -527,7 +521,7 @@ export class AuthorManager {
       nameInput.addEventListener('input', () => {
         // Solo generar slug automáticamente si no estamos editando un autor existente
         // o si el usuario no ha modificado manualmente el slug
-        if (!this.currentEditingAuthor || slugInput.value === this.generateSlug(this.currentEditingAuthor.name)) {
+        if (!this.currentEditingAuthor) {
           slugInput.value = this.generateSlug(nameInput.value);
         }
       });
@@ -541,43 +535,24 @@ export class AuthorManager {
       });
     }
     
-    // Vista previa del avatar
-    const avatarInput = this.container.querySelector('#authorAvatar');
-    const avatarPreview = this.container.querySelector('#avatarPreview');
-    const avatarPlaceholder = this.container.querySelector('#avatarPlaceholder');
-    
-    if (avatarInput && avatarPreview && avatarPlaceholder) {
-      avatarInput.addEventListener('input', () => {
-        const avatarUrl = avatarInput.value.trim();
-        if (avatarUrl) {
-          avatarPreview.src = avatarUrl;
-          avatarPreview.style.display = 'block';
-          avatarPlaceholder.style.display = 'none';
-          
-          // Manejar errores de carga de imagen
-          avatarPreview.onerror = () => {
-            avatarPreview.style.display = 'none';
-            avatarPlaceholder.style.display = 'block';
-            console.error('Error al cargar la imagen de avatar');
-          };
-        } else {
-          avatarPreview.style.display = 'none';
-          avatarPlaceholder.style.display = 'block';
+    // Avatares rotos en la lista: ocultar la imagen (sin onerror inline)
+    const authorsTableBody = this.container.querySelector('#authorsTableBody');
+    if (authorsTableBody) {
+      authorsTableBody.addEventListener('error', (e) => {
+        if (e.target.classList && e.target.classList.contains('author-avatar-img')) {
+          e.target.style.visibility = 'hidden';
         }
+      }, true);
+    }
+
+    // Botón de eliminar del editor: un único listener que usa el autor en edición
+    const deleteButton = this.container.querySelector('#deleteAuthor');
+    if (deleteButton) {
+      deleteButton.addEventListener('click', () => {
+        if (this.currentEditingAuthor) this.confirmDeleteAuthor(this.currentEditingAuthor.slug);
       });
     }
-    
-    // Botón para seleccionar imagen
-    const selectAvatarBtn = this.container.querySelector('#selectAvatarBtn');
-    if (selectAvatarBtn) {
-      selectAvatarBtn.addEventListener('click', () => {
-        // Aquí se podría implementar la apertura del selector de medios
-        console.log('Abrir selector de medios para avatar');
-        // Por ahora, simplemente alertamos
-        notifications.info('Funcionalidad de selección de imágenes en desarrollo');
-      });
-    }
-    
+        
     // Delegación de eventos para botones de editar y eliminar
     const authorsTable = this.container.querySelector('#authorsTableBody');
     if (authorsTable) {
@@ -593,7 +568,6 @@ export class AuthorManager {
             return;
           }
           
-          console.log(`Editando autor con slug: ${slug}`);
           this.editAuthor(slug);
         }
         
@@ -608,7 +582,6 @@ export class AuthorManager {
             return;
           }
           
-          console.log(`Confirmando eliminación de autor con slug: ${slug}`);
           this.confirmDeleteAuthor(slug);
         }
       });
@@ -655,8 +628,9 @@ export class AuthorManager {
       slug: slugInput.value.trim(),
       email: emailInput.value.trim(),
       bio: bioInput.value.trim(),
-      avatar: avatarConfig ? avatarConfig.url : '',
-      avatar_config: avatarConfig ? JSON.stringify(avatarConfig) : '',
+      // Sin configuración del wizard se conserva el avatar actual (no se borra)
+      avatar: avatarConfig ? safeUrl(avatarConfig.url) : (this.currentEditingAuthor?.avatar || ''),
+      avatar_config: avatarConfig ? JSON.stringify(avatarConfig) : (this.currentEditingAuthor?.avatar_config || ''),
       social_media: Object.keys(socialMedia).length > 0 ? socialMedia : null
     };
     
@@ -672,7 +646,6 @@ export class AuthorManager {
       
       if (this.currentEditingAuthor) {
         // Actualizar autor existente
-        console.log(`Actualizando autor con slug: ${this.currentEditingAuthor.slug}`, authorData);
         
         // Verificar si se está intentando cambiar el slug
         if (this.currentEditingAuthor.slug !== authorData.slug) {
@@ -686,7 +659,6 @@ export class AuthorManager {
         notifications.success('Autor actualizado correctamente');
       } else {
         // Crear nuevo autor
-        console.log('Creando nuevo autor:', authorData);
         await this.contentManager.createAuthor(authorData);
         notifications.success('Autor creado correctamente');
       }
@@ -708,7 +680,6 @@ export class AuthorManager {
   // Editar autor
   async editAuthor(slug) {
     try {
-      console.log(`Buscando autor con slug: ${slug}`);
       
       const author = this.authors.find(a => a.slug === slug);
       
@@ -735,37 +706,21 @@ export class AuthorManager {
       const slugInput = this.container.querySelector('#authorSlug');
       const emailInput = this.container.querySelector('#authorEmail');
       const bioInput = this.container.querySelector('#authorBio');
-      const avatarInput = this.container.querySelector('#authorAvatar');
       
       if (nameInput) nameInput.value = author.name || '';
       if (slugInput) {
         slugInput.value = author.slug || '';
-        // Deshabilitar el campo de slug para evitar intentos de cambio
-        slugInput.disabled = true;
-        // Agregar un mensaje informativo
+        // El slug no se puede cambiar en autores existentes
+        slugInput.readOnly = true;
+        slugInput.classList.add('bg-gray-100');
         const slugHelpText = this.container.querySelector('#slugHelpText');
         if (slugHelpText) {
-          slugHelpText.innerHTML = '<span class="text-yellow-600">El slug no se puede modificar en autores existentes</span>';
+          slugHelpText.textContent = 'El slug no se puede modificar en autores existentes';
+          slugHelpText.className = 'text-xs text-yellow-600 mt-1';
         }
       }
       if (emailInput) emailInput.value = author.email || '';
       if (bioInput) bioInput.value = author.bio || '';
-      if (avatarInput) avatarInput.value = author.avatar || '';
-      
-      // Actualizar vista previa del avatar
-      const avatarPreview = this.container.querySelector('#avatarPreview');
-      const avatarPlaceholder = this.container.querySelector('#avatarPlaceholder');
-      
-      if (avatarPreview && avatarPlaceholder) {
-        if (author.avatar) {
-          avatarPreview.src = author.avatar;
-          avatarPreview.style.display = 'block';
-          avatarPlaceholder.style.display = 'none';
-        } else {
-          avatarPreview.style.display = 'none';
-          avatarPlaceholder.style.display = 'block';
-        }
-      }
       
       // Llenar datos de redes sociales
       const socialMedia = author.social_media || {};
@@ -784,10 +739,8 @@ export class AuthorManager {
       const deleteButton = this.container.querySelector('#deleteAuthor');
       if (deleteButton) {
         deleteButton.style.display = 'block';
-        deleteButton.addEventListener('click', () => this.confirmDeleteAuthor(slug));
       }
       
-      console.log(`Autor '${author.name}' cargado para edición`);
     } catch (error) {
       console.error(`Error al cargar el autor: ${error.message}`);
       notifications.error(`Error al cargar el autor: ${error.message}`);
@@ -796,7 +749,6 @@ export class AuthorManager {
   
   // Confirmar eliminación de autor
   async confirmDeleteAuthor(slug) {
-    console.log(`Confirmando eliminación de autor con slug: ${slug}`);
     
     const author = this.authors.find(a => a.slug === slug);
     
@@ -834,7 +786,7 @@ export class AuthorManager {
       this.showAuthorsList();
     } catch (error) {
       // Mostrar mensaje específico si el autor está en uso
-      if (error.message.includes('está siendo utilizado')) {
+      if (error.status === 409 || /utilizad|en uso|in use/i.test(error.message || '')) {
         notifications.error('No se puede eliminar el autor porque está siendo utilizado en artículos. Debes cambiar el autor de esos artículos primero.');
       } else {
         notifications.error(`Error al eliminar el autor: ${error.message}`);
@@ -862,10 +814,11 @@ export class AuthorManager {
     const slugInput = this.container.querySelector('#authorSlug');
     const slugHelpText = this.container.querySelector('#slugHelpText');
     if (slugInput) {
-      slugInput.disabled = false;
+      slugInput.readOnly = false;
+      slugInput.classList.remove('bg-gray-100');
     }
     if (slugHelpText) {
-      slugHelpText.innerHTML = 'Identificador único para la URL (solo letras, números y guiones)';
+      slugHelpText.textContent = 'Identificador único para la URL (solo letras, números y guiones)';
       slugHelpText.className = 'text-xs text-gray-500 mt-1';
     }
     
@@ -873,22 +826,14 @@ export class AuthorManager {
     const deleteButton = this.container.querySelector('#deleteAuthor');
     if (deleteButton) {
       deleteButton.style.display = 'none';
-      // Eliminar event listeners anteriores
-      deleteButton.replaceWith(deleteButton.cloneNode(true));
     }
-    
-    // Resetear vista previa del avatar
-    const avatarPreview = this.container.querySelector('#avatarPreview');
-    const avatarPlaceholder = this.container.querySelector('#avatarPlaceholder');
-    
-    if (avatarPreview && avatarPlaceholder) {
-      avatarPreview.style.display = 'none';
-      avatarPlaceholder.style.display = 'block';
-    }
-    
+
+    // Resetear avatar
+    this.currentAvatarConfig = null;
+    this.updateAvatarPreview(null);
+        
     // Limpiar autor en edición
     this.currentEditingAuthor = null;
     
-    console.log('Formulario de autor reseteado');
   }
 }

@@ -4,54 +4,30 @@
  * @param {boolean} useGlobalOverlay - Si se debe usar un overlay global (opcional, por defecto true)
  */
 export function showLoading(message = 'Cargando...', useGlobalOverlay = true) {
-  try {
-    // Actualizar cualquier elemento de carga local en el contenedor
-    if (this.container) {
-      const loadingElement = this.container.querySelector('.loading');
-      if (loadingElement) {
-        loadingElement.innerHTML = message;
-        loadingElement.style.display = 'flex';
-      }
-
-      // También actualizar el contenedor de artículos si existe
-      const articlesContainer = this.container.querySelector('.articles-container');
-      if (articlesContainer) {
-        articlesContainer.classList.add('is-loading');
-      }
-
-      // Ocultar la grilla de artículos durante la carga
-      const articlesGrid = this.container.querySelector('.articles-grid');
-      if (articlesGrid) {
-        articlesGrid.style.display = 'none';
-      }
+  if (this.container) {
+    const loadingElement = this.container.querySelector('.loading');
+    if (loadingElement) {
+      loadingElement.textContent = message;
+      loadingElement.style.display = 'flex';
     }
-
-    // Si no queremos usar el overlay global, terminamos aquí
-    if (!useGlobalOverlay) return;
-    
-    // Crear o actualizar el overlay de carga global
-    let loadingOverlay = document.querySelector('.loading-overlay');
-    
-    if (!loadingOverlay) {
-      loadingOverlay = document.createElement('div');
-      loadingOverlay.className = 'loading-overlay';
-      document.body.appendChild(loadingOverlay);
-    }
-    
-    // Actualizar contenido
-    loadingOverlay.innerHTML = `
-      <div class="loading-spinner"></div>
-      <div class="loading-message">${message}</div>
-    `;
-    
-    // Mostrar overlay
-    loadingOverlay.style.display = 'flex';
-    document.body.classList.add('loading');
-
-    console.log(`Indicador de carga mostrado: ${message}`);
-  } catch (error) {
-    console.error('Error al mostrar indicador de carga:', error);
+    this.container.querySelector('.articles-container')?.classList.add('is-loading');
   }
+
+  if (!useGlobalOverlay) return;
+
+  let loadingOverlay = document.querySelector('.loading-overlay');
+  if (!loadingOverlay) {
+    loadingOverlay = document.createElement('div');
+    loadingOverlay.className = 'loading-overlay';
+    loadingOverlay.innerHTML = '<div class="loading-spinner"></div><div class="loading-message"></div>';
+    document.body.appendChild(loadingOverlay);
+  }
+
+  const messageElement = loadingOverlay.querySelector('.loading-message');
+  if (messageElement) messageElement.textContent = message;
+
+  loadingOverlay.style.display = 'flex';
+  document.body.classList.add('loading');
 }
 
 /**
@@ -59,43 +35,15 @@ export function showLoading(message = 'Cargando...', useGlobalOverlay = true) {
  * @param {boolean} hideGlobalOverlay - Si se debe ocultar el overlay global (opcional, por defecto true)
  */
 export function hideLoading(hideGlobalOverlay = true) {
-  try {
-    console.log('Ocultando indicador de carga...');
-
-    // Actualizar cualquier elemento de carga local en el contenedor
-    if (this.container) {
-      const loadingElement = this.container.querySelector('.loading');
-      if (loadingElement) {
-        loadingElement.style.display = 'none';
-      }
-
-      // También actualizar el contenedor de artículos si existe
-      const articlesContainer = this.container.querySelector('.articles-container');
-      if (articlesContainer) {
-        articlesContainer.classList.remove('is-loading');
-      }
-
-      // Mostrar la grilla de artículos después de la carga
-      const articlesGrid = this.container.querySelector('.articles-grid');
-      if (articlesGrid) {
-        articlesGrid.style.display = 'grid';
-      }
-    }
-
-    // Si no queremos ocultar el overlay global, terminamos aquí
-    if (!hideGlobalOverlay) return;
-    
-    // Buscar overlay de carga global
-    const loadingOverlay = document.querySelector('.loading-overlay');
-    
-    // Ocultar si existe
-    if (loadingOverlay) {
-      loadingOverlay.style.display = 'none';
-    }
-    
-    // Remover clase de carga del body
-    document.body.classList.remove('loading');
-  } catch (error) {
-    console.error('Error al ocultar indicador de carga:', error);
+  if (this.container) {
+    const loadingElement = this.container.querySelector('.loading');
+    if (loadingElement) loadingElement.style.display = 'none';
+    this.container.querySelector('.articles-container')?.classList.remove('is-loading');
   }
+
+  if (!hideGlobalOverlay) return;
+
+  const loadingOverlay = document.querySelector('.loading-overlay');
+  if (loadingOverlay) loadingOverlay.style.display = 'none';
+  document.body.classList.remove('loading');
 }

@@ -1,482 +1,253 @@
 // Biblioteca de medios para el CMS
-import { MediaManager } from '../media-manager.js';
+import { MediaManager, ALLOWED_UPLOAD_TYPES } from '../media-manager.js';
+import { ContentManager } from '../content-manager.js';
 import { notifications } from './notification.js';
-import { ContentManager } from '../content-manager.js'; // Importar el gestor de contenido
+import { escapeHtml, attrUrl } from '../utils/html.js';
 
 export class MediaLibrary {
-  constructor(container, onSelect = null) {
+  /**
+   * @param {HTMLElement} container
+   * @param {Function|null} onSelect
+   * @param {{ mediaManager?: MediaManager, contentManager?: ContentManager }} [deps]
+   */
+  constructor(container, onSelect = null, { mediaManager, contentManager } = {}) {
     this.container = container;
     this.onSelect = onSelect;
-    this.mediaManager = new MediaManager();
+    this.mediaManager = mediaManager || new MediaManager();
+    this.contentManager = contentManager || new ContentManager();
     this.mediaFiles = [];
     this.selectedFile = null;
+    this.uploading = false;
     this.init();
   }
-  
+
   async init() {
-    // Crear la estructura de la biblioteca de medios
     this.container.innerHTML = `
       <div class="media-library">
         <div class="media-header flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold">Biblioteca de medios</h3>
-          <div class="media-actions">
-            <label for="file-upload" class="btn-primary cursor-pointer">
-              Subir archivo
-              <input id="file-upload" type="file" class="hidden" accept="image/*,application/pdf">
+          <div class="media-actions flex items-center">
+            <label class="btn-primary cursor-pointer">
+              Subir imagen
+              <input id="file-upload" type="file" class="hidden" accept="${ALLOWED_UPLOAD_TYPES.join(',')}">
             </label>
+            <span class="upload-status ml-2 text-sm text-gray-600 hidden">Subiendo...</span>
           </div>
         </div>
-        
+        <p class="text-xs text-gray-500 mb-4">Formatos permitidos: JPG, PNG, GIF, WebP y AVIF. Tamaño máximo: 10 MB.</p>
+
         <div class="media-filter mb-4">
           <input id="media-search" type="text" placeholder="Buscar archivos..." class="form-input">
         </div>
-        
-        <div class="media-grid">
-          <div class="loading">Cargando archivos...</div>
-        </div>
+
+        <div class="media-grid"></div>
       </div>
     `;
-    
-    // Obtener referencias a los elementos
+
     this.mediaGrid = this.container.querySelector('.media-grid');
     this.fileUpload = this.container.querySelector('#file-upload');
     this.searchInput = this.container.querySelector('#media-search');
-    
-    // Configurar eventos
+    this.uploadStatus = this.container.querySelector('.upload-status');
+
     this.setupEvents();
-    
-    // Cargar archivos
     await this.loadMediaFiles();
   }
-  
+
   setupEvents() {
-    // Evento para subir archivos
     this.fileUpload.addEventListener('change', async (e) => {
       const file = e.target.files[0];
-      if (!file) return;
-      
-      try {
-        // Mostrar indicador de carga
-        this.container.querySelector('.media-actions').innerHTML += `
-          <span class="ml-2 text-sm text-gray-600 flex items-center">
-            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Subiendo...
-          </span>
-        `;
-        
-        // Mostrar notificación de carga
-        const loadingNotification = notifications.info('Subiendo archivo...', 0);
-        
-        // Subir archivo
-        const result = await this.mediaManager.uploadFile(file);
-        
-        // Cerrar notificación de carga
-        notifications.close(loadingNotification);
-        
-        // Registrar la actividad
-        try {
-          const contentManager = new ContentManager();
-          await contentManager.logActivity({
-            type: 'media_upload',
-            entity_type: 'media',
-            entity_id: result.id || result.path,
-            entity_title: file.name,
-            user_name: 'Admin',
-            details: {
-              size: this.formatFileSize(file.size),
-              type: file.type
-            }
-          });
-        } catch (activityError) {
-          console.error('Error al registrar actividad de subida:', activityError);
-          // No interrumpir el flujo si falla el registro de actividad
-        }
-        
-        // Mostrar notificación de éxito
-        notifications.success(`Archivo "${file.name}" subido correctamente`);
-        
-        // Recargar archivos
-        await this.loadMediaFiles();
-        
-        // Restablecer el input de archivo
-        this.fileUpload.value = '';
-        
-        // Actualizar la interfaz
-        this.container.querySelector('.media-actions').innerHTML = `
-          <label for="file-upload" class="btn-primary cursor-pointer">
-            Subir archivo
-            <input id="file-upload" type="file" class="hidden" accept="image/*,application/pdf">
-          </label>
-        `;
-      } catch (error) {
-        console.error('Error al subir archivo:', error);
-        notifications.error(`Error al subir el archivo "${file.name}". Por favor, intenta de nuevo.`);
-        
-        // Actualizar la interfaz
-        this.container.querySelector('.media-actions').innerHTML = `
-          <label for="file-upload" class="btn-primary cursor-pointer">
-            Subir archivo
-            <input id="file-upload" type="file" class="hidden" accept="image/*,application/pdf">
-          </label>
-        `;
-      }
+      if (file) await this.uploadFile(file);
+      this.fileUpload.value = '';
     });
-    
-    // Evento para buscar archivos
-    this.searchInput.addEventListener('input', () => {
-      this.filterMediaFiles();
-    });
-    
-    // Evento para seleccionar archivos
+
+    this.searchInput.addEventListener('input', () => this.renderMediaFiles());
+
+    // Un único listener delegado para seleccionar y eliminar
     this.mediaGrid.addEventListener('click', (e) => {
-      const mediaItem = e.target.closest('.media-item');
-      if (!mediaItem) return;
-      
-      // Obtener el ID del archivo
-      const fileId = mediaItem.dataset.id;
-      
-      // Encontrar el archivo en la lista
-      const file = this.mediaFiles.find(f => f.id === fileId);
-      if (!file) return;
-      
-      // Marcar como seleccionado
-      this.selectFile(file);
-      
-      // Llamar al callback de selección si existe
-      if (this.onSelect) {
-        this.onSelect(file);
+      const deleteButton = e.target.closest('.media-delete-btn');
+      if (deleteButton) {
+        e.stopPropagation();
+        this.deleteFile(deleteButton.dataset.id);
+        return;
       }
+
+      const item = e.target.closest('.media-item');
+      if (!item) return;
+      const file = this.mediaFiles.find(f => f.id === item.dataset.id);
+      if (file) this.selectFile(file);
     });
+
+    // Miniaturas rotas: sustituir por el placeholder sin usar onerror inline
+    this.mediaGrid.addEventListener('error', (e) => {
+      const img = e.target;
+      if (img.tagName === 'IMG' && !img.dataset.fallback) {
+        img.dataset.fallback = '1';
+        img.src = '/img/placeholder-image.svg';
+      }
+    }, true);
   }
-  
-  async loadMediaFiles() {
+
+  async uploadFile(file) {
+    if (this.uploading) return;
+    this.uploading = true;
+    this.uploadStatus.classList.remove('hidden');
     try {
-      // Mostrar indicador de carga
-      this.mediaGrid.innerHTML = `
-        <div class="flex flex-col items-center justify-center p-8">
-          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500 mb-2"></div>
-          <span class="text-gray-500">Cargando archivos...</span>
-        </div>
-      `;
-      
-      // Obtener archivos
+      const result = await this.mediaManager.uploadFile(file);
+      await this.contentManager.logActivity({
+        type: 'media_upload',
+        entity_type: 'media',
+        entity_id: result.id,
+        entity_title: file.name,
+        details: { size: this.formatFileSize(file.size), type: file.type }
+      });
+      notifications.success(`Archivo "${file.name}" subido correctamente`);
+      await this.loadMediaFiles();
+    } catch (error) {
+      console.error('Error al subir archivo:', error);
+      notifications.error(`No se pudo subir "${file.name}": ${error.message}`);
+    } finally {
+      this.uploading = false;
+      this.uploadStatus.classList.add('hidden');
+    }
+  }
+
+  async loadMediaFiles() {
+    this.mediaGrid.innerHTML = `
+      <div class="flex flex-col items-center justify-center p-8">
+        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500 mb-2"></div>
+        <span class="text-gray-500">Cargando archivos...</span>
+      </div>
+    `;
+
+    try {
       this.mediaFiles = await this.mediaManager.getMediaFiles();
-      
-      // Renderizar archivos
       this.renderMediaFiles();
     } catch (error) {
       console.error('Error al cargar archivos:', error);
       this.mediaGrid.innerHTML = `
         <div class="error p-8 text-center">
           <div class="text-red-500 mb-2">Error al cargar archivos</div>
-          <button class="btn-secondary">Reintentar</button>
+          <button type="button" class="btn-secondary retry-btn">Reintentar</button>
         </div>
       `;
-      
-      // Mostrar notificación de error
-      notifications.error('Error al cargar los archivos. Por favor, intenta de nuevo.');
-      
-      // Configurar evento para reintentar
-      this.mediaGrid.querySelector('button').addEventListener('click', () => {
-        this.loadMediaFiles();
-      });
+      this.mediaGrid.querySelector('.retry-btn').addEventListener('click', () => this.loadMediaFiles());
+      if (error.status !== 401) notifications.error('Error al cargar los archivos. Por favor, intenta de nuevo.');
     }
   }
-  
+
   renderMediaFiles() {
-    if (this.mediaFiles.length === 0) {
-      this.mediaGrid.innerHTML = `<div class="empty-state">No hay archivos. Sube algunos para comenzar.</div>`;
+    const term = this.searchInput.value.trim().toLowerCase();
+    const files = term
+      ? this.mediaFiles.filter(file => (file.name || '').toLowerCase().includes(term))
+      : this.mediaFiles;
+
+    if (files.length === 0) {
+      this.mediaGrid.innerHTML = `<div class="empty-state">${term ? 'No hay archivos que coincidan con la búsqueda.' : 'No hay archivos. Sube algunos para comenzar.'}</div>`;
       return;
     }
-    
-    // Crear elementos para cada archivo
-    const mediaItems = this.mediaFiles.map(file => {
-      // Verificar si el archivo tiene mimeType o type (compatibilidad con datos de prueba)
-      const fileType = file.mimeType || file.type || '';
-      const isImage = fileType.startsWith('image/');
-      
-      // Obtener el ID del archivo para generar la URL de la miniatura
-      const fileId = file.id || file.path;
-      
-      // Crear una instancia del gestor de medios para obtener la URL correcta
-      const mediaManager = new MediaManager();
-      
-      // Generar la URL de la miniatura usando el ID del archivo
-      const thumbnailUrl = isImage ? mediaManager.getPublicUrl(fileId) : '';
-      
-      // Verificar si el archivo está seleccionado
-      const isSelected = this.selectedFile && (this.selectedFile.id === file.id || this.selectedFile.path === file.path);
-      
+
+    this.mediaGrid.innerHTML = files.map(file => {
+      const isImage = (file.type || '').startsWith('image/');
+      const name = file.name || file.id || 'Sin nombre';
+      const isSelected = this.selectedFile && this.selectedFile.id === file.id;
+      const thumbnailUrl = isImage ? attrUrl(this.mediaManager.getPublicUrl(file.id)) : '';
+
       return `
-        <div class="media-item ${isSelected ? 'border-blue-500 ring-2 ring-blue-300' : ''}" 
-             data-id="${file.id || ''}" 
-             data-path="${file.path || ''}"
-             data-filename="${file.filename || file.name || ''}">
+        <div class="media-item ${isSelected ? 'border-blue-500 ring-2 ring-blue-300' : ''}" data-id="${escapeHtml(file.id)}">
           <div class="media-preview">
-            ${isImage 
-              ? `<img src="${thumbnailUrl}" alt="${file.filename || file.name}" loading="lazy" onerror="this.onerror=null; this.src='/img/placeholder-image.svg';">` 
-              : `<div class="flex items-center justify-center h-full bg-gray-100">
-                  <span class="text-3xl">📄</span>
-                </div>`
-            }
+            ${thumbnailUrl
+              ? `<img src="${thumbnailUrl}" alt="${escapeHtml(name)}" loading="lazy">`
+              : '<div class="flex items-center justify-center h-full bg-gray-100"><span class="text-3xl">📄</span></div>'}
           </div>
           <div class="media-info">
-            <div class="truncate text-sm font-medium">${file.filename || file.name}</div>
-            <div class="text-xs text-gray-500">${this.formatFileSize(file.size)}</div>
-            <button class="media-delete-btn" data-id="${file.id || file.path}">🗑️</button>
+            <div class="truncate text-sm font-medium" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
+            <div class="text-xs text-gray-500">${escapeHtml(this.formatFileSize(file.size))}</div>
+            <button type="button" class="media-delete-btn" data-id="${escapeHtml(file.id)}" aria-label="Eliminar">🗑️</button>
           </div>
         </div>
       `;
     }).join('');
-    
-    this.mediaGrid.innerHTML = mediaItems;
-    
-    // Agregar eventos a los elementos de la galería
-    this.mediaGrid.querySelectorAll('.media-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        // Evitar que el clic en el botón de eliminar seleccione el elemento
-        if (e.target.closest('.media-delete-btn')) {
-          return;
-        }
-
-        // Encontrar el archivo correspondiente
-        const fileId = item.dataset.id;
-        const filePath = item.dataset.path;
-        
-        // Buscar el archivo en la lista por id o path
-        const file = this.mediaFiles.find(f => 
-          (fileId && f.id === fileId) || (filePath && f.path === filePath)
-        );
-        
-        if (file) {
-          // Quitar selección anterior
-          this.mediaGrid.querySelectorAll('.media-item').forEach(i => 
-            i.classList.remove('border-blue-500', 'ring-2', 'ring-blue-300')
-          );
-          
-          // Agregar selección al elemento actual
-          item.classList.add('border-blue-500', 'ring-2', 'ring-blue-300');
-          
-          // Actualizar archivo seleccionado
-          this.selectFile(file);
-        }
-      });
-    });
-
-    // Agregar eventos a los botones de eliminar
-    this.mediaGrid.querySelectorAll('.media-delete-btn').forEach(button => {
-      button.addEventListener('click', (e) => {
-        e.stopPropagation(); // Evitar que el evento se propague
-        const fileId = button.dataset.id;
-        if (fileId) {
-          this.deleteFile(fileId);
-        }
-      });
-    });
-
-    // Agregar estilos para el botón de eliminar si no existen
-    if (!document.getElementById('media-library-styles')) {
-      const style = document.createElement('style');
-      style.id = 'media-library-styles';
-      style.innerHTML = `
-        .media-info {
-          position: relative;
-        }
-        .media-delete-btn {
-          position: absolute;
-          top: 4px;
-          right: 4px;
-          background-color: rgba(255, 255, 255, 0.8);
-          border: none;
-          border-radius: 50%;
-          width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          opacity: 0;
-          transition: opacity 0.2s;
-        }
-        .media-item:hover .media-delete-btn {
-          opacity: 1;
-        }
-        .media-delete-btn:hover {
-          background-color: #fecaca; /* red-200 */
-          color: #dc2626; /* red-600 */
-        }
-      `;
-      document.head.appendChild(style);
-    }
   }
-  
+
   selectFile(file) {
     this.selectedFile = file;
-    
-    // Asegurarse de que el archivo tenga las propiedades necesarias
-    if (!file.publicUrl) {
-      const mediaManager = new MediaManager();
-      file.publicUrl = mediaManager.getPublicUrl(file.id || file.path);
-    }
-    
-    // Llamar al callback de selección si existe
-    if (this.onSelect) {
-      this.onSelect(file);
-    }
+    file.publicUrl = this.mediaManager.getPublicUrl(file.id);
+
+    this.mediaGrid.querySelectorAll('.media-item').forEach(item => {
+      const selected = item.dataset.id === file.id;
+      item.classList.toggle('border-blue-500', selected);
+      item.classList.toggle('ring-2', selected);
+      item.classList.toggle('ring-blue-300', selected);
+    });
+
+    if (this.onSelect) this.onSelect(file);
   }
-  
-  filterMediaFiles() {
-    const searchInput = this.container.querySelector('#media-search');
-    const searchTerm = searchInput.value.toLowerCase();
-    
-    if (!searchTerm) {
-      // Si no hay término de búsqueda, restaurar los archivos originales
-      this.renderMediaFiles();
-      return;
-    }
-    
-    // Filtrar archivos por nombre
-    const filteredFiles = this.mediaFiles.filter(file => 
-      (file.filename || file.name).toLowerCase().includes(searchTerm)
-    );
-    
-    // Guardar los archivos originales
-    const originalFiles = this.mediaFiles;
-    
-    // Establecer temporalmente los archivos filtrados
-    this.mediaFiles = filteredFiles;
-    
-    // Renderizar los archivos filtrados
-    this.renderMediaFiles();
-    
-    // Restaurar los archivos originales
-    this.mediaFiles = originalFiles;
-  }
-  
-  // Utilidad para formatear el tamaño de archivo
+
   formatFileSize(bytes) {
+    if (typeof bytes !== 'number' || Number.isNaN(bytes)) return '';
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
   }
-  
-  // Método para eliminar un archivo
+
   async deleteFile(fileId) {
+    if (!fileId) return;
+    const file = this.mediaFiles.find(f => f.id === fileId);
+    const fileName = file ? file.name : fileId;
+
+    const confirmed = await notifications.confirm(
+      `¿Eliminar el archivo "${fileName}"? Esta acción no se puede deshacer.`,
+      'Eliminar',
+      'Cancelar'
+    );
+    if (!confirmed) return;
+
     try {
-      // Pedir confirmación
-      const confirmed = await notifications.confirm('¿Estás seguro de que deseas eliminar este archivo? Esta acción no se puede deshacer.');
-      if (!confirmed) return;
-      
-      // Obtener información del archivo antes de eliminarlo
-      const file = this.mediaFiles.find(f => f.id === fileId || f.path === fileId);
-      const fileName = file ? (file.filename || file.name) : 'Archivo desconocido';
-      
-      // Mostrar notificación de carga
-      const loadingNotification = notifications.info('Eliminando archivo...', 0);
-      
-      // Eliminar archivo
       await this.mediaManager.deleteFile(fileId);
-      
-      // Registrar la actividad
-      try {
-        const contentManager = new ContentManager();
-        await contentManager.logActivity({
-          type: 'delete',
-          entity_type: 'media',
-          entity_id: fileId,
-          entity_title: fileName,
-          user_name: 'Admin',
-          details: {
-            type: file ? (file.mimeType || file.type || '') : ''
-          }
-        });
-      } catch (activityError) {
-        console.error('Error al registrar actividad de eliminación:', activityError);
-        // No interrumpir el flujo si falla el registro de actividad
-      }
-      
-      // Cerrar notificación de carga
-      notifications.close(loadingNotification);
-      
-      // Mostrar notificación de éxito
+      await this.contentManager.logActivity({
+        type: 'delete',
+        entity_type: 'media',
+        entity_id: fileId,
+        entity_title: fileName,
+        details: { type: file ? file.type || '' : '' }
+      });
+      if (this.selectedFile && this.selectedFile.id === fileId) this.selectedFile = null;
       notifications.success('Archivo eliminado correctamente');
-      
-      // Recargar archivos
       await this.loadMediaFiles();
     } catch (error) {
       console.error('Error al eliminar archivo:', error);
-      notifications.error('Error al eliminar el archivo. Por favor, intenta de nuevo.');
+      notifications.error(`Error al eliminar el archivo: ${error.message}`);
     }
   }
-  
-  // Método estático para abrir un modal con la biblioteca de medios
+
+  // Abre un modal con la biblioteca de medios para seleccionar un archivo
   static openModal(onSelect) {
-    // Crear el modal
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50';
     modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         <div class="flex justify-between items-center p-4 border-b">
           <h3 class="text-lg font-semibold">Seleccionar archivo</h3>
-          <button type="button" class="text-gray-500 hover:text-gray-700 close-modal-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+          <button type="button" class="text-gray-500 hover:text-gray-700 close-modal-btn" aria-label="Cerrar">&times;</button>
         </div>
         <div class="flex-1 overflow-auto p-4">
           <div class="media-container"></div>
         </div>
       </div>
     `;
-    
-    // Añadir al DOM
     document.body.appendChild(modal);
-    
-    // Animar entrada
-    setTimeout(() => {
-      modal.querySelector('.bg-white').classList.remove('scale-95');
-    }, 10);
-    
-    // Crear instancia de la biblioteca de medios
-    const mediaContainer = modal.querySelector('.media-container');
-    const mediaLibrary = new MediaLibrary(mediaContainer, (file) => {
-      // Llamar al callback de selección
-      if (onSelect) {
-        onSelect(file);
-      }
-      
-      // Mostrar notificación de éxito
-      notifications.success(`Archivo "${file.filename || file.name}" seleccionado`);
-      
-      // Cerrar el modal
+
+    const closeModal = () => modal.remove();
+
+    new MediaLibrary(modal.querySelector('.media-container'), (file) => {
+      if (onSelect) onSelect(file);
       closeModal();
     });
-    
-    // Configurar evento para cerrar el modal
-    const closeModal = () => {
-      // Animar salida
-      modal.querySelector('.bg-white').classList.add('scale-95');
-      modal.classList.add('opacity-0');
-      
-      // Eliminar después de la animación
-      setTimeout(() => {
-        document.body.removeChild(modal);
-      }, 300);
-    };
-    
+
     modal.querySelector('.close-modal-btn').addEventListener('click', closeModal);
-    
-    // También permitir cerrar haciendo clic fuera del modal
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        closeModal();
-      }
+      if (e.target === modal) closeModal();
     });
   }
 }

@@ -1,6 +1,9 @@
 /**
  * Avatar Builder - Generador de avatares personalizables con DiceBear
  */
+import { escapeHtml } from '../../utils/html.js';
+import { buildAvatarUrl, normalizeStyle, randomSeed, DEFAULT_STYLE } from './dicebear.js';
+
 export class AvatarBuilder {
   constructor(container) {
     this.container = container;
@@ -104,7 +107,7 @@ export class AvatarBuilder {
     const html = `
       <div class="avatar-builder">
         <div class="avatar-preview">
-          <img id="avatar-preview-img" src="${this.getAvatarUrl()}" alt="Avatar Preview" />
+          <img id="avatar-preview-img" src="${escapeHtml(this.getAvatarUrl())}" alt="Avatar Preview" />
         </div>
         
         <div class="avatar-controls">
@@ -112,8 +115,8 @@ export class AvatarBuilder {
             <label class="form-label">Estilo de Avatar</label>
             <select id="avatar-style" class="form-control">
               ${this.styles.map(style => `
-                <option value="${style.id}" ${this.currentConfig.style === style.id ? 'selected' : ''}>
-                  ${style.name} - ${style.description}
+                <option value="${escapeHtml(style.id)}" ${this.currentConfig.style === style.id ? 'selected' : ''}>
+                  ${escapeHtml(style.name)} - ${escapeHtml(style.description)}
                 </option>
               `).join('')}
             </select>
@@ -121,7 +124,7 @@ export class AvatarBuilder {
           
           <div class="form-group">
             <label class="form-label">Nombre/Semilla (para generar avatar único)</label>
-            <input type="text" id="avatar-seed" class="form-control" value="${this.currentConfig.seed}" placeholder="Ej: Juan Pérez">
+            <input type="text" id="avatar-seed" class="form-control" value="${escapeHtml(this.currentConfig.seed)}" placeholder="Ej: Juan Pérez">
             <small class="form-text text-muted">Cada nombre genera un avatar único</small>
           </div>
           
@@ -138,7 +141,7 @@ export class AvatarBuilder {
             </button>
           </div>
           
-          <input type="hidden" id="avatar-url" value="${this.getAvatarUrl()}" />
+          <input type="hidden" id="avatar-url" value="${escapeHtml(this.getAvatarUrl())}" />
         </div>
       </div>
     `;
@@ -156,7 +159,7 @@ export class AvatarBuilder {
     const styleSelect = this.container.querySelector('#avatar-style');
     if (styleSelect) {
       styleSelect.addEventListener('change', (e) => {
-        this.currentConfig.style = e.target.value;
+        this.currentConfig.style = normalizeStyle(e.target.value);
         this.currentConfig.options = {};
         this.renderStyleOptions();
         this.updatePreview();
@@ -207,12 +210,12 @@ export class AvatarBuilder {
     for (const [key, values] of Object.entries(options)) {
       html += `
         <div class="form-group">
-          <label class="form-label">${this.formatLabel(key)}</label>
-          <select class="form-control avatar-option" data-option="${key}">
+          <label class="form-label">${escapeHtml(this.formatLabel(key))}</label>
+          <select class="form-control avatar-option" data-option="${escapeHtml(key)}">
             <option value="">Por defecto</option>
             ${values.map(value => `
-              <option value="${value}" ${this.currentConfig.options[key] === value ? 'selected' : ''}>
-                ${this.formatValue(value)}
+              <option value="${escapeHtml(value)}" ${this.currentConfig.options[key] === value ? 'selected' : ''}>
+                ${escapeHtml(this.formatValue(value))}
               </option>
             `).join('')}
           </select>
@@ -245,7 +248,7 @@ export class AvatarBuilder {
    */
   generateRandom() {
     // Generar semilla aleatoria
-    this.currentConfig.seed = Math.random().toString(36).substring(7);
+    this.currentConfig.seed = randomSeed();
     
     // Seleccionar opciones aleatorias
     const options = this.styleOptions[this.currentConfig.style];
@@ -272,15 +275,15 @@ export class AvatarBuilder {
    */
   reset() {
     this.currentConfig = {
-      style: 'avataaars',
+      style: DEFAULT_STYLE,
       seed: '',
       options: {}
     };
-    
+
     const styleSelect = this.container.querySelector('#avatar-style');
     const seedInput = this.container.querySelector('#avatar-seed');
-    
-    if (styleSelect) styleSelect.value = 'avataaars';
+
+    if (styleSelect) styleSelect.value = DEFAULT_STYLE;
     if (seedInput) seedInput.value = '';
     
     this.renderStyleOptions();
@@ -295,22 +298,9 @@ export class AvatarBuilder {
     const hiddenInput = this.container.querySelector('#avatar-url');
     const url = this.getAvatarUrl();
     
-    console.log('Actualizando preview con URL:', url);
-    
     if (previewImg) {
-      // Agregar evento de error para debug
-      previewImg.onerror = () => {
-        console.error('Error al cargar imagen del avatar:', url);
-      };
-      
-      previewImg.onload = () => {
-        console.log('Avatar cargado correctamente');
-      };
-      
       previewImg.src = url;
       previewImg.style.display = 'block';
-    } else {
-      console.error('No se encontró el elemento #avatar-preview-img');
     }
     
     if (hiddenInput) {
@@ -322,21 +312,7 @@ export class AvatarBuilder {
    * Genera la URL del avatar con DiceBear
    */
   getAvatarUrl() {
-    const baseUrl = 'https://api.dicebear.com/7.x';
-    const style = this.currentConfig.style;
-    const seed = this.currentConfig.seed || 'default';
-    
-    // Construir parámetros
-    const params = new URLSearchParams();
-    params.append('seed', seed);
-    
-    for (const [key, value] of Object.entries(this.currentConfig.options)) {
-      if (value) {
-        params.append(key, value);
-      }
-    }
-    
-    return `${baseUrl}/${style}/svg?${params.toString()}`;
+    return buildAvatarUrl(this.currentConfig.style, this.currentConfig.seed, this.currentConfig.options);
   }
   
   /**
@@ -354,10 +330,17 @@ export class AvatarBuilder {
    */
   loadConfig(config) {
     if (config) {
+      const style = normalizeStyle(config.style);
+      // Conservar solo opciones conocidas del estilo y con valores válidos
+      const known = this.styleOptions[style] || {};
+      const options = {};
+      for (const [key, value] of Object.entries(config.options || {})) {
+        if (Array.isArray(known[key]) && known[key].includes(value)) options[key] = value;
+      }
       this.currentConfig = {
-        style: config.style || 'avataaars',
-        seed: config.seed || '',
-        options: config.options || {}
+        style,
+        seed: typeof config.seed === 'string' ? config.seed : '',
+        options
       };
       
       this.render();

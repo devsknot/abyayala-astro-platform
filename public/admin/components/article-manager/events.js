@@ -1,358 +1,123 @@
+import { ALLOWED_UPLOAD_TYPES } from '../../media-manager.js';
+
 /**
- * Configura los eventos del gestor de artículos
+ * Configura los eventos del gestor de artículos (se llama una sola vez tras render()).
  */
 export function setupEvents() {
   try {
-    console.log('Configurando eventos del gestor de artículos...');
-    
-    // Botón para crear un nuevo artículo
-    const createBtn = this.container.querySelector('.create-article-btn');
-    if (createBtn) {
-      createBtn.addEventListener('click', () => {
-        this.createArticle();
-      });
-    }
-    
-    // Botón para volver a la lista de artículos
-    const backButton = this.container.querySelector('.back-to-list-btn');
-    if (backButton) {
-      backButton.addEventListener('click', () => {
-        this.showArticlesList();
-      });
-    }
-    
-    // Botón para cancelar la edición
-    const cancelBtn = this.container.querySelector('.cancel-btn');
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', () => {
-        this.showArticlesList();
-      });
-    }
-    
-    // Formulario de artículo
-    const articleForm = this.container.querySelector('.article-form');
-    if (articleForm) {
-      articleForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        
-        // Importar la función saveArticle si no está disponible en this
-        if (typeof this.saveArticle !== 'function') {
-          try {
-            // Importar la función desde este mismo módulo
-            const { saveArticle } = await import('./events.js');
-            
-            // Llamar a la función con el contexto correcto
-            await saveArticle.call(this);
-          } catch (error) {
-            console.error('Error al importar o ejecutar saveArticle:', error);
-            if (this.notificationManager) {
-              this.notificationManager.error('Error al guardar el artículo');
-            }
-          }
-        } else {
-          // Si ya está disponible como método, usarla directamente
-          await this.saveArticle();
-        }
-      });
-    }
-    
-    // Implementar un debounce para la búsqueda
+    const $ = (selector) => this.container.querySelector(selector);
+
+    $('.create-article-btn')?.addEventListener('click', () => this.createArticle());
+    $('.back-to-list-btn')?.addEventListener('click', () => this.showArticlesList());
+    $('.cancel-btn')?.addEventListener('click', () => this.showArticlesList());
+
+    $('.article-form')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      await this.saveArticle();
+    });
+
+    // Búsqueda y filtro de categoría (con debounce)
+    const searchInput = $('#article-search');
+    const categoryFilter = $('#category-filter');
     let searchTimeout = null;
+
+    const runSearch = () => {
+      if (searchTimeout) clearTimeout(searchTimeout);
+      searchTimeout = null;
+      this.loadArticles(1, categoryFilter ? categoryFilter.value : '', searchInput ? searchInput.value.trim() : '');
+    };
     const debouncedSearch = () => {
       if (searchTimeout) clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => {
-        const searchInput = this.container.querySelector('#article-search');
-        const categoryFilter = this.container.querySelector('#category-filter');
-        
-        if (searchInput && categoryFilter) {
-          const searchTerm = searchInput.value.trim();
-          const selectedCategory = categoryFilter.value;
-          
-          console.log(`Realizando búsqueda: término="${searchTerm}", categoría="${selectedCategory}"`);
-          this.loadArticles(1, selectedCategory, searchTerm);
-        }
-      }, 500); // 500ms de debounce
+      searchTimeout = setTimeout(runSearch, 500);
     };
-    
-    // Filtro de categorías
-    const categoryFilter = this.container.querySelector('#category-filter');
-    if (categoryFilter) {
-      categoryFilter.addEventListener('change', () => {
-        console.log('Categoría cambiada:', categoryFilter.value);
-        debouncedSearch();
-      });
-    }
-    
-    // Búsqueda de artículos
-    const searchBtn = this.container.querySelector('#search-btn');
-    if (searchBtn) {
-      searchBtn.addEventListener('click', (event) => {
-        event.preventDefault();
-        console.log('Botón de búsqueda clickeado');
-        // Cancelar el debounce y ejecutar inmediatamente
-        if (searchTimeout) clearTimeout(searchTimeout);
-        
-        const searchInput = this.container.querySelector('#article-search');
-        if (searchInput) {
-          const searchTerm = searchInput.value.trim();
-          this.loadArticles(1, this.currentCategory, searchTerm);
-        }
-      });
-    }
-    
-    // Input de búsqueda (al presionar Enter o al escribir)
-    const searchInput = this.container.querySelector('#article-search');
+
+    categoryFilter?.addEventListener('change', debouncedSearch);
+    $('#search-btn')?.addEventListener('click', (event) => {
+      event.preventDefault();
+      runSearch();
+    });
     if (searchInput) {
-      // Al presionar Enter
-      searchInput.addEventListener('keypress', (event) => {
+      searchInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
           event.preventDefault();
-          console.log('Enter presionado en campo de búsqueda');
-          // Cancelar el debounce y ejecutar inmediatamente
-          if (searchTimeout) clearTimeout(searchTimeout);
-          
-          const searchTerm = searchInput.value.trim();
-          this.loadArticles(1, this.currentCategory, searchTerm);
+          runSearch();
         }
       });
-      
-      // Al escribir (con debounce)
-      searchInput.addEventListener('input', () => {
-        console.log('Escribiendo en campo de búsqueda...');
-        debouncedSearch();
-      });
+      searchInput.addEventListener('input', debouncedSearch);
     }
-    
-    // Botón para limpiar filtros
-    const clearFiltersBtn = this.container.querySelector('#clear-filters');
-    if (clearFiltersBtn) {
-      clearFiltersBtn.addEventListener('click', () => {
-        console.log('Limpiando filtros');
-        
-        // Limpiar campos
-        if (searchInput) searchInput.value = '';
-        if (categoryFilter) categoryFilter.value = '';
-        
-        // Cargar todos los artículos
-        this.loadArticles(1, '', '');
-      });
-    }
-    
-    // Campo de título (para generar el slug)
-    const titleInput = this.container.querySelector('#article-title');
-    const slugInput = this.container.querySelector('#article-slug');
+
+    $('#clear-filters')?.addEventListener('click', () => {
+      if (searchInput) searchInput.value = '';
+      if (categoryFilter) categoryFilter.value = '';
+      runSearch();
+    });
+
+    // Generación automática del slug a partir del título (solo artículos nuevos)
+    const titleInput = $('#article-title');
+    const slugInput = $('#article-slug');
     if (titleInput && slugInput) {
       titleInput.addEventListener('input', () => {
-        // Solo generar el slug si no ha sido editado manualmente
+        if (slugInput.readOnly) return;
         if (!slugInput.dataset.edited || slugInput.dataset.edited === 'false') {
-          const title = titleInput.value.trim();
-          const slug = this.generateSlug(title);
-          slugInput.value = slug;
+          slugInput.value = this.generateSlug(titleInput.value.trim());
         }
       });
-      
-      // Marcar el slug como editado cuando el usuario lo modifica
       slugInput.addEventListener('input', () => {
         slugInput.dataset.edited = 'true';
       });
     }
-    
-    // Botón para seleccionar imagen destacada
-    const selectImageBtn = this.container.querySelector('.select-image-btn');
-    if (selectImageBtn && this.mediaManager) {
-      selectImageBtn.addEventListener('click', () => {
-        // Comprobar primero si hay un selector de archivos existente
-        let fileInput = document.getElementById('featured-image-file-input');
-        
-        // Si no existe, crear uno nuevo
-        if (!fileInput) {
-          fileInput = document.createElement('input');
-          fileInput.type = 'file';
-          fileInput.id = 'featured-image-file-input';
-          fileInput.accept = 'image/*';
-          fileInput.style.display = 'none';
-          document.body.appendChild(fileInput);
-          
-          // Manejar la selección de archivos
-          fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-              this.handleImageUpload(file);
-            }
-          });
-        }
-        
-        // Mostrar opciones de selección de imagen
-        const options = [
-          { text: 'Seleccionar desde biblioteca', action: 'library' },
-          { text: 'Subir nueva imagen', action: 'upload' }
-        ];
-        
-        // Crear diálogo de opciones
-        const dialog = document.createElement('div');
-        dialog.className = 'image-selection-dialog';
-        dialog.innerHTML = `
-          <div class="dialog-overlay"></div>
-          <div class="dialog-content">
-            <h4>Seleccionar imagen</h4>
-            <div class="dialog-options">
-              ${options.map(option => `
-                <button class="dialog-option" data-action="${option.action}">
-                  ${option.text}
-                </button>
-              `).join('')}
-            </div>
-            <button class="dialog-close">Cancelar</button>
+
+    // Selector de archivo oculto para subir la imagen destacada
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = ALLOWED_UPLOAD_TYPES.join(',');
+    fileInput.style.display = 'none';
+    this.container.appendChild(fileInput);
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      fileInput.value = '';
+      if (file) this.handleImageUpload(file);
+    });
+
+    // Botón para seleccionar imagen destacada: biblioteca o subida
+    $('.select-image-btn')?.addEventListener('click', () => {
+      if (!this.mediaManager) return;
+
+      const dialog = document.createElement('div');
+      dialog.className = 'image-selection-dialog';
+      dialog.innerHTML = `
+        <div class="dialog-overlay"></div>
+        <div class="dialog-content">
+          <h4>Seleccionar imagen</h4>
+          <div class="dialog-options">
+            <button type="button" class="dialog-option" data-action="library">Seleccionar desde biblioteca</button>
+            <button type="button" class="dialog-option" data-action="upload">Subir nueva imagen</button>
           </div>
-        `;
-        
-        // Añadir diálogo al DOM
-        document.body.appendChild(dialog);
-        
-        // Manejar clics en las opciones
-        dialog.querySelectorAll('.dialog-option').forEach(button => {
-          button.addEventListener('click', () => {
-            const action = button.dataset.action;
-            
-            // Cerrar diálogo
-            document.body.removeChild(dialog);
-            
-            if (action === 'library') {
-              // Usar la biblioteca de medios
-              this.mediaManager.openMediaBrowser({
-                onSelect: (media) => {
-                  if (media && media.url) {
-                    this.handleSelectedMedia(media);
-                  }
-                }
-              });
-            } else if (action === 'upload') {
-              // Abrir selector de archivos
-              fileInput.click();
+          <button type="button" class="dialog-close">Cancelar</button>
+        </div>
+      `;
+      document.body.appendChild(dialog);
+
+      dialog.addEventListener('click', (e) => {
+        const option = e.target.closest('.dialog-option');
+        const closing = option || e.target.closest('.dialog-close') || e.target.classList.contains('dialog-overlay');
+        if (!closing) return;
+        dialog.remove();
+
+        if (option?.dataset.action === 'library') {
+          this.mediaManager.openMediaBrowser({
+            onSelect: (media) => {
+              if (media && media.url) this.handleSelectedMedia(media);
             }
           });
-        });
-        
-        // Cerrar diálogo al hacer clic en el botón de cerrar
-        dialog.querySelector('.dialog-close').addEventListener('click', () => {
-          document.body.removeChild(dialog);
-        });
-        
-        // Cerrar diálogo al hacer clic en el overlay
-        dialog.querySelector('.dialog-overlay').addEventListener('click', () => {
-          document.body.removeChild(dialog);
-        });
+        } else if (option?.dataset.action === 'upload') {
+          fileInput.click();
+        }
       });
-    }
-    
-    // Método auxiliar para manejar la selección de medios desde la biblioteca
-    this.handleSelectedMedia = (media) => {
-      console.log('Imagen seleccionada desde biblioteca:', media);
-      
-      // Actualizar la vista previa
-      const featuredImagePreview = this.container.querySelector('.featured-image-preview');
-      if (featuredImagePreview) {
-        this.updateFeaturedImagePreview(media.url, featuredImagePreview);
-      }
-      
-      // Actualizar el valor del input oculto
-      let featuredImageInput = this.container.querySelector('#article-image');
-      if (!featuredImageInput) {
-        featuredImageInput = this.container.querySelector('#article-featured-image');
-      }
-      
-      if (!featuredImageInput) {
-        console.log('Creando input oculto para la imagen destacada...');
-        const featuredImageContainer = this.container.querySelector('.featured-image-container');
-        if (featuredImageContainer) {
-          featuredImageInput = document.createElement('input');
-          featuredImageInput.type = 'hidden';
-          featuredImageInput.id = 'article-featured-image';
-          featuredImageInput.name = 'featured_image';
-          featuredImageContainer.appendChild(featuredImageInput);
-        }
-      }
-      
-      if (featuredImageInput) {
-        featuredImageInput.value = media.url;
-      }
-      
-      // Mostrar botón para eliminar
-      const removeImageBtn = this.container.querySelector('.remove-image-btn');
-      if (removeImageBtn) {
-        removeImageBtn.style.display = 'inline-block';
-      }
-    };
-    
-    // Método auxiliar para manejar la carga de imágenes
-    this.handleImageUpload = async (file) => {
-      try {
-        console.log('Subiendo imagen:', file.name);
-        this.showLoading('Subiendo imagen...');
-        
-        // Comprobar si hay un gestor de medios disponible
-        if (!this.mediaManager) {
-          throw new Error('No se encontró el gestor de medios');
-        }
-        
-        // Subir la imagen usando el gestor de medios
-        const response = await this.mediaManager.uploadMedia(file);
-        console.log('Respuesta de carga:', response);
-        
-        if (response && (response.url || response.mediaUrl)) {
-          // Obtener la URL de la imagen subida
-          const imageUrl = response.url || response.mediaUrl;
-          
-          // Manejar la selección de medios con la nueva imagen
-          this.handleSelectedMedia({
-            url: imageUrl,
-            name: file.name,
-            type: file.type
-          });
-          
-          if (this.notificationManager) {
-            this.notificationManager.success('Imagen subida correctamente');
-          }
-        } else {
-          throw new Error('No se recibió una URL válida después de la carga');
-        }
-      } catch (error) {
-        console.error('Error al subir imagen:', error);
-        
-        if (this.notificationManager) {
-          this.notificationManager.error('Error al subir la imagen: ' + (error.message || 'Error desconocido'));
-        }
-      } finally {
-        this.hideLoading();
-      }
-    }
-    
-    // Botón para eliminar imagen destacada
-    const removeImageBtn = this.container.querySelector('.remove-image-btn');
-    if (removeImageBtn) {
-      removeImageBtn.addEventListener('click', () => {
-        // Resetear la vista previa
-        const featuredImagePreview = this.container.querySelector('.featured-image-preview');
-        if (featuredImagePreview) {
-          featuredImagePreview.innerHTML = `<span class="text-gray-500">No hay imagen seleccionada</span>`;
-        }
-        
-        // Limpiar el valor del input oculto
-        let featuredImageInput = this.container.querySelector('#article-image');
-        if (!featuredImageInput) {
-          featuredImageInput = this.container.querySelector('#article-featured-image');
-        }
-        
-        if (featuredImageInput) {
-          featuredImageInput.value = '';
-        }
-        
-        // Ocultar el botón de eliminar
-        removeImageBtn.style.display = 'none';
-      });
-    }
-    
-    console.log('Eventos configurados correctamente');
+    });
+
+    // Botón para quitar la imagen destacada
+    $('.remove-image-btn')?.addEventListener('click', () => this.loadFeaturedImage(''));
   } catch (error) {
     console.error('Error al configurar eventos:', error);
     if (this.notificationManager) {
@@ -362,43 +127,34 @@ export function setupEvents() {
 }
 
 /**
- * Configura los eventos de autogeneración de slug
+ * Aplica una imagen elegida en la biblioteca como imagen destacada
+ * @param {{ url: string }} media
  */
-export function setupSlugGeneration() {
-  console.log('Configurando eventos de autogeneración de slug...');
-  
-  const titleInput = this.container.querySelector('#article-title');
-  const slugInput = this.container.querySelector('#article-slug');
-  
-  if (!titleInput || !slugInput) {
-    console.warn('No se encontraron los campos de título o slug');
-    return;
-  }
-  
-  // Remover event listeners anteriores clonando los elementos
-  const newTitleInput = titleInput.cloneNode(true);
-  const newSlugInput = slugInput.cloneNode(true);
-  titleInput.parentNode.replaceChild(newTitleInput, titleInput);
-  slugInput.parentNode.replaceChild(newSlugInput, slugInput);
-  
-  // Configurar nuevos event listeners
-  newTitleInput.addEventListener('input', () => {
-    // Solo generar el slug si no ha sido editado manualmente
-    if (!newSlugInput.dataset.edited || newSlugInput.dataset.edited === 'false') {
-      const title = newTitleInput.value.trim();
-      const slug = this.generateSlug(title);
-      newSlugInput.value = slug;
-      console.log('Slug generado:', slug);
+export function handleSelectedMedia(media) {
+  this.loadFeaturedImage(media.url);
+}
+
+/**
+ * Sube una imagen y la usa como imagen destacada
+ * @param {File} file
+ */
+export async function handleImageUpload(file) {
+  this.showLoading('Subiendo imagen...');
+  try {
+    const response = await this.mediaManager.uploadMedia(file);
+    if (!response || !response.url) {
+      throw new Error('No se recibió una URL válida después de la carga');
     }
-  });
-  
-  // Marcar el slug como editado cuando el usuario lo modifica
-  newSlugInput.addEventListener('input', () => {
-    newSlugInput.dataset.edited = 'true';
-    console.log('Slug marcado como editado manualmente');
-  });
-  
-  console.log('Eventos de slug configurados correctamente');
+    this.handleSelectedMedia(response);
+    if (this.notificationManager) this.notificationManager.success('Imagen subida correctamente');
+  } catch (error) {
+    console.error('Error al subir imagen:', error);
+    if (this.notificationManager) {
+      this.notificationManager.error('Error al subir la imagen: ' + (error.message || 'Error desconocido'));
+    }
+  } finally {
+    this.hideLoading();
+  }
 }
 
 /**
@@ -408,37 +164,15 @@ export function setupSlugGeneration() {
  */
 export function generateSlug(text) {
   if (!text) return '';
-  
-  // Mapa de caracteres especiales del español y otros idiomas
-  const charMap = {
-    'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
-    'à': 'a', 'è': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u',
-    'ä': 'a', 'ë': 'e', 'ï': 'i', 'ö': 'o', 'ü': 'u',
-    'â': 'a', 'ê': 'e', 'î': 'i', 'ô': 'o', 'û': 'u',
-    'ñ': 'n', 'ç': 'c',
-    'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u',
-    'À': 'a', 'È': 'e', 'Ì': 'i', 'Ò': 'o', 'Ù': 'u',
-    'Ä': 'a', 'Ë': 'e', 'Ï': 'i', 'Ö': 'o', 'Ü': 'u',
-    'Â': 'a', 'Ê': 'e', 'Î': 'i', 'Ô': 'o', 'Û': 'u',
-    'Ñ': 'n', 'Ç': 'c'
-  };
-  
   return text
     .trim()
     .toLowerCase()
-    // Reemplazar caracteres especiales
-    .split('')
-    .map(char => charMap[char] || char)
-    .join('')
-    // Remover caracteres que no sean letras, números, espacios o guiones
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // quitar tildes y diéresis (ñ → n)
     .replace(/[^a-z0-9\s-]/g, '')
-    // Cambiar espacios por guiones
     .replace(/\s+/g, '-')
-    // Evitar guiones duplicados
     .replace(/-+/g, '-')
-    // Remover guiones al inicio y al final
     .replace(/^-+|-+$/g, '')
-    // Limitar longitud
     .substring(0, 60);
 }
 
@@ -446,141 +180,71 @@ export function generateSlug(text) {
  * Guarda un artículo (nuevo o existente)
  */
 export async function saveArticle() {
+  const $ = (selector) => this.container.querySelector(selector);
+  const titleInput = $('#article-title');
+  const slugInput = $('#article-slug');
+  if (!titleInput || !slugInput) return;
+
+  const title = titleInput.value.trim();
+  const slug = slugInput.value.trim();
+
+  if (!title) {
+    this.notificationManager.warning('Por favor ingrese un título para el artículo');
+    titleInput.focus();
+    return;
+  }
+  if (!slug) {
+    this.notificationManager.warning('Por favor ingrese un slug para el artículo');
+    slugInput.focus();
+    return;
+  }
+
+  this.showLoading('Guardando artículo...');
   try {
-    console.log('Guardando artículo...');
-    this.showLoading('Guardando artículo...');
-    
-    // Recopilar datos del formulario
-    const titleInput = this.container.querySelector('#article-title');
-    const descriptionInput = this.container.querySelector('#article-description');
-    const categorySelect = this.container.querySelector('#article-category');
-    const dateInput = this.container.querySelector('#article-date');
-    const slugInput = this.container.querySelector('#article-slug');
-    const authorSelect = this.container.querySelector('#article-author');
-    const tagsInput = this.container.querySelector('#article-tags');
-    
-    if (!titleInput || !slugInput) {
-      throw new Error('Faltan campos requeridos en el formulario');
-    }
-    
-    const title = titleInput.value.trim();
-    const slug = slugInput.value.trim();
-    
-    if (!title) {
-      this.notificationManager.warning('Por favor ingrese un título para el artículo');
-      titleInput.focus();
-      this.hideLoading();
+    // Esperar a que terminen las subidas de imágenes pegadas en el editor
+    if (this.editor && this.editor.uploadPending) await this.editor.uploadPending();
+    const content = this.editor ? this.editor.getContent() : '';
+
+    if (/<img[^>]+src=["']?data:/i.test(content)) {
+      this.notificationManager.warning('El contenido tiene imágenes incrustadas que no se pudieron subir. Súbelas desde la biblioteca de medios e inténtalo de nuevo.');
       return;
     }
-    
-    if (!slug) {
-      this.notificationManager.warning('Por favor ingrese un slug para el artículo');
-      slugInput.focus();
-      this.hideLoading();
-      return;
-    }
-    
-    // Preparar datos del artículo
+
+    const authorSelect = $('#article-author');
+    const authorValue = authorSelect ? authorSelect.value : '';
+    const tagsInput = $('#article-tags');
+    const featuredImageInput = $('#article-featured-image');
+    const dateInput = $('#article-date');
+
     const articleData = {
       title,
-      slug,
-      description: descriptionInput ? descriptionInput.value.trim() : '',
-      category: categorySelect ? categorySelect.value : '',
-      pubDate: dateInput ? dateInput.value : new Date().toISOString().split('T')[0],
-      content: this.editor ? this.editor.getContent() : ''
+      description: ($('#article-description')?.value || '').trim(),
+      category: $('#article-category')?.value || '',
+      pubDate: dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split('T')[0],
+      content,
+      author_id: authorValue ? Number(authorValue) : null,
+      // Siempre se envían para poder vaciarlos
+      tags: tagsInput ? tagsInput.value.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+      featured_image: featuredImageInput ? featuredImageInput.value : ''
     };
-    
-    // Manejar autor si existe - guardar correctamente el ID y el nombre
-    if (authorSelect && authorSelect.value) {
-      // Guardar el ID en author_id (asegurarse de que sea un número si es posible)
-      const authorId = authorSelect.value;
-      articleData.author_id = !isNaN(authorId) ? Number(authorId) : authorId;
-      
-      // Guardar el nombre visible (texto de la opción) en author
-      const selectedOption = authorSelect.options[authorSelect.selectedIndex];
-      articleData.author = selectedOption ? selectedOption.text : '';
-      
-      // Guardar información adicional del autor si está disponible
-      if (selectedOption && selectedOption.dataset) {
-        // Crear objeto author_info con los datos disponibles
-        articleData.author_info = {
-          id: articleData.author_id,
-          name: articleData.author,
-          slug: selectedOption.dataset.slug || ''
-        };
-      }
-      
-      console.log('Autor guardado:', {
-        author_id: articleData.author_id,
-        author: articleData.author,
-        author_info: articleData.author_info
-      });
-    }
-    
-    // Manejar etiquetas si existen
-    if (tagsInput && tagsInput.value.trim()) {
-      const tagsString = tagsInput.value.trim();
-      articleData.tags = tagsString.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
-    }
-    
-    // Manejar imagen destacada
-    let featuredImageInput = this.container.querySelector('#article-image');
-    if (!featuredImageInput) {
-      featuredImageInput = this.container.querySelector('#article-featured-image');
-    }
-    
-    if (featuredImageInput && featuredImageInput.value) {
-      articleData.featured_image = featuredImageInput.value;
-    }
-    
-    console.log('Datos del artículo a guardar:', articleData);
-    
-    // Determinar si es crear o actualizar
-    let response;
+
     if (this.currentArticle) {
-      // Actualizar artículo existente
-      console.log(`Actualizando artículo existente:`, this.currentArticle);
-      
-      // Usar el slug original para la actualización
-      const originalSlug = this.currentArticle.slug;
-      
-      // Asegurarse de que tenemos el ID si está disponible
-      if (this.currentArticle.id) {
-        articleData.id = this.currentArticle.id;
-      }
-      
-      console.log(`Actualizando artículo con slug: ${originalSlug}`);
-      response = await this.contentManager.updateArticle(originalSlug, articleData);
-      
-      if (response) {
-        this.notificationManager.success('Artículo actualizado con éxito');
-      } else {
-        throw new Error('No se recibió respuesta al actualizar el artículo');
-      }
+      // El slug no cambia al actualizar: se usa el original en la URL
+      await this.contentManager.updateArticle(this.currentArticle.slug, articleData);
+      this.notificationManager.success('Artículo actualizado con éxito');
     } else {
-      // Crear nuevo artículo
-      console.log('Creando nuevo artículo');
-      response = await this.contentManager.createArticle(articleData);
-      
-      if (response) {
-        this.notificationManager.success('Artículo creado con éxito');
-      } else {
-        throw new Error('No se recibió respuesta al crear el artículo');
-      }
+      await this.contentManager.createArticle({ ...articleData, slug });
+      this.notificationManager.success('Artículo creado con éxito');
     }
-    
-    console.log('Respuesta del servidor:', response);
-    
-    // Volver a la lista y recargar artículos
+
     this.showArticlesList();
-    await this.loadArticles();
-    
-    this.hideLoading();
+    await this.loadArticles(this.currentPage, this.currentCategory, this.currentSearch);
   } catch (error) {
     console.error('Error al guardar artículo:', error);
     if (this.notificationManager) {
       this.notificationManager.error('Error al guardar el artículo: ' + (error.message || ''));
     }
+  } finally {
     this.hideLoading();
   }
 }

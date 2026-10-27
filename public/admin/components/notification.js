@@ -59,7 +59,7 @@ export class NotificationSystem {
     notification.innerHTML = `
       <div class="flex items-center">
         ${icons[type] || icons.info}
-        <div class="flex-1">${message}</div>
+        <div class="flex-1 notification-message"></div>
         <button type="button" class="ml-4 text-gray-500 hover:text-gray-700 focus:outline-none" aria-label="Cerrar">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -68,6 +68,9 @@ export class NotificationSystem {
       </div>
     `;
     
+    // El mensaje es texto plano: nunca se interpreta como HTML
+    notification.querySelector('.notification-message').textContent = String(message ?? '');
+
     // Añadir al contenedor
     this.container.appendChild(notification);
     
@@ -97,6 +100,7 @@ export class NotificationSystem {
    * @param {HTMLElement} notification - Elemento de notificación a cerrar
    */
   close(notification) {
+    if (!notification) return;
     // Animar salida
     notification.classList.add('translate-x-full');
     notification.classList.add('opacity-0');
@@ -113,7 +117,7 @@ export class NotificationSystem {
    * Cerrar todas las notificaciones
    */
   closeAll() {
-    const notifications = this.container.querySelectorAll('div');
+    const notifications = Array.from(this.container.children);
     notifications.forEach(notification => {
       this.close(notification);
     });
@@ -154,12 +158,15 @@ export class NotificationSystem {
       dialog.className = 'bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 transform scale-95 transition-transform duration-300';
       
       dialog.innerHTML = `
-        <div class="mb-4">${message}</div>
+        <div class="mb-4 confirm-message"></div>
         <div class="flex justify-end gap-2">
-          <button type="button" class="btn-secondary cancel-btn">${cancelText}</button>
-          <button type="button" class="btn-primary confirm-btn">${confirmText}</button>
+          <button type="button" class="btn-secondary cancel-btn"></button>
+          <button type="button" class="btn-primary confirm-btn"></button>
         </div>
       `;
+      dialog.querySelector('.confirm-message').textContent = String(message ?? '');
+      dialog.querySelector('.cancel-btn').textContent = cancelText;
+      dialog.querySelector('.confirm-btn').textContent = confirmText;
       
       // Añadir al DOM
       overlay.appendChild(dialog);
@@ -181,7 +188,7 @@ export class NotificationSystem {
         
         // Eliminar después de la animación
         setTimeout(() => {
-          document.body.removeChild(overlay);
+          overlay.remove();
         }, 300);
       };
       

@@ -3,155 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
   <title>Administración de Contenido - Abya Yala</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+  <link rel="stylesheet" href="/admin/style.css">
+  <link rel="stylesheet" href="/admin/assets/css/media-browser.css">
   <!-- TinyMCE Editor -->
   <script src="https://cdn.tiny.cloud/1/r1ypvpr6sk1656o4o8rwpw7m4i0mbdfu3x4zr3sj9tcqot0y/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
-  <!-- Usar URL dinámica basada en la ubicación actual para el CSS -->
-  <script>
-    // Establecer la base URL dinámicamente
-    window.appBaseUrl = window.location.origin;
-    document.write(`<link rel="stylesheet" id="style-css" href="${window.appBaseUrl}/admin/style.css">`); 
-    document.write(`<link rel="stylesheet" id="media-browser-css" href="${window.appBaseUrl}/admin/assets/css/media-browser.css">`); 
-  </script>
+  <script type="module" src="/admin/app.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
   <div id="app" class="p-4">
     <div class="loading flex flex-col items-center justify-center min-h-screen">
       <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500 mb-4"></div>
       <h2 class="text-xl font-semibold text-gray-700">Cargando panel de administración...</h2>
-      <div id="loading-status" class="text-sm text-gray-500 mt-2">Inicializando...</div>
-      <div id="debug-info" class="text-xs text-gray-400 mt-4 max-w-lg text-center"></div>
     </div>
   </div>
-  
-  <!-- Debug helper -->
-  <script>
-    // Función para actualizar el estado de carga
-    function updateLoadingStatus(message) {
-      const statusElement = document.getElementById('loading-status');
-      if (statusElement) {
-        statusElement.textContent = message;
-      }
-      console.log('[CMS DEBUG]', message);
-    }
-    
-    // Función para mostrar información de depuración
-    function showDebugInfo(message) {
-      const debugElement = document.getElementById('debug-info');
-      if (debugElement) {
-        debugElement.innerHTML += `<div>${message}</div>`;
-      }
-      console.log('[CMS DEBUG]', message);
-    }
-    
-    // Verificar el entorno
-    showDebugInfo(`Entorno: ${window.location.hostname}`);
-    showDebugInfo(`Ruta: ${window.location.pathname}`);
-    showDebugInfo(`Origen: ${window.location.origin}`);
-    
-    // Capturar errores globales
-    window.addEventListener('error', function(event) {
-      showDebugInfo(`Error: ${event.message} en ${event.filename}:${event.lineno}`);
-    });
-  </script>
-  
-  <!-- Verificación de autenticación -->
-  <script>
-    updateLoadingStatus('Verificando autenticación...');
-    
-    // Usar la variable global para la URL base
-    const basePath = window.appBaseUrl + '/admin/'; // Construir ruta absoluta completa
-    
-    // Si no estamos en la URL esperada, redirigir
-    if (!window.location.pathname.includes('/admin')) {
-      updateLoadingStatus('Redirigiendo a ruta correcta...');
-      window.location.href = basePath;
-    } else {
-      // Verificar que el usuario esté autenticado
-      const authData = localStorage.getItem('abyayala_cms_auth');
-      if (!authData) {
-        updateLoadingStatus('No hay sesión activa, redirigiendo a login...');
-        setTimeout(() => {
-          window.location.href = window.appBaseUrl + '/admin/login.html';
-        }, 1000);
-      } else {
-        try {
-          // Validar que el formato de autenticación sea correcto
-          const auth = JSON.parse(authData);
-          if (!auth.authenticated) {
-            updateLoadingStatus('Sesión inválida, redirigiendo a login...');
-            localStorage.removeItem('abyayala_cms_auth');
-            setTimeout(() => {
-              window.location.href = window.appBaseUrl + '/admin/login.html';
-            }, 1000);
-          } else {
-            // Autenticación válida, cargar el resto de scripts
-            updateLoadingStatus('Autenticación correcta, cargando componentes...');
-            loadMainScripts();
-          }
-        } catch (error) {
-          showDebugInfo(`Error al validar sesión: ${error.message}`);
-          localStorage.removeItem('abyayala_cms_auth');
-          setTimeout(() => {
-            window.location.href = window.appBaseUrl + '/admin/login.html';
-          }, 1000);
-        }
-      }
-    }
-    
-    // Cargar el script principal (app.js) como módulo ES6
-    function loadMainScripts() {
-      updateLoadingStatus('Cargando módulo principal app.js...');
-      
-      // Establecer una variable global para detectar errores de carga
-      window.appLoadError = false;
-      
-      // Configurar tiempo máximo de carga (20 segundos)
-      const loadingTimeout = setTimeout(() => {
-        if (!window.appInitialized) {
-          updateLoadingStatus('La carga está tardando demasiado tiempo.');
-          showDebugInfo('Posible error de carga de módulos. Verifica la consola para más detalles.');
-        }
-      }, 20000);
-      
-      try {
-        // Crear el script que cargará app.js como módulo
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.onload = function() {
-          showDebugInfo('Módulo principal app.js cargado correctamente.');
-          updateLoadingStatus('Inicializando aplicación...');
-          
-          // Llamar explícitamente a initializeApp después de un breve retraso
-          setTimeout(() => {
-            showDebugInfo('Llamando explícitamente a initializeApp...');
-            if (typeof window.initializeApp === 'function') {
-              window.initializeApp();
-            } else {
-              showDebugInfo('ERROR: La función initializeApp no está disponible');
-              updateLoadingStatus('Error: No se pudo inicializar la aplicación');
-            }
-          }, 500);
-        };
-        script.onerror = function(err) {
-          window.appLoadError = true;
-          showDebugInfo(`Error al cargar app.js: ${err.message || 'Error desconocido'}`);          
-          updateLoadingStatus('Error al cargar el módulo principal.'); 
-          // Mostrar un mensaje de error más visible
-          document.querySelector('.loading h2').textContent = 'Error al cargar el panel de administración';
-          document.getElementById('loading-status').innerHTML = 'Ha ocurrido un error al cargar los scripts. <a href="javascript:window.location.reload()" class="text-blue-500 underline">Intentar nuevamente</a>';
-        };
-        script.src = `${window.appBaseUrl}/admin/app.js`;
-        document.body.appendChild(script);
-        
-        // Verificar si carga correctamente
-        showDebugInfo('Solicitando carga de: ' + script.src);
-      } catch (err) {
-        showDebugInfo(`Error al iniciar la carga: ${err.message}`);
-        updateLoadingStatus('Error al inicializar: ' + err.message);
-      }
-    }
-  </script>
+  <noscript>El panel de administración necesita JavaScript.</noscript>
 </body>
 </html>
