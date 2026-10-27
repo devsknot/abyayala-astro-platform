@@ -8,6 +8,8 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 export interface AccessUser {
   email: string;
   name: string;
+  /** Vencimiento del JWT de Access (ISO). Coincide con la duración de sesión de la aplicación. */
+  expiresAt: string | null;
 }
 
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
@@ -31,7 +33,7 @@ function readCookie(request: Request, name: string): string | null {
   return null;
 }
 
-export const DEV_USER: AccessUser = { email: 'dev@localhost', name: 'Desarrollo local' };
+export const DEV_USER: AccessUser = { email: 'dev@localhost', name: 'Desarrollo local', expiresAt: null };
 
 /**
  * Devuelve el usuario si la petición trae un JWT de Access válido, o null.
@@ -50,7 +52,11 @@ export async function getAccessUser(request: Request, env: Partial<Env>): Promis
     });
     const email = typeof payload.email === 'string' ? payload.email : '';
     if (!email) return null;
-    return { email, name: typeof payload.name === 'string' && payload.name ? payload.name : email };
+    return {
+      email,
+      name: typeof payload.name === 'string' && payload.name ? payload.name : email,
+      expiresAt: typeof payload.exp === 'number' ? new Date(payload.exp * 1000).toISOString() : null,
+    };
   } catch {
     return null;
   }
