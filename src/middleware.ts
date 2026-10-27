@@ -89,8 +89,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const cacheable = isCacheable(request, pathname);
   const cache = cacheable ? (caches as unknown as { default: Cache }).default : null;
   if (cache) {
-    const hit = await cache.match(request);
-    if (hit) return hit;
+    try {
+      const hit = await cache.match(request);
+      // Copia con cabeceras mutables: Astro modifica la respuesta que devuelve el middleware.
+      if (hit) return new Response(hit.body, hit);
+    } catch (err) {
+      console.error('[cache] match', err);
+    }
   }
 
   const response = withSecurityHeaders(await next(), pathname);
@@ -98,13 +103,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (cache && response.status === 200 && !response.headers.has('Set-Cookie')) {
     const cc = response.headers.get('Cache-Control') ?? '';
     if (!/no-store|private/.test(cc)) {
-      const copy = response.clone();
-      const cached = new Response(copy.body, copy);
-      cached.headers.set('Cache-Control', `public, max-age=${EDGE_CACHE_SECONDS}`);
-      const save = cache.put(request, cached);
-      const ctx = locals.runtime?.ctx;
-      if (ctx?.waitUntil) ctx.waitUntil(save);
-      else await save;
+      try {
+        const copy = response.clone();
+        const cached = new Response(copy.body, copy);
+        cached.headers.set('Cache-Control', `public, max-age=${EDGE_CACHE_SECONDS}`);
+        const save = cache.put(request, cached).catch((err) => console.error('[cache] put', err));
+        const ctx = locals.runtime?.ctx;
+        if (ctx?.waitUntil) ctx.waitUntil(save);
+        else await save;
+      } catch (err) {
+        console.error('[cache] put', err);
+      }
     }
   }
   return response;
