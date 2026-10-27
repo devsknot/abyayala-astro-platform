@@ -1,4 +1,6 @@
 # build output
+dist/
+
 # generated types
 .astro/
 
@@ -13,14 +15,23 @@ pnpm-debug.log*
 
 # environment variables
 .env
-.env.production
+.env.*
+!.env.example
+.dev.vars
+
+# Estado local de wrangler (D1/R2 locales)
+.wrangler/
+
+# Exportaciones de datos (pueden contener contenido completo de la base)
+exportacion.json
+importacion_final.json
+*.export.json
 
 # macOS-specific files
 .DS_Store
 
 # jetbrains setting folder
 .idea/
-.wrangler/
 
 # Archivos de documentación interna
 endpoints.md
