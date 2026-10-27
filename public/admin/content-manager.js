@@ -21,41 +21,38 @@ function emptyPage(params = {}) {
 }
 
 export class ContentManager {
-  // Obtener artículos con paginación y filtros (búsqueda / categoría)
+  // Obtener artículos con paginación y filtros (búsqueda / categoría).
+  // Lanza ApiError si la petición falla, para que la vista muestre el error
+  // en lugar de una lista vacía engañosa.
   async getArticles(params = {}) {
     const search = (params.search || '').trim();
     const category = (params.category || '').trim();
     const isSearch = Boolean(search || category);
     const pageSize = params.pageSize || params.limit;
 
-    try {
-      const data = await apiRequest(`${API_BASE}/articles${isSearch ? '/search' : ''}`, {
-        query: {
-          page: params.page,
-          pageSize,
-          query: search,
-          category
-        }
-      });
+    const data = await apiRequest(`${API_BASE}/articles${isSearch ? '/search' : ''}`, {
+      query: {
+        page: params.page,
+        pageSize,
+        query: search,
+        category
+      }
+    });
 
-      if (!data || !Array.isArray(data.articles)) return emptyPage(params);
+    if (!data || !Array.isArray(data.articles)) return emptyPage(params);
 
-      const pagination = data.pagination || {};
-      const limit = parseInt(pagination.pageSize || pageSize || 10, 10);
-      const total = pagination.totalItems ?? data.articles.length;
-      return {
-        articles: data.articles,
-        pagination: {
-          page: parseInt(pagination.page || params.page || 1, 10),
-          limit,
-          total,
-          totalPages: pagination.totalPages ?? Math.ceil(total / limit)
-        }
-      };
-    } catch (error) {
-      console.error('Error al obtener artículos:', error);
-      return emptyPage(params);
-    }
+    const pagination = data.pagination || {};
+    const limit = parseInt(pagination.pageSize || pageSize || 10, 10);
+    const total = pagination.totalItems ?? data.articles.length;
+    return {
+      articles: data.articles,
+      pagination: {
+        page: parseInt(pagination.page || params.page || 1, 10),
+        limit,
+        total,
+        totalPages: pagination.totalPages ?? Math.ceil(total / limit)
+      }
+    };
   }
 
   // Obtener un artículo por su slug (null si no existe o hay error).

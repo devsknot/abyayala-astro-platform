@@ -1,22 +1,27 @@
 // Aplicación principal del panel de administración.
 // La autenticación la hace Cloudflare Access: aquí solo se consulta la sesión
-// con /api/auth/me para saber quién es el usuario.
-import { getCurrentUser } from './utils/api.js';
+// con /api/auth/me para saber quién es el usuario y cuándo vence su sesión.
+import { getSession, notifySessionExpired } from './utils/api.js';
 import { escapeHtml } from './utils/html.js';
+import { icon } from './utils/icons.js';
+import { formatDateTime, formatRelative, initials, toDate } from './utils/format.js';
 import { notifications } from './components/notification.js';
 import { ContentManager } from './content-manager.js';
 import { MediaManager } from './media-manager.js';
 
 const LOGOUT_URL = '/cdn-cgi/access/logout';
+const MOBILE_QUERY = '(max-width: 899px)';
+const SESSION_WARNING_MS = 10 * 60 * 1000;
+const SESSION_CHECK_MS = 30 * 1000;
 
 const VIEWS = {
-  dashboard: { title: 'Dashboard', icon: '📊', load: loadDashboard },
-  articles: { title: 'Artículos', icon: '📝', load: loadArticlesManager },
-  media: { title: 'Multimedia', icon: '🖼️', load: loadMediaLibrary },
-  categories: { title: 'Categorías', icon: '🏷️', load: loadCategoriesManager },
-  authors: { title: 'Autores', icon: '👤', load: loadAuthorsManager },
-  import: { title: 'Importación masiva', icon: '📤', load: loadBulkImport },
-  settings: { title: 'Configuración', icon: '⚙️', load: loadSettings }
+  dashboard: { title: 'Inicio', label: 'Inicio', icon: 'dashboard', load: loadDashboard },
+  articles: { title: 'Artículos', label: 'Artículos', icon: 'articles', load: loadArticlesManager },
+  media: { title: 'Multimedia', label: 'Multimedia', icon: 'media', load: loadMediaLibrary },
+  categories: { title: 'Categorías', label: 'Categorías', icon: 'categories', load: loadCategoriesManager },
+  authors: { title: 'Autores', label: 'Autores', icon: 'authors', load: loadAuthorsManager },
+  import: { title: 'Importación masiva', label: 'Importación masiva', icon: 'import', load: loadBulkImport },
+  settings: { title: 'Cuenta y sistema', label: 'Configuración', icon: 'settings', load: loadSettings }
 };
 
 const appState = {
@@ -27,6 +32,14 @@ const appState = {
   activeComponent: null
 };
 
+// Estado de la sesión de Cloudflare Access (un único temporizador)
+const sessionState = {
+  expiresAt: null,
+  timer: null,
+  warningToast: null,
+  expired: false
+};
+
 // Instancias compartidas por todas las vistas
 const contentManager = new ContentManager();
 const mediaManager = new MediaManager();
@@ -35,22 +48,23 @@ init();
 
 async function init() {
   const app = document.getElementById('app');
-  let user;
+  let result;
   try {
-    user = await getCurrentUser();
+    result = await getSession();
   } catch (error) {
     console.error('Error al verificar la sesión:', error);
     renderMessage(app, 'No se pudo verificar la sesión', 'El servidor no respondió. Inténtalo de nuevo en unos minutos.', 'Reintentar');
     return;
   }
 
-  if (!user) {
+  if (!result) {
     renderMessage(app, 'Necesitas iniciar sesión', 'Tu sesión no está activa o expiró.', 'Iniciar sesión');
     return;
   }
 
-  appState.user = user;
+  appState.user = result.user || { email: '', name: '' };
   renderApp(app);
+  startSessionMonitor(result.session && result.session.expiresAt);
 
   const initialView = location.hash.slice(1);
   showView(VIEWS[initialView] ? initialView : 'dashboard');
@@ -58,65 +72,167 @@ async function init() {
 
 function renderMessage(container, title, text, actionLabel) {
   container.innerHTML = `
-    <div class="flex flex-col items-center justify-center min-h-screen text-center">
-      <h2 class="text-2xl font-semibold text-gray-800 mb-2"></h2>
-      <p class="text-gray-600 mb-6"></p>
-      <a href="/admin/" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"></a>
+    <div class="splash">
+      <img src="/images/logo-login.png" alt="" class="splash-logo" width="70" height="90">
+      <h1 class="splash-title"></h1>
+      <p class="splash-text"></p>
+      <a href="/admin/" class="btn btn-primary"></a>
     </div>
   `;
-  container.querySelector('h2').textContent = title;
-  container.querySelector('p').textContent = text;
+  container.querySelector('.splash-title').textContent = title;
+  container.querySelector('.splash-text').textContent = text;
   container.querySelector('a').textContent = actionLabel;
 }
 
+function displayName() {
+  const user = appState.user || {};
+  return user.name || user.email || 'Administrador';
+}
+
 function renderApp(container) {
-  const name = appState.user.name || appState.user.email || 'Administrador';
+  const user = appState.user || {};
+  const name = displayName();
 
   container.innerHTML = `
-    <div class="flex h-screen bg-gray-100">
-      <div class="sidebar w-64 h-full bg-white shadow-md flex flex-col">
-        <div class="p-4 border-b">
-          <h1 class="text-xl font-bold">Abya Yala CMS</h1>
+    <a href="#main-content" class="skip-link">Saltar al contenido</a>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
+        <div class="sidebar-brand">
+          <img src="/images/logo-login.png" alt="" class="sidebar-logo" width="28" height="36">
+          <div class="sidebar-brand-text">
+            <span class="sidebar-brand-name">Abya Yala</span>
+            <span class="sidebar-brand-sub">Panel editorial</span>
+          </div>
+          <button type="button" class="btn-icon sidebar-close" aria-label="Cerrar menú">${icon('close')}</button>
         </div>
 
-        <nav class="mt-4">
+        <nav class="sidebar-nav">
           ${Object.entries(VIEWS).map(([key, view]) => `
-            <a href="#${key}" data-view="${key}" class="sidebar-link">
-              <span class="mr-2">${view.icon}</span> ${escapeHtml(view.title)}
+            <a href="#${key}" data-view="${key}" class="nav-link">
+              ${icon(view.icon)}
+              <span>${escapeHtml(view.label)}</span>
             </a>
           `).join('')}
         </nav>
 
-        <div class="mt-auto p-4 border-t">
-          <button type="button" id="logout-button" class="text-red-500 hover:text-red-700">
-            <span class="mr-2">🚪</span> Cerrar sesión
+        <div class="sidebar-footer">
+          <a href="/" target="_blank" rel="noopener" class="nav-link">
+            ${icon('external')}
+            <span>Ver sitio</span>
+          </a>
+          <button type="button" class="nav-link nav-link-danger" data-action="logout">
+            ${icon('logout')}
+            <span>Cerrar sesión</span>
           </button>
         </div>
-      </div>
+      </aside>
+      <div class="sidebar-backdrop" hidden></div>
 
-      <div class="flex-1 overflow-auto">
-        <header class="bg-white shadow-sm">
-          <div class="flex justify-between items-center p-4">
-            <h2 class="text-xl font-semibold" id="view-title"></h2>
-            <div class="flex items-center">
-              <span class="text-sm text-gray-600 mr-2">Hola, ${escapeHtml(name)}</span>
-              <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white">
-                ${escapeHtml(name.charAt(0).toUpperCase())}
+      <div class="app-main">
+        <header class="topbar">
+          <button type="button" class="btn-icon menu-toggle" aria-controls="sidebar" aria-expanded="false" aria-label="Abrir menú">
+            ${icon('menu')}
+          </button>
+          <h1 class="topbar-title" id="view-title"></h1>
+
+          <div class="user-menu">
+            <button type="button" class="user-chip" aria-haspopup="true" aria-expanded="false" aria-controls="user-menu-panel">
+              <span class="avatar" aria-hidden="true">${escapeHtml(initials(name))}</span>
+              <span class="user-chip-name">${escapeHtml(name)}</span>
+              ${icon('chevronDown', { size: 16 })}
+            </button>
+            <div class="user-menu-panel" id="user-menu-panel" hidden>
+              <div class="user-menu-header">
+                <span class="avatar avatar-lg" aria-hidden="true">${escapeHtml(initials(name))}</span>
+                <div class="min-w-0">
+                  <p class="user-menu-name">${escapeHtml(user.name || 'Sin nombre')}</p>
+                  <p class="user-menu-email">${escapeHtml(user.email || '')}</p>
+                </div>
+              </div>
+              <div class="user-menu-session">
+                ${icon('clock', { size: 16 })}
+                <span data-session-expiry></span>
+              </div>
+              <div class="user-menu-actions">
+                <a href="#settings" class="menu-item" data-view="settings">${icon('settings', { size: 18 })}<span>Cuenta y sesión</span></a>
+                <button type="button" class="menu-item menu-item-danger" data-action="logout">${icon('logout', { size: 18 })}<span>Cerrar sesión</span></button>
               </div>
             </div>
           </div>
         </header>
 
-        <main class="p-6" id="main-content"></main>
+        <main class="app-content" id="main-content" tabindex="-1"></main>
       </div>
     </div>
   `;
 
-  container.querySelector('nav').addEventListener('click', (event) => {
-    const link = event.target.closest('.sidebar-link');
-    if (!link) return;
-    event.preventDefault();
-    showView(link.dataset.view);
+  setupShellEvents(container);
+}
+
+function setupShellEvents(container) {
+  const sidebar = container.querySelector('#sidebar');
+  const backdrop = container.querySelector('.sidebar-backdrop');
+  const menuToggle = container.querySelector('.menu-toggle');
+  const userChip = container.querySelector('.user-chip');
+  const userPanel = container.querySelector('#user-menu-panel');
+
+  const setSidebarOpen = (open) => {
+    sidebar.classList.toggle('is-open', open);
+    backdrop.hidden = !open;
+    menuToggle.setAttribute('aria-expanded', String(open));
+    document.body.classList.toggle('has-drawer', open);
+    if (open) sidebar.querySelector('.nav-link.active, .nav-link')?.focus();
+  };
+
+  const setUserMenuOpen = (open) => {
+    userPanel.hidden = !open;
+    userChip.setAttribute('aria-expanded', String(open));
+  };
+
+  menuToggle.addEventListener('click', () => setSidebarOpen(!sidebar.classList.contains('is-open')));
+  container.querySelector('.sidebar-close').addEventListener('click', () => {
+    setSidebarOpen(false);
+    menuToggle.focus();
+  });
+  backdrop.addEventListener('click', () => setSidebarOpen(false));
+
+  userChip.addEventListener('click', (event) => {
+    event.stopPropagation();
+    setUserMenuOpen(userPanel.hidden);
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!userPanel.hidden && !event.target.closest('.user-menu')) setUserMenuOpen(false);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (!userPanel.hidden) {
+      setUserMenuOpen(false);
+      userChip.focus();
+    }
+    if (sidebar.classList.contains('is-open')) {
+      setSidebarOpen(false);
+      menuToggle.focus();
+    }
+  });
+
+  // Navegación (barra lateral y menú de usuario) por delegación
+  container.addEventListener('click', (event) => {
+    // Solo la navegación del shell; las vistas gestionan sus propios data-view
+    const viewLink = event.target.closest('.sidebar [data-view], .user-menu [data-view]');
+    if (viewLink && VIEWS[viewLink.dataset.view]) {
+      event.preventDefault();
+      setUserMenuOpen(false);
+      if (window.matchMedia(MOBILE_QUERY).matches) setSidebarOpen(false);
+      showView(viewLink.dataset.view);
+      return;
+    }
+
+    if (event.target.closest('.sidebar [data-action="logout"], .user-menu [data-action="logout"]')) {
+      setUserMenuOpen(false);
+      confirmLogout();
+    }
   });
 
   window.addEventListener('hashchange', () => {
@@ -124,14 +240,25 @@ function renderApp(container) {
     if (VIEWS[view] && view !== appState.currentView) showView(view);
   });
 
-  container.querySelector('#logout-button').addEventListener('click', async () => {
-    const confirmed = await notifications.confirm('¿Estás seguro de que deseas cerrar sesión?', 'Cerrar sesión', 'Cancelar');
-    if (confirmed) window.location.href = LOGOUT_URL;
+  // Al pasar a escritorio, cerrar el cajón móvil
+  window.matchMedia(MOBILE_QUERY).addEventListener('change', (event) => {
+    if (!event.matches) setSidebarOpen(false);
   });
 }
 
-async function showView(viewName) {
-  const view = VIEWS[viewName] || VIEWS.dashboard;
+async function confirmLogout() {
+  const confirmed = await notifications.confirm('¿Quieres cerrar la sesión del panel?', 'Cerrar sesión', 'Cancelar', { title: 'Cerrar sesión' });
+  if (confirmed) window.location.href = LOGOUT_URL;
+}
+
+/**
+ * Cambia de vista.
+ * @param {string} viewName
+ * @param {Record<string, unknown>} [params] - intención opcional (p. ej. { action: 'edit', slug })
+ */
+async function showView(viewName, params = {}) {
+  const key = VIEWS[viewName] ? viewName : 'dashboard';
+  const view = VIEWS[key];
   const token = ++appState.viewToken;
 
   // Liberar el componente anterior (p. ej. la instancia de TinyMCE)
@@ -143,76 +270,139 @@ async function showView(viewName) {
     }
   }
   appState.activeComponent = null;
-  appState.currentView = viewName;
+  appState.currentView = key;
 
-  if (location.hash.slice(1) !== viewName) history.replaceState(null, '', `#${viewName}`);
+  if (location.hash.slice(1) !== key) history.replaceState(null, '', `#${key}`);
 
-  document.querySelectorAll('.sidebar-link').forEach(link => {
-    link.classList.toggle('active', link.dataset.view === viewName);
+  document.querySelectorAll('.sidebar .nav-link[data-view]').forEach(link => {
+    const active = link.dataset.view === key;
+    link.classList.toggle('active', active);
+    if (active) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
   });
   document.getElementById('view-title').textContent = view.title;
+  document.title = `${view.title} · Abya Yala`;
 
   // Cada vista se monta en un contenedor propio; si el usuario cambia de vista
   // mientras carga, el contenedor viejo queda fuera del DOM y se descarta.
   const main = document.getElementById('main-content');
   const viewContainer = document.createElement('div');
-  viewContainer.className = 'p-4';
+  viewContainer.className = 'view';
   viewContainer.innerHTML = `
-    <div class="flex items-center text-gray-600">
-      <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-green-500 mr-3"></div>
-      Cargando...
+    <div class="view-loading" role="status">
+      <span class="spinner" aria-hidden="true"></span>
+      <span>Cargando ${escapeHtml(view.title.toLowerCase())}…</span>
     </div>
   `;
   main.replaceChildren(viewContainer);
+  main.scrollTop = 0;
+  window.scrollTo(0, 0);
+
+  const isCurrent = () => token === appState.viewToken;
 
   try {
-    const component = await view.load(viewContainer, () => token === appState.viewToken);
-    if (token !== appState.viewToken) {
+    const component = await view.load(viewContainer, isCurrent, params || {});
+    if (!isCurrent()) {
       if (component && typeof component.destroy === 'function') component.destroy();
       return;
     }
     appState.activeComponent = component || null;
   } catch (error) {
-    if (token !== appState.viewToken) return;
-    console.error(`Error al cargar la vista ${viewName}:`, error);
+    if (!isCurrent()) return;
+    console.error(`Error al cargar la vista ${key}:`, error);
     viewContainer.innerHTML = `
-      <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-        <p class="text-red-700"></p>
-        <button type="button" class="mt-2 px-4 py-2 bg-red-500 text-white rounded retry-btn">Reintentar</button>
+      <div class="state-card state-error" role="alert">
+        <span class="state-icon">${icon('error', { size: 28 })}</span>
+        <h2 class="state-title">No se pudo cargar esta sección</h2>
+        <p class="state-text"></p>
+        <button type="button" class="btn btn-primary retry-btn">${icon('refresh', { size: 18 })}<span>Reintentar</span></button>
       </div>
     `;
-    viewContainer.querySelector('p').textContent = `Error al cargar ${view.title.toLowerCase()}: ${error.message}`;
-    viewContainer.querySelector('.retry-btn').addEventListener('click', () => showView(viewName));
+    viewContainer.querySelector('.state-text').textContent = error.message || 'Error desconocido';
+    viewContainer.querySelector('.retry-btn').addEventListener('click', () => showView(key, params));
   }
+}
+
+// === Sesión ===
+
+function startSessionMonitor(expiresAtIso) {
+  stopSessionMonitor();
+  sessionState.expiresAt = toDate(expiresAtIso);
+  sessionState.expired = false;
+  updateSessionDisplays();
+  if (!sessionState.expiresAt) return;
+
+  sessionState.timer = setInterval(checkSession, SESSION_CHECK_MS);
+  // Los navegadores congelan los temporizadores en pestañas en segundo plano:
+  // al volver a la pestaña se comprueba de inmediato.
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  checkSession();
+}
+
+function stopSessionMonitor() {
+  if (sessionState.timer) clearInterval(sessionState.timer);
+  sessionState.timer = null;
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState === 'visible') checkSession();
+}
+
+function checkSession() {
+  if (!sessionState.expiresAt || sessionState.expired) return;
+  const remaining = sessionState.expiresAt.getTime() - Date.now();
+
+  if (remaining <= 0) {
+    sessionState.expired = true;
+    stopSessionMonitor();
+    if (sessionState.warningToast) notifications.close(sessionState.warningToast);
+    sessionState.warningToast = null;
+    notifySessionExpired();
+  } else if (remaining <= SESSION_WARNING_MS && !sessionState.warningToast) {
+    sessionState.warningToast = notifications.warning(
+      'Tu sesión vence pronto. Guarda tu trabajo y recarga la página para renovarla.',
+      0
+    );
+  }
+  updateSessionDisplays();
+}
+
+/** Texto de vencimiento de la sesión para la UI. */
+function sessionExpiryText() {
+  const expiresAt = sessionState.expiresAt;
+  if (!expiresAt) return 'Vencimiento de la sesión no disponible';
+  if (sessionState.expired || expiresAt.getTime() <= Date.now()) return `Sesión vencida ${formatRelative(expiresAt)}`;
+  return `La sesión vence ${formatRelative(expiresAt)}`;
+}
+
+/** Actualiza todos los elementos [data-session-expiry] del documento. */
+function updateSessionDisplays() {
+  const text = sessionExpiryText();
+  const expiresAt = sessionState.expiresAt;
+  const remaining = expiresAt ? expiresAt.getTime() - Date.now() : null;
+  document.querySelectorAll('[data-session-expiry]').forEach(element => {
+    element.textContent = text;
+    element.title = expiresAt ? formatDateTime(expiresAt) : '';
+    element.classList.toggle('is-warning', remaining !== null && remaining > 0 && remaining <= SESSION_WARNING_MS);
+    element.classList.toggle('is-expired', remaining !== null && remaining <= 0);
+  });
 }
 
 // === Vistas ===
 
-async function loadDashboard(container) {
-  container.innerHTML = `
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h3 class="text-lg font-semibold mb-4">Dashboard</h3>
-      <p class="text-gray-600">Bienvenido al panel de administración de Abya Yala.</p>
-      <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-        <a href="#articles" class="block bg-blue-50 p-4 rounded-lg border border-blue-100">
-          <h4 class="font-medium text-blue-700">Artículos</h4>
-          <p class="text-sm text-blue-600 mt-1">Gestiona el contenido del sitio</p>
-        </a>
-        <a href="#media" class="block bg-green-50 p-4 rounded-lg border border-green-100">
-          <h4 class="font-medium text-green-700">Multimedia</h4>
-          <p class="text-sm text-green-600 mt-1">Administra imágenes y archivos</p>
-        </a>
-        <a href="#categories" class="block bg-purple-50 p-4 rounded-lg border border-purple-100">
-          <h4 class="font-medium text-purple-700">Categorías</h4>
-          <p class="text-sm text-purple-600 mt-1">Organiza el contenido</p>
-        </a>
-      </div>
-    </div>
-  `;
-  return null;
+async function loadDashboard(container, isCurrent) {
+  const { Dashboard } = await import('./components/dashboard.js');
+  if (!isCurrent()) return null;
+  const dashboard = new Dashboard(container, {
+    user: appState.user,
+    navigate: (view, params) => showView(view, params)
+  });
+  dashboard.init();
+  return dashboard;
 }
 
-async function loadArticlesManager(container, isCurrent) {
+async function loadArticlesManager(container, isCurrent, params) {
   const { ArticleManager } = await import('./components/article-manager/index.js');
   if (!isCurrent()) return null;
 
@@ -220,25 +410,38 @@ async function loadArticlesManager(container, isCurrent) {
   const articleManager = new ArticleManager(container, {
     contentManager,
     mediaManager,
-    notificationManager: notifications
+    notificationManager: notifications,
+    initialCategory: typeof params.category === 'string' ? params.category : ''
   });
   await articleManager.init();
+  if (!isCurrent()) return articleManager;
+
+  // Intención recibida desde el dashboard
+  if (params.action === 'new') articleManager.createArticle();
+  else if (params.action === 'edit' && params.slug) articleManager.editArticle(String(params.slug));
   return articleManager;
 }
 
-async function loadMediaLibrary(container, isCurrent) {
+async function loadMediaLibrary(container, isCurrent, params) {
   const { MediaLibrary } = await import('./components/media-library.js');
   if (!isCurrent()) return null;
-  return new MediaLibrary(container, null, { mediaManager, contentManager });
+  const library = new MediaLibrary(container, null, { mediaManager, contentManager });
+
+  if (params.action === 'upload' && library.fileUpload) {
+    // Abrir el selector solo si el clic del usuario sigue "vivo"; si no, enfocar el botón
+    const activation = navigator.userActivation;
+    if (!activation || activation.isActive) library.fileUpload.click();
+    else library.fileUpload.closest('label')?.focus();
+  }
+  return library;
 }
 
 async function loadCategoriesManager(container, isCurrent) {
   const { CategoryManager } = await import('./components/category-manager.js');
   if (!isCurrent()) return null;
 
-  container.innerHTML = '<div id="category-manager-container"></div>';
   const categoryManager = new CategoryManager(contentManager);
-  await categoryManager.init('category-manager-container');
+  await categoryManager.init(container);
   return categoryManager;
 }
 
@@ -246,9 +449,8 @@ async function loadAuthorsManager(container, isCurrent) {
   const { AuthorManager } = await import('./components/author-manager.js');
   if (!isCurrent()) return null;
 
-  container.innerHTML = '<div id="author-manager-container"></div>';
   const authorManager = new AuthorManager(contentManager);
-  await authorManager.init('author-manager-container');
+  await authorManager.init(container);
   return authorManager;
 }
 
@@ -263,16 +465,75 @@ async function loadBulkImport(container, isCurrent) {
 
 async function loadSettings(container) {
   const user = appState.user || {};
+  const name = displayName();
+  const expiresAt = sessionState.expiresAt;
+
   container.innerHTML = `
-    <h2 class="text-2xl font-bold mb-6">Configuración</h2>
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h3 class="text-lg font-semibold mb-4">Información del usuario</h3>
-      <div class="mb-4">
-        <p><strong>Nombre:</strong> ${escapeHtml(user.name || '—')}</p>
-        <p><strong>Email:</strong> ${escapeHtml(user.email || 'No disponible')}</p>
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Cuenta y sesión</h2>
+        <p class="page-subtitle">Quién eres en el panel y cómo funciona el acceso.</p>
       </div>
-      <p class="text-gray-600">El acceso al panel se gestiona con Cloudflare Access. Para dar acceso a otra persona, añade su correo a la política de la aplicación en Cloudflare Zero Trust.</p>
+    </div>
+
+    <div class="settings-grid">
+      <section class="card" aria-labelledby="account-title">
+        <div class="card-header">
+          <h3 class="card-title" id="account-title">${icon('user', { size: 18 })}<span>Tu cuenta</span></h3>
+        </div>
+        <div class="card-body">
+          <div class="account-row">
+            <span class="avatar avatar-xl" aria-hidden="true">${escapeHtml(initials(name))}</span>
+            <div class="min-w-0">
+              <p class="account-name">${escapeHtml(user.name || 'Sin nombre')}</p>
+              <p class="account-email">${escapeHtml(user.email || 'Correo no disponible')}</p>
+            </div>
+          </div>
+
+          <dl class="detail-list">
+            <div>
+              <dt>Estado de la sesión</dt>
+              <dd><span class="session-pill" data-session-expiry></span></dd>
+            </div>
+            <div>
+              <dt>Fecha de vencimiento</dt>
+              <dd>${escapeHtml(expiresAt ? formatDateTime(expiresAt) : 'No disponible')}</dd>
+            </div>
+          </dl>
+
+          <div class="card-actions">
+            <a href="${LOGOUT_URL}" class="btn btn-danger-outline">${icon('logout', { size: 18 })}<span>Cerrar sesión</span></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="access-title">
+        <div class="card-header">
+          <h3 class="card-title" id="access-title">${icon('shield', { size: 18 })}<span>Cómo funciona el acceso</span></h3>
+        </div>
+        <div class="card-body prose-sm">
+          <p>El acceso al panel lo gestiona <strong>Cloudflare Access</strong>: al entrar te identificas con tu correo y Cloudflare emite una sesión con fecha de vencimiento. El panel no guarda contraseñas.</p>
+          <p>Cuando la sesión está por vencer verás un aviso. Guarda tu trabajo y recarga la página para volver a identificarte.</p>
+          <p>Para dar acceso a otra persona, añade su correo a la política de la aplicación en <strong>Cloudflare Zero Trust</strong>.</p>
+        </div>
+      </section>
+
+      <section class="card settings-wide" aria-labelledby="about-title">
+        <div class="card-header">
+          <h3 class="card-title" id="about-title">${icon('database', { size: 18 })}<span>Acerca del sistema</span></h3>
+        </div>
+        <div class="card-body">
+          <ul class="stack-list">
+            <li><span class="badge badge-blue">Astro</span><span>Sitio y API, desplegados en Cloudflare Pages.</span></li>
+            <li><span class="badge badge-blue">Cloudflare D1</span><span>Base de datos de artículos, autores, categorías y actividad.</span></li>
+            <li><span class="badge badge-blue">Cloudflare R2</span><span>Almacenamiento de imágenes y archivos multimedia.</span></li>
+            <li><span class="badge badge-blue">Drizzle ORM</span><span>Esquema de la base de datos y migraciones.</span></li>
+            <li><span class="badge badge-blue">TinyMCE</span><span>Editor de contenido de los artículos.</span></li>
+          </ul>
+        </div>
+      </section>
     </div>
   `;
+  updateSessionDisplays();
   return null;
 }

@@ -1,4 +1,6 @@
 import { ALLOWED_UPLOAD_TYPES } from '../../media-manager.js';
+import { icon } from '../../utils/icons.js';
+import { slugify, localDateInputValue } from '../../utils/format.js';
 
 /**
  * Configura los eventos del gestor de artículos (se llama una sola vez tras render()).
@@ -83,26 +85,50 @@ export function setupEvents() {
     $('.select-image-btn')?.addEventListener('click', () => {
       if (!this.mediaManager) return;
 
+      const trigger = $('.select-image-btn');
       const dialog = document.createElement('div');
-      dialog.className = 'image-selection-dialog';
+      dialog.className = 'modal-backdrop is-visible image-selection-dialog';
       dialog.innerHTML = `
-        <div class="dialog-overlay"></div>
-        <div class="dialog-content">
-          <h4>Seleccionar imagen</h4>
-          <div class="dialog-options">
-            <button type="button" class="dialog-option" data-action="library">Seleccionar desde biblioteca</button>
-            <button type="button" class="dialog-option" data-action="upload">Subir nueva imagen</button>
+        <div class="modal-panel modal-sm" role="dialog" aria-modal="true" aria-labelledby="image-dialog-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="image-dialog-title">Imagen destacada</h2>
+            <button type="button" class="btn-icon dialog-close" aria-label="Cerrar">${icon('close')}</button>
           </div>
-          <button type="button" class="dialog-close">Cancelar</button>
+          <div class="modal-body">
+            <div class="option-list">
+              <button type="button" class="option-card dialog-option" data-action="library">
+                <span class="option-icon">${icon('media', { size: 22 })}</span>
+                <span><strong>Elegir de la biblioteca</strong><small>Usa una imagen ya subida.</small></span>
+              </button>
+              <button type="button" class="option-card dialog-option" data-action="upload">
+                <span class="option-icon">${icon('upload', { size: 22 })}</span>
+                <span><strong>Subir una imagen nueva</strong><small>JPG, PNG, GIF, WebP o AVIF · máx. 10 MB.</small></span>
+              </button>
+            </div>
+          </div>
         </div>
       `;
       document.body.appendChild(dialog);
+      dialog.querySelector('.dialog-option').focus();
+
+      const closeDialog = () => {
+        document.removeEventListener('keydown', onKeydown, true);
+        dialog.remove();
+      };
+      const onKeydown = (e) => {
+        if (e.key === 'Escape') {
+          closeDialog();
+          trigger?.focus();
+        }
+      };
+      document.addEventListener('keydown', onKeydown, true);
 
       dialog.addEventListener('click', (e) => {
         const option = e.target.closest('.dialog-option');
-        const closing = option || e.target.closest('.dialog-close') || e.target.classList.contains('dialog-overlay');
+        const closing = option || e.target.closest('.dialog-close') || e.target === dialog;
         if (!closing) return;
-        dialog.remove();
+        closeDialog();
+        if (!option) trigger?.focus();
 
         if (option?.dataset.action === 'library') {
           this.mediaManager.openMediaBrowser({
@@ -163,17 +189,7 @@ export async function handleImageUpload(file) {
  * @returns {string} Slug generado
  */
 export function generateSlug(text) {
-  if (!text) return '';
-  return text
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // quitar tildes y diéresis (ñ → n)
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .substring(0, 60);
+  return slugify(text, 60);
 }
 
 /**
@@ -220,7 +236,7 @@ export async function saveArticle() {
       title,
       description: ($('#article-description')?.value || '').trim(),
       category: $('#article-category')?.value || '',
-      pubDate: dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split('T')[0],
+      pubDate: dateInput && dateInput.value ? dateInput.value : localDateInputValue(),
       content,
       author_id: authorValue ? Number(authorValue) : null,
       // Siempre se envían para poder vaciarlos

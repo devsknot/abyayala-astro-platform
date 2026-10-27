@@ -107,13 +107,13 @@ export class AvatarBuilder {
     const html = `
       <div class="avatar-builder">
         <div class="avatar-preview">
-          <img id="avatar-preview-img" src="${escapeHtml(this.getAvatarUrl())}" alt="Avatar Preview" />
+          <img id="avatar-preview-img" src="${escapeHtml(this.getAvatarUrl())}" alt="Vista previa del avatar">
         </div>
         
         <div class="avatar-controls">
           <div class="form-group">
-            <label class="form-label">Estilo de Avatar</label>
-            <select id="avatar-style" class="form-control">
+            <label class="form-label" for="avatar-style">Estilo de avatar</label>
+            <select id="avatar-style" class="form-select">
               ${this.styles.map(style => `
                 <option value="${escapeHtml(style.id)}" ${this.currentConfig.style === style.id ? 'selected' : ''}>
                   ${escapeHtml(style.name)} - ${escapeHtml(style.description)}
@@ -123,9 +123,9 @@ export class AvatarBuilder {
           </div>
           
           <div class="form-group">
-            <label class="form-label">Nombre/Semilla (para generar avatar único)</label>
-            <input type="text" id="avatar-seed" class="form-control" value="${escapeHtml(this.currentConfig.seed)}" placeholder="Ej: Juan Pérez">
-            <small class="form-text text-muted">Cada nombre genera un avatar único</small>
+            <label class="form-label" for="avatar-seed">Nombre o semilla</label>
+            <input type="text" id="avatar-seed" class="form-input" value="${escapeHtml(this.currentConfig.seed)}" placeholder="Ej: Juan Pérez">
+            <p class="form-help">Cada texto genera un avatar único.</p>
           </div>
           
           <div id="avatar-options" class="avatar-options">
@@ -134,10 +134,10 @@ export class AvatarBuilder {
           
           <div class="avatar-actions">
             <button type="button" id="generate-random-avatar" class="btn btn-secondary">
-              🎲 Generar Aleatorio
+              Generar aleatorio
             </button>
-            <button type="button" id="reset-avatar" class="btn btn-outline-secondary">
-              🔄 Resetear
+            <button type="button" id="reset-avatar" class="btn btn-ghost">
+              Restablecer
             </button>
           </div>
           
@@ -211,7 +211,7 @@ export class AvatarBuilder {
       html += `
         <div class="form-group">
           <label class="form-label">${escapeHtml(this.formatLabel(key))}</label>
-          <select class="form-control avatar-option" data-option="${escapeHtml(key)}">
+          <select class="form-select avatar-option" data-option="${escapeHtml(key)}">
             <option value="">Por defecto</option>
             ${values.map(value => `
               <option value="${escapeHtml(value)}" ${this.currentConfig.options[key] === value ? 'selected' : ''}>

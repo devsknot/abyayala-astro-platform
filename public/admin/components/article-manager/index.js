@@ -8,15 +8,10 @@ import {
 import { loadCategories } from './categories.js';
 import { loadAuthors } from './authors.js';
 import { showLoading, hideLoading } from './ui.js';
+import { icon } from '../../utils/icons.js';
 
-// Estilos del componente (una sola vez)
-if (!document.getElementById('article-manager-styles')) {
-  const styles = document.createElement('link');
-  styles.id = 'article-manager-styles';
-  styles.rel = 'stylesheet';
-  styles.href = '/admin/components/article-manager/styles.css';
-  document.head.appendChild(styles);
-}
+// Los estilos del gestor viven en /admin/style.css (sistema de diseño común)
+const SKELETON_CARDS = '<div class="article-card skeleton-card" aria-hidden="true"><span class="skeleton skeleton-media"></span><div class="article-content"><span class="skeleton skeleton-title"></span><span class="skeleton skeleton-text"></span><span class="skeleton skeleton-text w-2/3"></span></div></div>'.repeat(6);
 
 /**
  * Clase principal para la gestión de artículos en el CMS
@@ -90,7 +85,7 @@ export class ArticleManager {
     this.render();
     this.setupEvents();
     await Promise.all([this.loadCategories(), this.loadAuthors()]);
-    await this.loadArticles();
+    await this.loadArticles(1, this.options.initialCategory || '');
   }
 
   /**
@@ -111,102 +106,125 @@ export class ArticleManager {
     this.container.innerHTML = `
       <div class="article-manager">
         <div class="articles-list active">
-          <div class="header">
-            <h3>Artículos</h3>
-            <button type="button" class="create-article-btn primary-btn">Nuevo Artículo</button>
+          <div class="page-header">
+            <div>
+              <h2 class="page-title">Artículos</h2>
+              <p class="page-subtitle">Crea, edita y publica las noticias del sitio.</p>
+            </div>
+            <div class="page-actions">
+              <button type="button" class="create-article-btn btn btn-primary">${icon('plus', { size: 18 })}<span>Nuevo artículo</span></button>
+            </div>
           </div>
 
-          <div class="filters">
-            <div class="search-container">
-              <input type="text" id="article-search" placeholder="Buscar artículos...">
-              <button type="button" id="search-btn" class="secondary-btn">Buscar</button>
+          <div class="toolbar card">
+            <div class="search-field">
+              ${icon('search', { size: 18, className: 'search-field-icon' })}
+              <label for="article-search" class="sr-only">Buscar artículos</label>
+              <input type="search" id="article-search" class="form-input" placeholder="Buscar por título o contenido…" autocomplete="off">
             </div>
-
-            <div class="category-filter-container">
-              <select id="category-filter">
-                <option value="">Todas las categorías</option>
-              </select>
-              <button type="button" id="clear-filters" class="text-btn">Limpiar filtros</button>
-            </div>
+            <button type="button" id="search-btn" class="btn btn-secondary">Buscar</button>
+            <label for="category-filter" class="sr-only">Filtrar por categoría</label>
+            <select id="category-filter" class="form-select toolbar-select">
+              <option value="">Todas las categorías</option>
+            </select>
+            <button type="button" id="clear-filters" class="btn btn-link">Limpiar filtros</button>
           </div>
 
           <div class="articles-container">
-            <div class="loading">Cargando artículos...</div>
-            <div class="articles-grid"></div>
+            <div class="loading list-loading" role="status" style="display: none;"></div>
+            <div class="articles-grid">${SKELETON_CARDS}</div>
             <div class="pagination"></div>
           </div>
         </div>
 
         <div class="article-editor">
-          <div class="header">
-            <h3>Crear artículo</h3>
-            <button type="button" class="back-to-list-btn secondary-btn">Volver a la lista</button>
+          <div class="page-header">
+            <div class="page-header-main">
+              <button type="button" class="back-to-list-btn btn btn-ghost btn-sm">${icon('arrowLeft', { size: 18 })}<span>Volver a la lista</span></button>
+              <h3 class="page-title">Crear artículo</h3>
+            </div>
           </div>
 
-          <form class="article-form">
-            <div class="form-group">
-              <label class="form-label" for="article-title">Título</label>
-              <input type="text" id="article-title" name="title" required>
-            </div>
+          <form class="article-form" novalidate>
+            <div class="editor-layout">
+              <div class="editor-main">
+                <div class="card">
+                  <div class="card-body">
+                    <div class="form-field">
+                      <label class="form-label" for="article-title">Título <span class="required" aria-hidden="true">*</span></label>
+                      <input type="text" id="article-title" name="title" class="form-input form-input-lg" required>
+                    </div>
 
-            <div class="form-group">
-              <label class="form-label" for="article-description">Descripción</label>
-              <textarea id="article-description" name="description" rows="3"></textarea>
-            </div>
+                    <div class="form-field">
+                      <label class="form-label" for="article-description">Descripción</label>
+                      <textarea id="article-description" name="description" rows="3" class="form-textarea"></textarea>
+                      <p class="form-help">Resumen breve para listados, buscadores y redes sociales.</p>
+                    </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" for="article-category">Categoría</label>
-                <select id="article-category" name="category">
-                  <option value="">Seleccionar categoría</option>
-                </select>
+                    <div class="form-field mb-0">
+                      <span class="form-label" id="article-content-label">Contenido</span>
+                      <div class="editor-container" aria-labelledby="article-content-label"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div class="form-group">
-                <label class="form-label" for="article-date">Fecha de publicación</label>
-                <input type="date" id="article-date" name="pubDate">
-              </div>
+              <aside class="editor-side">
+                <div class="card">
+                  <div class="card-header"><h4 class="card-title">Publicación</h4></div>
+                  <div class="card-body">
+                    <div class="form-field">
+                      <label class="form-label" for="article-date">Fecha de publicación</label>
+                      <input type="date" id="article-date" name="pubDate" class="form-input">
+                    </div>
+
+                    <div class="form-field">
+                      <label class="form-label" for="article-category">Categoría</label>
+                      <select id="article-category" name="category" class="form-select">
+                        <option value="">Seleccionar categoría</option>
+                      </select>
+                    </div>
+
+                    <div class="form-field">
+                      <label class="form-label" for="article-author">Autor</label>
+                      <select id="article-author" name="author_id" class="form-select">
+                        <option value="">Seleccionar autor</option>
+                      </select>
+                    </div>
+
+                    <div class="form-field">
+                      <label class="form-label" for="article-slug">Slug <span class="required" aria-hidden="true">*</span></label>
+                      <input type="text" id="article-slug" name="slug" class="form-input font-mono">
+                      <p class="form-help">Identificador de la URL. No se puede cambiar después de crear el artículo.</p>
+                    </div>
+
+                    <div class="form-field mb-0">
+                      <label class="form-label" for="article-tags">Etiquetas</label>
+                      <input type="text" id="article-tags" name="tags" class="form-input" placeholder="Separadas por comas">
+                      <p class="form-help">Ejemplo: agroecología, territorio, semillas</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card featured-image-container">
+                  <div class="card-header"><h4 class="card-title">Imagen destacada</h4></div>
+                  <div class="card-body">
+                    <div class="featured-image-preview">
+                      <span class="text-muted">No hay imagen seleccionada</span>
+                    </div>
+                    <input type="hidden" id="article-featured-image" name="featured_image" value="">
+                    <div class="button-row">
+                      <button type="button" class="select-image-btn btn btn-secondary btn-sm">${icon('image', { size: 16 })}<span>Seleccionar imagen</span></button>
+                      <button type="button" class="remove-image-btn btn btn-ghost btn-sm text-danger" style="display: none;">${icon('trash', { size: 16 })}<span>Quitar</span></button>
+                    </div>
+                  </div>
+                </div>
+              </aside>
             </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label" for="article-author">Autor</label>
-                <select id="article-author" name="author_id">
-                  <option value="">Seleccionar autor</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="article-slug">Slug</label>
-                <input type="text" id="article-slug" name="slug">
-                <small class="form-text text-muted">Identificador único para la URL del artículo. No se puede cambiar después de crearlo.</small>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="article-tags">Etiquetas</label>
-              <input type="text" id="article-tags" name="tags" placeholder="Separadas por comas">
-              <small class="form-text text-muted">Ejemplo: tecnología, ciencia, innovación</small>
-            </div>
-
-            <div class="form-group featured-image-container">
-              <label class="form-label">Imagen destacada</label>
-              <div class="featured-image-preview">
-                <span class="text-gray-500">No hay imagen seleccionada</span>
-              </div>
-              <input type="hidden" id="article-featured-image" name="featured_image" value="">
-              <button type="button" class="select-image-btn secondary-btn mt-2">Seleccionar imagen</button>
-              <button type="button" class="remove-image-btn text-btn mt-2" style="display: none;">Eliminar imagen</button>
-            </div>
-
-            <div class="form-group mt-4">
-              <label class="form-label">Contenido</label>
-              <div class="editor-container border rounded-lg p-2 min-h-[300px]"></div>
-            </div>
-
-            <div class="form-actions mt-4">
-              <button type="submit" class="save-article-btn primary-btn">Guardar artículo</button>
-              <button type="button" class="cancel-btn secondary-btn">Cancelar</button>
+            <div class="form-actions sticky-actions">
+              <button type="button" class="cancel-btn btn btn-secondary">Cancelar</button>
+              <button type="submit" class="save-article-btn btn btn-primary">${icon('check', { size: 18 })}<span>Guardar artículo</span></button>
             </div>
           </form>
         </div>
@@ -222,7 +240,8 @@ export class ArticleManager {
    */
   async loadArticles(page = 1, category = '', search = '') {
     const requestId = ++this.loadRequestId;
-    this.showLoading('Cargando artículos...');
+    // Carga de la lista: indicador en línea, sin overlay a pantalla completa
+    this.showLoading('Cargando artículos…', false);
 
     this.currentCategory = category || '';
     this.currentSearch = search || '';
@@ -245,14 +264,6 @@ export class ArticleManager {
       this.currentPage = pagination.page || parseInt(page, 10) || 1;
       this.totalPages = pagination.totalPages || 1;
 
-      const articlesGrid = this.container.querySelector('.articles-grid');
-      if (articlesGrid) {
-        articlesGrid.style.display = 'grid';
-        articlesGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
-        articlesGrid.style.gap = '1.5rem';
-        articlesGrid.style.width = '100%';
-      }
-
       this.renderArticles(articles, {
         currentPage: this.currentPage,
         totalPages: this.totalPages,
@@ -261,22 +272,27 @@ export class ArticleManager {
     } catch (error) {
       if (requestId !== this.loadRequestId) return;
       console.error('Error al cargar artículos:', error);
-      if (this.notificationManager) this.notificationManager.error('Error al cargar los artículos');
+      if (this.notificationManager && error.status !== 401) this.notificationManager.error('Error al cargar los artículos');
 
       const articlesGrid = this.container.querySelector('.articles-grid');
+      const paginationContainer = this.container.querySelector('.pagination');
+      if (paginationContainer) paginationContainer.innerHTML = '';
       if (articlesGrid) {
         articlesGrid.innerHTML = `
-          <div class="error-message">
-            <p>No se pudieron cargar los artículos. Intente nuevamente.</p>
-            <button type="button" class="retry-btn primary-btn">Reintentar</button>
+          <div class="state-card state-error grid-span-all" role="alert">
+            <span class="state-icon">${icon('alert', { size: 28 })}</span>
+            <h3 class="state-title">No se pudieron cargar los artículos</h3>
+            <p class="state-text"></p>
+            <button type="button" class="retry-btn btn btn-primary">${icon('refresh', { size: 18 })}<span>Reintentar</span></button>
           </div>
         `;
+        articlesGrid.querySelector('.state-text').textContent = error.message || 'Inténtalo de nuevo.';
         articlesGrid.querySelector('.retry-btn').addEventListener('click', () => {
           this.loadArticles(this.currentPage, this.currentCategory, this.currentSearch);
         });
       }
     } finally {
-      if (requestId === this.loadRequestId) this.hideLoading();
+      if (requestId === this.loadRequestId) this.hideLoading(false);
     }
   }
 }

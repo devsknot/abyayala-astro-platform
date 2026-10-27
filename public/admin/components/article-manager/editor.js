@@ -1,8 +1,10 @@
 import { safeUrl } from '../../utils/html.js';
+import { icon } from '../../utils/icons.js';
+import { localDateInputValue } from '../../utils/format.js';
 import { ALLOWED_UPLOAD_TYPES } from '../../media-manager.js';
 
 const EDITOR_ID = 'tinymce-editor';
-const PLACEHOLDER_HTML = '<span class="text-gray-500">No hay imagen seleccionada</span>';
+const PLACEHOLDER_HTML = `<div class="featured-placeholder">${icon('image', { size: 28 })}<span>No hay imagen seleccionada</span></div>`;
 
 /**
  * Destruye la instancia de TinyMCE del editor de artículos, si existe.
@@ -79,7 +81,20 @@ export function loadArticleDataIntoForm(article) {
 
     titleInput.value = article.title || '';
     descriptionInput.value = article.description || '';
-    categorySelect.value = article.category || '';
+
+    // Si la categoría guardada no está en la lista (borrada o heredada), se añade
+    // una opción temporal para no cambiarla en silencio al guardar.
+    categorySelect.querySelectorAll('option[data-missing]').forEach(option => option.remove());
+    const category = article.category || '';
+    categorySelect.value = category;
+    if (category && categorySelect.value !== category) {
+      const option = document.createElement('option');
+      option.value = category;
+      option.dataset.missing = 'true';
+      option.textContent = `${category} (no existe en Categorías)`;
+      categorySelect.appendChild(option);
+      categorySelect.value = category;
+    }
 
     // El slug no se puede cambiar en artículos existentes (la API lo rechaza)
     slugInput.value = article.slug || '';
@@ -117,9 +132,7 @@ export function loadArticleDataIntoForm(article) {
  * @param {string} pubDate - Fecha de publicación
  */
 export function setDateInputValue(dateInput, pubDate) {
-  const date = pubDate ? new Date(pubDate) : new Date();
-  const valid = !Number.isNaN(date.getTime()) ? date : new Date();
-  dateInput.value = valid.toISOString().split('T')[0];
+  dateInput.value = localDateInputValue(pubDate);
 }
 
 /**
@@ -189,26 +202,22 @@ export function updateFeaturedImagePreview(imageUrl, previewElement) {
   }
 
   const status = document.createElement('span');
-  status.className = 'text-gray-500';
-  status.textContent = 'Cargando imagen...';
+  status.className = 'skeleton skeleton-media';
+  status.setAttribute('aria-label', 'Cargando imagen');
   previewElement.appendChild(status);
 
   const img = document.createElement('img');
   img.alt = 'Imagen destacada';
-  img.style.maxWidth = '150px';
-  img.style.maxHeight = '150px';
-  img.style.objectFit = 'contain';
-  img.style.display = 'block';
-  img.style.margin = '0 auto';
+  img.className = 'featured-image';
 
   img.addEventListener('load', () => {
     previewElement.replaceChildren(img);
   });
   img.addEventListener('error', () => {
     const box = document.createElement('div');
-    box.style.textAlign = 'center';
-    box.style.color = '#e53e3e';
+    box.className = 'featured-error';
     const title = document.createElement('p');
+    title.className = 'featured-error-title';
     title.textContent = 'No se pudo cargar la imagen';
     const detail = document.createElement('small');
     detail.textContent = String(imageUrl);
@@ -331,41 +340,52 @@ export function initializeEditor(content = '') {
  * @param {Function} callback - Función callback de TinyMCE para devolver la URL
  */
 export function openMediaLibraryForTinyMCE(callback) {
+  const previousFocus = document.activeElement;
   const modal = document.createElement('div');
-  modal.className = 'tinymce-media-modal';
-  Object.assign(modal.style, {
-    position: 'fixed', inset: '0', backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: '10000'
-  });
+  // Por encima de los diálogos de TinyMCE (z-index ~1300)
+  modal.className = 'modal-backdrop is-visible modal-over-tinymce tinymce-media-modal';
 
   modal.innerHTML = `
-    <div style="background: white; border-radius: 8px; padding: 24px; max-width: 900px; width: 90%; max-height: 80vh; overflow-y: auto;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h3 style="font-size: 1.25rem; font-weight: bold; margin: 0;">Seleccionar Imagen</h3>
-        <button type="button" class="close-media-modal" style="background: #6b7280; color: white; padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer;">Cancelar</button>
+    <div class="modal-panel modal-lg" role="dialog" aria-modal="true" aria-labelledby="tinymce-media-title">
+      <div class="modal-header">
+        <h2 class="modal-title" id="tinymce-media-title">Seleccionar imagen</h2>
+        <button type="button" class="btn-icon close-media-modal" aria-label="Cerrar">${icon('close')}</button>
       </div>
-      <div class="media-loading" style="text-align: center; padding: 40px; color: #6b7280;">Cargando imágenes...</div>
-      <div class="media-grid" style="display: none; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px;"></div>
+      <div class="modal-body">
+        <div class="media-loading view-loading" role="status"><span class="spinner" aria-hidden="true"></span><span>Cargando imágenes…</span></div>
+        <div class="media-picker-grid" hidden></div>
+      </div>
     </div>
   `;
   document.body.appendChild(modal);
 
-  const close = () => modal.remove();
+  const onKeydown = (event) => {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      close();
+    }
+  };
+  const close = () => {
+    document.removeEventListener('keydown', onKeydown, true);
+    modal.remove();
+    if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+  };
+  document.addEventListener('keydown', onKeydown, true);
   modal.querySelector('.close-media-modal').addEventListener('click', close);
+  modal.querySelector('.close-media-modal').focus();
   modal.addEventListener('click', (e) => {
     if (e.target === modal) close();
   });
 
   const loading = modal.querySelector('.media-loading');
-  const grid = modal.querySelector('.media-grid');
+  const grid = modal.querySelector('.media-picker-grid');
 
-  const showMessage = (text, color) => {
+  const showMessage = (text, isError) => {
+    loading.hidden = true;
     loading.style.display = 'none';
-    grid.style.display = 'block';
+    grid.hidden = false;
     const p = document.createElement('p');
-    p.style.textAlign = 'center';
-    p.style.padding = '40px';
-    p.style.color = color;
+    p.className = isError ? 'empty-state text-danger grid-span-all' : 'empty-state grid-span-all';
     p.textContent = text;
     grid.replaceChildren(p);
   };
@@ -374,12 +394,13 @@ export function openMediaLibraryForTinyMCE(callback) {
     .then(files => {
       const images = files.filter(file => ALLOWED_UPLOAD_TYPES.includes(file.type) || (file.type || '').startsWith('image/'));
       if (images.length === 0) {
-        showMessage('No hay imágenes disponibles', '#6b7280');
+        showMessage('No hay imágenes disponibles', false);
         return;
       }
 
+      loading.hidden = true;
       loading.style.display = 'none';
-      grid.style.display = 'grid';
+      grid.hidden = false;
 
       for (const file of images) {
         const url = this.mediaManager.getPublicUrl(file.id);
@@ -387,20 +408,14 @@ export function openMediaLibraryForTinyMCE(callback) {
 
         const item = document.createElement('button');
         item.type = 'button';
-        item.className = 'tinymce-media-item';
-        Object.assign(item.style, {
-          cursor: 'pointer', border: '2px solid transparent', borderRadius: '8px',
-          overflow: 'hidden', padding: '0', background: 'none'
-        });
+        item.className = 'media-picker-item';
+        item.title = file.name || '';
 
         const img = document.createElement('img');
         img.src = url;
         img.alt = file.name || 'Imagen';
         img.loading = 'lazy';
-        Object.assign(img.style, { width: '100%', height: '150px', objectFit: 'cover', display: 'block' });
 
-        item.addEventListener('mouseenter', () => { item.style.borderColor = '#3b82f6'; });
-        item.addEventListener('mouseleave', () => { item.style.borderColor = 'transparent'; });
         item.addEventListener('click', () => {
           callback(url, { alt: file.name || '' });
           close();
@@ -412,7 +427,7 @@ export function openMediaLibraryForTinyMCE(callback) {
     })
     .catch(error => {
       console.error('Error al cargar imágenes:', error);
-      showMessage('Error al cargar imágenes', '#ef4444');
+      showMessage('Error al cargar imágenes', true);
     });
 }
 
@@ -441,7 +456,10 @@ export function createArticle() {
       }
 
       const dateInput = articleForm.querySelector('#article-date');
-      if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+      if (dateInput) dateInput.value = localDateInputValue();
+
+      // Quitar opciones temporales de categorías inexistentes de una edición anterior
+      articleForm.querySelectorAll('#article-category option[data-missing]').forEach(option => option.remove());
     }
 
     this.loadFeaturedImage('');

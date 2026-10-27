@@ -4,6 +4,9 @@
 import { AvatarBuilder } from './AvatarBuilder.js';
 import { buildAvatarUrl, normalizeStyle, randomSeed } from './dicebear.js';
 
+const DICE_ICON = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>';
+const BRUSH_ICON = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+
 export class AvatarWizard {
   constructor() {
     this.avatarBuilder = null;
@@ -33,6 +36,8 @@ export class AvatarWizard {
    * Cierra el wizard
    */
   close() {
+    if (this.onKeydown) document.removeEventListener('keydown', this.onKeydown, true);
+    this.onKeydown = null;
     const modal = document.getElementById('avatar-wizard-modal');
     if (modal) {
       modal.remove();
@@ -66,12 +71,12 @@ export class AvatarWizard {
     modal.className = 'avatar-wizard-modal';
     modal.innerHTML = `
       <div class="avatar-wizard-overlay"></div>
-      <div class="avatar-wizard-container">
+      <div class="avatar-wizard-container" role="dialog" aria-modal="true" aria-labelledby="avatar-wizard-title">
         <div class="avatar-wizard-header">
-          <h2 class="avatar-wizard-title">
+          <h2 class="avatar-wizard-title" id="avatar-wizard-title">
             ${this.currentConfig ? 'Editar Avatar' : 'Crear Avatar'}
           </h2>
-          <button class="avatar-wizard-close" id="wizard-close-btn">
+          <button type="button" class="avatar-wizard-close btn-icon" id="wizard-close-btn" aria-label="Cerrar">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -84,14 +89,25 @@ export class AvatarWizard {
         </div>
         
         <div class="avatar-wizard-footer">
-          <button class="btn btn-secondary" id="wizard-cancel-btn">Cancelar</button>
-          <button class="btn btn-primary" id="wizard-save-btn" style="display: none;">Guardar</button>
+          <button type="button" class="btn btn-secondary" id="wizard-cancel-btn">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="wizard-save-btn" style="display: none;">Guardar</button>
         </div>
       </div>
     `;
 
     document.body.appendChild(modal);
     this.attachEvents();
+
+    // Escape cierra el wizard
+    if (this.onKeydown) document.removeEventListener('keydown', this.onKeydown, true);
+    this.onKeydown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.handleCancel();
+      }
+    };
+    document.addEventListener('keydown', this.onKeydown, true);
+    modal.querySelector('#wizard-close-btn')?.focus();
   }
 
   /**
@@ -120,17 +136,17 @@ export class AvatarWizard {
         <p class="step-description">Elige una opción para comenzar</p>
         
         <div class="choice-cards">
-          <div class="choice-card" id="choice-random">
-            <div class="choice-icon">🎲</div>
+          <button type="button" class="choice-card" id="choice-random">
+            <div class="choice-icon">${DICE_ICON}</div>
             <h4>Aleatorio</h4>
             <p>Genera un avatar al azar y personalízalo si lo deseas</p>
-          </div>
+          </button>
           
-          <div class="choice-card" id="choice-manual">
-            <div class="choice-icon">🎨</div>
+          <button type="button" class="choice-card" id="choice-manual">
+            <div class="choice-icon">${BRUSH_ICON}</div>
             <h4>Manual</h4>
             <p>Personaliza cada detalle de tu avatar</p>
-          </div>
+          </button>
         </div>
       </div>
     `;
@@ -143,7 +159,7 @@ export class AvatarWizard {
     return `
       <div class="wizard-step wizard-random">
         <div class="step-header">
-          <button class="btn-back" id="wizard-back-btn">
+          <button type="button" class="btn btn-ghost btn-sm btn-back" id="wizard-back-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
@@ -154,17 +170,17 @@ export class AvatarWizard {
         
         <div class="random-preview">
           <div class="avatar-display">
-            <img id="random-avatar-preview" src="" alt="Avatar Preview" />
+            <img id="random-avatar-preview" alt="Vista previa del avatar">
           </div>
           
           <div class="random-controls">
-            <button class="btn btn-large btn-primary" id="generate-random-btn">
-              🎲 Generar Nuevo Avatar
+            <button type="button" class="btn btn-primary btn-lg" id="generate-random-btn">
+              ${DICE_ICON.replace(/32/g, '20')}<span>Generar otro avatar</span>
             </button>
             
             <div class="style-selector">
-              <label>Estilo:</label>
-              <select id="random-style-select" class="form-control">
+              <label for="random-style-select" class="form-label">Estilo</label>
+              <select id="random-style-select" class="form-select">
                 <option value="avataaars">Avataaars - Personas</option>
                 <option value="bottts">Bottts - Robots</option>
               </select>
@@ -182,7 +198,7 @@ export class AvatarWizard {
     return `
       <div class="wizard-step wizard-manual">
         <div class="step-header">
-          <button class="btn-back" id="wizard-back-btn">
+          <button type="button" class="btn btn-ghost btn-sm btn-back" id="wizard-back-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>

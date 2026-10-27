@@ -1,6 +1,7 @@
 // Gestor de importación masiva de artículos (POST /api/content/bulk-import)
 import { notifications } from './notification.js';
 import { escapeHtml, attrUrl } from '../utils/html.js';
+import { icon } from '../utils/icons.js';
 
 export class BulkImportManager {
   /**
@@ -27,69 +28,79 @@ export class BulkImportManager {
   render() {
     this.container.innerHTML = `
       <div class="bulk-import-manager">
-        <div class="bg-white shadow-md rounded-lg p-6 mb-6">
-          <h2 class="text-2xl font-bold mb-4">Carga Masiva de Artículos</h2>
-          <p class="text-gray-600 mb-2">
-            Importa múltiples artículos desde un archivo JSON con la forma
-            <code>{"articles": [{"title", "content", "category", ...}]}</code>.
-          </p>
-          <p class="text-sm text-gray-500 mb-6">
-            Los artículos cuyo slug ya exista se omiten. Los autores que no existan se crean automáticamente.
-          </p>
-
-          <div id="file-drop-area" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6 hover:bg-gray-50 transition-colors">
-            <div class="file-upload-icon text-4xl mb-2">📤</div>
-            <p class="mb-2">Arrastra y suelta un archivo JSON aquí</p>
-            <p class="text-sm text-gray-500 mb-4">o</p>
-            <label class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg cursor-pointer transition-colors">
-              Seleccionar archivo
-              <input type="file" id="file-input" accept=".json,application/json" class="hidden">
-            </label>
+        <div class="page-header">
+          <div>
+            <h2 class="page-title">Importación masiva</h2>
+            <p class="page-subtitle">Importa varios artículos a la vez desde un archivo JSON.</p>
           </div>
+        </div>
 
-          <div id="import-options" class="mb-6 hidden">
-            <h3 class="text-xl font-semibold mb-3">Filtrar por categorías</h3>
-            <p class="text-sm text-gray-500 mb-2">Si no marcas ninguna, se importan todas.</p>
-            <div id="category-filters" class="grid grid-cols-3 gap-2"></div>
-          </div>
-
-          <div id="data-preview" class="mb-6 hidden">
-            <h3 class="text-xl font-semibold mb-3">Previsualización</h3>
-            <div class="overflow-x-auto">
-              <table class="min-w-full bg-white border border-gray-200">
-                <thead>
-                  <tr>
-                    <th class="py-2 px-4 border-b">Título</th>
-                    <th class="py-2 px-4 border-b">Categoría</th>
-                    <th class="py-2 px-4 border-b">Fecha</th>
-                    <th class="py-2 px-4 border-b">Imagen</th>
-                  </tr>
-                </thead>
-                <tbody id="preview-table-body"></tbody>
-              </table>
+        <div class="card">
+          <div class="card-body">
+            <div class="callout callout-info">
+              ${icon('info', { size: 18 })}
+              <div>
+                <p>El archivo debe tener la forma <code class="code-pill">{"articles": [{"title", "content", "category", …}]}</code>.</p>
+                <p>Los artículos cuyo slug ya exista se omiten. Los autores que no existan se crean automáticamente.</p>
+              </div>
             </div>
-            <div class="mt-2 text-sm text-gray-600">
-              <span id="total-articles-count">0</span> artículos a importar
+
+            <div id="file-drop-area" class="dropzone">
+              <span class="dropzone-icon">${icon('import', { size: 28 })}</span>
+              <p class="dropzone-title">Arrastra y suelta un archivo JSON aquí</p>
+              <p class="dropzone-text">o</p>
+              <label class="btn btn-primary file-button" tabindex="0">
+                <span>Seleccionar archivo</span>
+                <input type="file" id="file-input" accept=".json,application/json" class="sr-only" tabindex="-1">
+              </label>
+              <p class="dropzone-file" id="selected-file-name" hidden></p>
+            </div>
+
+            <div id="import-options" class="section hidden">
+              <h3 class="section-title">Filtrar por categorías</h3>
+              <p class="form-help">Si no marcas ninguna, se importan todas.</p>
+              <div id="category-filters" class="checkbox-grid"></div>
+            </div>
+
+            <div id="data-preview" class="section hidden">
+              <h3 class="section-title">Previsualización <span class="text-muted font-normal">(primeros 10)</span></h3>
+              <div class="table-wrap table-bordered">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Título</th>
+                      <th scope="col">Categoría</th>
+                      <th scope="col">Fecha</th>
+                      <th scope="col">Imagen</th>
+                    </tr>
+                  </thead>
+                  <tbody id="preview-table-body"></tbody>
+                </table>
+              </div>
+              <p class="form-help"><strong id="total-articles-count">0</strong> artículos a importar</p>
+            </div>
+
+            <div id="import-progress" class="section hidden">
+              <div class="callout callout-warning" role="status">
+                <span class="spinner spinner-sm" aria-hidden="true"></span>
+                <p>Importando artículos, no cierres esta página…</p>
+              </div>
+            </div>
+
+            <div id="import-results" class="section hidden">
+              <h3 class="section-title">Resultados</h3>
+              <div class="callout" id="results-summary" role="status"></div>
+              <div id="error-list" class="hidden">
+                <h4 class="section-subtitle">Errores encontrados</h4>
+                <ul class="error-list"></ul>
+              </div>
             </div>
           </div>
 
-          <div id="import-progress" class="mb-6 hidden">
-            <p class="text-gray-700">Importando artículos, no cierres esta página...</p>
-          </div>
-
-          <div id="import-results" class="mb-6 hidden">
-            <h3 class="text-xl font-semibold mb-3">Resultados</h3>
-            <div class="p-4 rounded-lg mb-4" id="results-summary"></div>
-            <div id="error-list" class="hidden">
-              <h4 class="font-semibold mb-2">Errores encontrados:</h4>
-              <ul class="list-disc pl-5 text-red-600"></ul>
-            </div>
-          </div>
-
-          <div class="flex justify-end space-x-3">
-            <button type="button" id="preview-btn" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors hidden">Previsualizar</button>
-            <button type="button" id="import-btn" class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors hidden">Importar</button>
-            <button type="button" id="clear-btn" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition-colors hidden">Limpiar</button>
+          <div class="card-footer form-actions">
+            <button type="button" id="clear-btn" class="btn btn-ghost mr-auto hidden">Limpiar</button>
+            <button type="button" id="preview-btn" class="btn btn-secondary hidden">Previsualizar</button>
+            <button type="button" id="import-btn" class="btn btn-primary hidden">${icon('upload', { size: 18 })}<span>Importar</span></button>
           </div>
         </div>
       </div>
@@ -102,16 +113,25 @@ export class BulkImportManager {
 
     dropArea.addEventListener('dragover', (e) => {
       e.preventDefault();
-      dropArea.classList.add('border-green-500');
+      dropArea.classList.add('is-dragover');
     });
-    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('border-green-500'));
+    dropArea.addEventListener('dragleave', () => dropArea.classList.remove('is-dragover'));
     dropArea.addEventListener('drop', (e) => {
       e.preventDefault();
-      dropArea.classList.remove('border-green-500');
+      dropArea.classList.remove('is-dragover');
       if (e.dataTransfer.files.length) this.handleFileSelection(e.dataTransfer.files[0]);
     });
     fileInput.addEventListener('change', (e) => {
       if (e.target.files.length) this.handleFileSelection(e.target.files[0]);
+      // Permite volver a elegir el mismo archivo
+      fileInput.value = '';
+    });
+    const fileLabel = fileInput.closest('label');
+    fileLabel.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+      }
     });
 
     this.$('#preview-btn').addEventListener('click', () => this.previewData());
@@ -121,6 +141,8 @@ export class BulkImportManager {
     this.$('#category-filters').addEventListener('change', () => {
       this.selectedCategories = Array.from(this.container.querySelectorAll('.category-checkbox:checked'))
         .map(cb => cb.value);
+      // Mantener la previsualización y el recuento sincronizados con el filtro
+      if (!this.$('#data-preview').classList.contains('hidden')) this.previewData();
     });
 
     this.loadCategories();
@@ -141,6 +163,13 @@ export class BulkImportManager {
         notifications.error('El archivo JSON no tiene la estructura correcta: cada artículo necesita title y content.');
         return;
       }
+      const fileName = this.$('#selected-file-name');
+      fileName.textContent = `${file.name} · ${this.jsonData.articles.length} artículos`;
+      fileName.hidden = false;
+      // Un archivo nuevo invalida la previsualización y los resultados anteriores
+      this.$('#data-preview').classList.add('hidden');
+      this.$('#import-results').classList.add('hidden');
+      this.$('#import-btn').classList.add('hidden');
       this.$('#import-options').classList.remove('hidden');
       this.$('#preview-btn').classList.remove('hidden');
       this.$('#clear-btn').classList.remove('hidden');
@@ -162,9 +191,9 @@ export class BulkImportManager {
     const filters = this.$('#category-filters');
     if (!filters || !categories.length) return;
     filters.innerHTML = categories.map(category => `
-      <label class="inline-flex items-center">
-        <input type="checkbox" value="${escapeHtml(category.id)}" class="category-checkbox form-checkbox">
-        <span class="ml-2">${escapeHtml(category.name)}</span>
+      <label class="checkbox">
+        <input type="checkbox" value="${escapeHtml(category.id)}" class="category-checkbox">
+        <span>${escapeHtml(category.name)}</span>
       </label>
     `).join('');
   }
@@ -187,10 +216,10 @@ export class BulkImportManager {
       const image = attrUrl(article.featured_image);
       return `
         <tr>
-          <td class="py-2 px-4 border-b">${escapeHtml(article.title)}</td>
-          <td class="py-2 px-4 border-b">${escapeHtml(article.category || '—')}</td>
-          <td class="py-2 px-4 border-b">${escapeHtml(formatDate(article.pubDate))}</td>
-          <td class="py-2 px-4 border-b">${image ? `<img src="${image}" alt="Vista previa" class="h-10 w-auto">` : 'Sin imagen'}</td>
+          <td>${escapeHtml(article.title)}</td>
+          <td>${escapeHtml(article.category || '—')}</td>
+          <td>${escapeHtml(formatDate(article.pubDate))}</td>
+          <td>${image ? `<img src="${image}" alt="" class="preview-thumb" loading="lazy">` : '<span class="text-muted">Sin imagen</span>'}</td>
         </tr>
       `;
     }).join('');
@@ -257,21 +286,21 @@ export class BulkImportManager {
     let tone;
     let lines;
     if (imported === total && errors.length === 0) {
-      tone = 'green';
+      tone = 'success';
       lines = ['Importación completada con éxito', `Se importaron ${imported} artículos.`];
     } else if (imported > 0) {
-      tone = 'yellow';
+      tone = 'warning';
       lines = ['Importación completada con advertencias', `Se importaron ${imported} de ${total} artículos.`, `Errores: ${errors.length}.`];
     } else {
-      tone = 'red';
+      tone = 'danger';
       lines = ['Error en la importación', 'No se pudo importar ningún artículo.', `Errores: ${errors.length}.`];
     }
     if (summary.authorsCreated) lines.push(`Autores creados: ${summary.authorsCreated}.`);
 
-    resultsSummary.className = `p-4 rounded-lg mb-4 bg-${tone}-100 text-${tone}-700`;
-    resultsSummary.innerHTML = lines
-      .map((line, i) => `<p${i === 0 ? ' class="font-bold"' : ''}>${escapeHtml(line)}</p>`)
-      .join('');
+    resultsSummary.className = `callout callout-${tone}`;
+    resultsSummary.innerHTML = `<div>${lines
+      .map((line, i) => `<p${i === 0 ? ' class="font-semibold"' : ''}>${escapeHtml(line)}</p>`)
+      .join('')}</div>`;
 
     const errorList = this.$('#error-list');
     errorList.classList.toggle('hidden', errors.length === 0);

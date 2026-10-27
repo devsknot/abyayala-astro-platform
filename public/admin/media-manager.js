@@ -3,6 +3,7 @@
 import { apiRequest, ApiError } from './utils/api.js';
 import { safeUrl } from './utils/html.js';
 import { notifications } from './components/notification.js';
+import { icon } from './utils/icons.js';
 
 const API_BASE = '/api/media';
 
@@ -139,8 +140,8 @@ export class MediaManager {
       if (typeof options.onSelect === 'function') {
         const selectButton = document.createElement('button');
         selectButton.type = 'button';
-        selectButton.className = 'media-action-btn select-btn';
-        selectButton.textContent = '✓ Seleccionar';
+        selectButton.className = 'btn btn-primary btn-sm select-btn';
+        selectButton.textContent = 'Seleccionar';
         selectButton.addEventListener('click', (e) => {
           e.stopPropagation();
           options.onSelect({
@@ -155,8 +156,8 @@ export class MediaManager {
 
       const deleteButton = document.createElement('button');
       deleteButton.type = 'button';
-      deleteButton.className = 'media-action-btn delete-btn';
-      deleteButton.textContent = '🗑️ Eliminar';
+      deleteButton.className = 'btn btn-ghost btn-sm text-danger delete-btn';
+      deleteButton.textContent = 'Eliminar';
       deleteButton.addEventListener('click', async (e) => {
         e.stopPropagation();
         const confirmed = await notifications.confirm(
@@ -167,7 +168,7 @@ export class MediaManager {
         if (!confirmed) return;
 
         deleteButton.disabled = true;
-        deleteButton.textContent = '⏳ Eliminando...';
+        deleteButton.textContent = 'Eliminando…';
         try {
           await this.deleteFile(file.id || file.path);
           item.remove();
@@ -177,7 +178,7 @@ export class MediaManager {
           console.error('Error al eliminar archivo:', error);
           notifications.error(`Error al eliminar el archivo: ${error.message}`);
           deleteButton.disabled = false;
-          deleteButton.textContent = '🗑️ Eliminar';
+          deleteButton.textContent = 'Eliminar';
         }
       });
       actions.appendChild(deleteButton);
@@ -198,25 +199,34 @@ export class MediaManager {
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'media-browser-modal';
-      modal.className = 'modal';
+      modal.className = 'modal-backdrop is-visible';
       modal.innerHTML = `
-        <div class="modal-content">
+        <div class="modal-panel modal-lg" role="dialog" aria-modal="true" aria-labelledby="media-browser-title">
           <div class="modal-header">
-            <h3>Seleccionar archivo multimedia</h3>
-            <button type="button" class="close-modal" aria-label="Cerrar">&times;</button>
+            <h2 class="modal-title" id="media-browser-title">Seleccionar imagen</h2>
+            <button type="button" class="btn-icon close-modal" aria-label="Cerrar">${icon('close')}</button>
+          </div>
+          <div class="modal-toolbar">
+            <div class="search-field">
+              ${icon('search', { size: 18, className: 'search-field-icon' })}
+              <label class="sr-only" for="media-browser-search">Buscar imágenes</label>
+              <input type="search" id="media-browser-search" class="form-input search-input" placeholder="Buscar imágenes…" autocomplete="off">
+            </div>
           </div>
           <div class="modal-body">
-            <div class="search-container">
-              <input type="text" class="search-input" placeholder="Buscar imágenes...">
-            </div>
-            <div class="media-browser-loading">Cargando archivos...</div>
+            <div class="media-browser-loading view-loading" role="status"><span class="spinner" aria-hidden="true"></span><span>Cargando archivos…</span></div>
             <div class="media-browser-grid"></div>
           </div>
         </div>
       `;
       document.body.appendChild(modal);
-      modal.querySelector('.close-modal').addEventListener('click', () => {
-        modal.style.display = 'none';
+      const hide = () => { modal.style.display = 'none'; };
+      modal.querySelector('.close-modal').addEventListener('click', hide);
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) hide();
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && modal.style.display !== 'none') hide();
       });
     }
 
@@ -230,10 +240,11 @@ export class MediaManager {
     searchInput.value = '';
     oldSearch.replaceWith(searchInput);
 
-    modal.style.display = 'block';
+    modal.style.display = 'flex';
     grid.replaceChildren();
     grid.style.display = 'none';
-    loading.style.display = 'block';
+    loading.style.display = 'flex';
+    searchInput.focus();
 
     const renderOptions = { ...options, onClose: close };
     let allFiles = [];
@@ -275,29 +286,4 @@ export class MediaManager {
         grid.appendChild(msg);
       });
   }
-}
-
-// Estilos del selector (una sola vez)
-if (!document.getElementById('media-actions-styles')) {
-  const style = document.createElement('style');
-  style.id = 'media-actions-styles';
-  style.textContent = `
-    .media-browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; padding: 16px; }
-    .media-item { position: relative; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; background: #fff; }
-    .media-thumbnail { position: relative; height: 150px; background: #f7fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-    .media-thumbnail img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #fff; }
-    .media-fallback { padding: 8px; font-size: 0.75rem; color: #4a5568; text-align: center; word-break: break-word; }
-    .media-info { padding: 8px; }
-    .media-name { font-size: 0.875rem; font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .media-actions { display: flex; gap: 5px; margin-top: 5px; }
-    .media-action-btn { flex: 1; padding: 4px 8px; font-size: 0.75rem; border: 1px solid #e2e8f0; background: #fff; border-radius: 4px; cursor: pointer; }
-    .media-action-btn:disabled { opacity: 0.6; cursor: wait; }
-    .select-btn { background: #ebf8ff; border-color: #bee3f8; color: #2b6cb0; }
-    .delete-btn { background: #fff5f5; border-color: #fed7d7; color: #c53030; }
-    .search-container { padding: 16px; border-bottom: 1px solid #e2e8f0; }
-    .search-input { width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px; }
-    .no-media, .error-message, .media-browser-loading { padding: 16px; text-align: center; color: #718096; }
-    .error-message { color: #e53e3e; }
-  `;
-  document.head.appendChild(style);
 }

@@ -3,6 +3,7 @@ import { MediaManager, ALLOWED_UPLOAD_TYPES } from '../media-manager.js';
 import { ContentManager } from '../content-manager.js';
 import { notifications } from './notification.js';
 import { escapeHtml, attrUrl } from '../utils/html.js';
+import { icon } from '../utils/icons.js';
 
 export class MediaLibrary {
   /**
@@ -24,20 +25,27 @@ export class MediaLibrary {
   async init() {
     this.container.innerHTML = `
       <div class="media-library">
-        <div class="media-header flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold">Biblioteca de medios</h3>
-          <div class="media-actions flex items-center">
-            <label class="btn-primary cursor-pointer">
-              Subir imagen
-              <input id="file-upload" type="file" class="hidden" accept="${ALLOWED_UPLOAD_TYPES.join(',')}">
+        <div class="page-header">
+          <div>
+            <h2 class="page-title">Biblioteca de medios</h2>
+            <p class="page-subtitle">JPG, PNG, GIF, WebP y AVIF · tamaño máximo 10 MB. Se guardan en Cloudflare R2.</p>
+          </div>
+          <div class="page-actions">
+            <span class="upload-status hidden" role="status"><span class="spinner spinner-sm" aria-hidden="true"></span>Subiendo…</span>
+            <label class="btn btn-primary file-button" tabindex="0">
+              ${icon('upload', { size: 18 })}<span>Subir imagen</span>
+              <input id="file-upload" type="file" class="sr-only" tabindex="-1" accept="${ALLOWED_UPLOAD_TYPES.join(',')}">
             </label>
-            <span class="upload-status ml-2 text-sm text-gray-600 hidden">Subiendo...</span>
           </div>
         </div>
-        <p class="text-xs text-gray-500 mb-4">Formatos permitidos: JPG, PNG, GIF, WebP y AVIF. Tamaño máximo: 10 MB.</p>
 
-        <div class="media-filter mb-4">
-          <input id="media-search" type="text" placeholder="Buscar archivos..." class="form-input">
+        <div class="toolbar card">
+          <div class="search-field">
+            ${icon('search', { size: 18, className: 'search-field-icon' })}
+            <label for="media-search" class="sr-only">Buscar archivos</label>
+            <input id="media-search" type="search" placeholder="Buscar archivos por nombre…" class="form-input" autocomplete="off">
+          </div>
+          <span class="toolbar-meta media-count" aria-live="polite"></span>
         </div>
 
         <div class="media-grid"></div>
@@ -54,6 +62,15 @@ export class MediaLibrary {
   }
 
   setupEvents() {
+    // El <label> hace de botón: activarlo también con teclado
+    const uploadLabel = this.fileUpload.closest('label');
+    uploadLabel.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.fileUpload.click();
+      }
+    });
+
     this.fileUpload.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (file) await this.uploadFile(file);
@@ -112,22 +129,20 @@ export class MediaLibrary {
   }
 
   async loadMediaFiles() {
-    this.mediaGrid.innerHTML = `
-      <div class="flex flex-col items-center justify-center p-8">
-        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500 mb-2"></div>
-        <span class="text-gray-500">Cargando archivos...</span>
-      </div>
-    `;
+    this.mediaGrid.setAttribute('aria-busy', 'true');
+    this.mediaGrid.innerHTML = '<div class="media-item skeleton-card" aria-hidden="true"><span class="skeleton skeleton-media"></span><div class="media-info"><span class="skeleton skeleton-text"></span><span class="skeleton skeleton-text w-1/2"></span></div></div>'.repeat(8);
 
     try {
       this.mediaFiles = await this.mediaManager.getMediaFiles();
       this.renderMediaFiles();
     } catch (error) {
       console.error('Error al cargar archivos:', error);
+      this.mediaGrid.removeAttribute('aria-busy');
       this.mediaGrid.innerHTML = `
-        <div class="error p-8 text-center">
-          <div class="text-red-500 mb-2">Error al cargar archivos</div>
-          <button type="button" class="btn-secondary retry-btn">Reintentar</button>
+        <div class="state-card state-error grid-span-all" role="alert">
+          <span class="state-icon">${icon('alert', { size: 28 })}</span>
+          <h3 class="state-title">No se pudieron cargar los archivos</h3>
+          <button type="button" class="btn btn-primary retry-btn">${icon('refresh', { size: 18 })}<span>Reintentar</span></button>
         </div>
       `;
       this.mediaGrid.querySelector('.retry-btn').addEventListener('click', () => this.loadMediaFiles());
@@ -141,8 +156,21 @@ export class MediaLibrary {
       ? this.mediaFiles.filter(file => (file.name || '').toLowerCase().includes(term))
       : this.mediaFiles;
 
+    this.mediaGrid.removeAttribute('aria-busy');
+    const count = this.container.querySelector('.media-count');
+    if (count) {
+      const totalBytes = files.reduce((sum, file) => sum + (Number(file.size) || 0), 0);
+      count.textContent = `${files.length} ${files.length === 1 ? 'archivo' : 'archivos'} · ${this.formatFileSize(totalBytes)}`;
+    }
+
     if (files.length === 0) {
-      this.mediaGrid.innerHTML = `<div class="empty-state">${term ? 'No hay archivos que coincidan con la búsqueda.' : 'No hay archivos. Sube algunos para comenzar.'}</div>`;
+      this.mediaGrid.innerHTML = `
+        <div class="empty-state grid-span-all">
+          <span class="empty-state-icon">${icon(term ? 'search' : 'image', { size: 28 })}</span>
+          <p class="empty-state-title">${term ? 'Sin resultados' : 'La biblioteca está vacía'}</p>
+          <p class="empty-state-text">${term ? 'No hay archivos que coincidan con la búsqueda.' : 'Sube la primera imagen con el botón «Subir imagen».'}</p>
+        </div>
+      `;
       return;
     }
 
@@ -153,16 +181,18 @@ export class MediaLibrary {
       const thumbnailUrl = isImage ? attrUrl(this.mediaManager.getPublicUrl(file.id)) : '';
 
       return `
-        <div class="media-item ${isSelected ? 'border-blue-500 ring-2 ring-blue-300' : ''}" data-id="${escapeHtml(file.id)}">
+        <div class="media-item ${isSelected ? 'is-selected' : ''}" data-id="${escapeHtml(file.id)}">
           <div class="media-preview">
             ${thumbnailUrl
               ? `<img src="${thumbnailUrl}" alt="${escapeHtml(name)}" loading="lazy">`
-              : '<div class="flex items-center justify-center h-full bg-gray-100"><span class="text-3xl">📄</span></div>'}
+              : `<span class="media-file-icon">${icon('file', { size: 32 })}</span>`}
           </div>
           <div class="media-info">
-            <div class="truncate text-sm font-medium" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
-            <div class="text-xs text-gray-500">${escapeHtml(this.formatFileSize(file.size))}</div>
-            <button type="button" class="media-delete-btn" data-id="${escapeHtml(file.id)}" aria-label="Eliminar">🗑️</button>
+            <div class="media-info-text">
+              <div class="media-name" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
+              <div class="media-size">${escapeHtml(this.formatFileSize(file.size))}</div>
+            </div>
+            <button type="button" class="btn-icon btn-icon-sm media-delete-btn" data-id="${escapeHtml(file.id)}" aria-label="Eliminar ${escapeHtml(name)}" title="Eliminar">${icon('trash', { size: 16 })}</button>
           </div>
         </div>
       `;
@@ -174,10 +204,7 @@ export class MediaLibrary {
     file.publicUrl = this.mediaManager.getPublicUrl(file.id);
 
     this.mediaGrid.querySelectorAll('.media-item').forEach(item => {
-      const selected = item.dataset.id === file.id;
-      item.classList.toggle('border-blue-500', selected);
-      item.classList.toggle('ring-2', selected);
-      item.classList.toggle('ring-blue-300', selected);
+      item.classList.toggle('is-selected', item.dataset.id === file.id);
     });
 
     if (this.onSelect) this.onSelect(file);
@@ -219,35 +246,5 @@ export class MediaLibrary {
       console.error('Error al eliminar archivo:', error);
       notifications.error(`Error al eliminar el archivo: ${error.message}`);
     }
-  }
-
-  // Abre un modal con la biblioteca de medios para seleccionar un archivo
-  static openModal(onSelect) {
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50';
-    modal.innerHTML = `
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-        <div class="flex justify-between items-center p-4 border-b">
-          <h3 class="text-lg font-semibold">Seleccionar archivo</h3>
-          <button type="button" class="text-gray-500 hover:text-gray-700 close-modal-btn" aria-label="Cerrar">&times;</button>
-        </div>
-        <div class="flex-1 overflow-auto p-4">
-          <div class="media-container"></div>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-
-    const closeModal = () => modal.remove();
-
-    new MediaLibrary(modal.querySelector('.media-container'), (file) => {
-      if (onSelect) onSelect(file);
-      closeModal();
-    });
-
-    modal.querySelector('.close-modal-btn').addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
-    });
   }
 }

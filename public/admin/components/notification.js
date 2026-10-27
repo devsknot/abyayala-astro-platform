@@ -1,217 +1,153 @@
-// Sistema de notificaciones para el CMS
+// Sistema de notificaciones (toasts) y diálogo de confirmación del panel.
+// Los mensajes se insertan siempre como texto plano (textContent).
+import { icon } from '../utils/icons.js';
+
+const TOAST_ICONS = { success: 'check', error: 'error', warning: 'alert', info: 'info' };
+const EXIT_MS = 200;
+
 export class NotificationSystem {
   constructor() {
     this.container = null;
-    this.timeout = 5000; // Duración predeterminada de las notificaciones (5 segundos)
+    this.timeout = 5000; // Duración predeterminada (ms)
     this.init();
   }
 
   init() {
-    // Crear el contenedor de notificaciones si no existe
-    if (!document.getElementById('notification-container')) {
+    this.container = document.getElementById('notification-container');
+    if (!this.container) {
       this.container = document.createElement('div');
       this.container.id = 'notification-container';
-      this.container.className = 'fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md';
+      this.container.className = 'toast-region';
+      this.container.setAttribute('aria-live', 'polite');
+      this.container.setAttribute('aria-relevant', 'additions');
       document.body.appendChild(this.container);
-    } else {
-      this.container = document.getElementById('notification-container');
     }
   }
 
   /**
-   * Mostrar una notificación
-   * @param {string} message - Mensaje a mostrar
-   * @param {string} type - Tipo de notificación: 'success', 'error', 'warning', 'info'
-   * @param {number} duration - Duración en ms (0 para que no desaparezca automáticamente)
+   * Muestra una notificación.
+   * @param {string} message
+   * @param {'success'|'error'|'warning'|'info'} type
+   * @param {number} duration - ms; 0 = persistente (hasta que se cierre)
+   * @returns {HTMLElement}
    */
   show(message, type = 'info', duration = this.timeout) {
-    // Crear el elemento de notificación
-    const notification = document.createElement('div');
-    
-    // Configurar clases según el tipo
-    const baseClasses = 'flex items-center p-4 rounded-lg shadow-lg transition-all duration-300 transform translate-x-full';
-    const typeClasses = {
-      success: 'bg-green-100 border-l-4 border-green-500 text-green-700',
-      error: 'bg-red-100 border-l-4 border-red-500 text-red-700',
-      warning: 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700',
-      info: 'bg-blue-100 border-l-4 border-blue-500 text-blue-700'
-    };
-    
-    notification.className = `${baseClasses} ${typeClasses[type] || typeClasses.info}`;
-    
-    // Iconos según el tipo
-    const icons = {
-      success: `<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>`,
-      error: `<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>`,
-      warning: `<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>`,
-      info: `<svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>`
-    };
-    
-    // Contenido de la notificación
-    notification.innerHTML = `
-      <div class="flex items-center">
-        ${icons[type] || icons.info}
-        <div class="flex-1 notification-message"></div>
-        <button type="button" class="ml-4 text-gray-500 hover:text-gray-700 focus:outline-none" aria-label="Cerrar">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-          </svg>
-        </button>
-      </div>
+    const kind = TOAST_ICONS[type] ? type : 'info';
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${kind}`;
+    toast.setAttribute('role', kind === 'error' || kind === 'warning' ? 'alert' : 'status');
+
+    toast.innerHTML = `
+      <span class="toast-icon">${icon(TOAST_ICONS[kind], { size: 20 })}</span>
+      <div class="toast-message"></div>
+      <button type="button" class="toast-close" aria-label="Cerrar notificación">${icon('close', { size: 16 })}</button>
     `;
-    
-    // El mensaje es texto plano: nunca se interpreta como HTML
-    notification.querySelector('.notification-message').textContent = String(message ?? '');
+    toast.querySelector('.toast-message').textContent = String(message ?? '');
+    toast.querySelector('.toast-close').addEventListener('click', () => this.close(toast));
 
-    // Añadir al contenedor
-    this.container.appendChild(notification);
-    
-    // Animar entrada
-    setTimeout(() => {
-      notification.classList.remove('translate-x-full');
-    }, 10);
-    
-    // Configurar botón de cierre
-    const closeButton = notification.querySelector('button');
-    closeButton.addEventListener('click', () => {
-      this.close(notification);
-    });
-    
-    // Auto-cerrar después de la duración especificada (si no es 0)
+    this.container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('is-visible'));
+
     if (duration > 0) {
-      setTimeout(() => {
-        this.close(notification);
-      }, duration);
+      toast._timer = setTimeout(() => this.close(toast), duration);
     }
-    
-    return notification;
+    return toast;
   }
 
-  /**
-   * Cerrar una notificación específica
-   * @param {HTMLElement} notification - Elemento de notificación a cerrar
-   */
-  close(notification) {
-    if (!notification) return;
-    // Animar salida
-    notification.classList.add('translate-x-full');
-    notification.classList.add('opacity-0');
-    
-    // Eliminar después de la animación
-    setTimeout(() => {
-      if (notification.parentNode === this.container) {
-        this.container.removeChild(notification);
-      }
-    }, 300);
+  /** Cierra una notificación concreta. */
+  close(toast) {
+    if (!toast || toast._closing) return;
+    toast._closing = true;
+    if (toast._timer) clearTimeout(toast._timer);
+    toast.classList.remove('is-visible');
+    setTimeout(() => toast.remove(), EXIT_MS);
   }
 
-  /**
-   * Cerrar todas las notificaciones
-   */
+  /** Cierra todas las notificaciones. */
   closeAll() {
-    const notifications = Array.from(this.container.children);
-    notifications.forEach(notification => {
-      this.close(notification);
-    });
+    Array.from(this.container.children).forEach(toast => this.close(toast));
   }
 
-  // Métodos de conveniencia
-  success(message, duration) {
-    return this.show(message, 'success', duration);
-  }
-
-  error(message, duration) {
-    return this.show(message, 'error', duration);
-  }
-
-  warning(message, duration) {
-    return this.show(message, 'warning', duration);
-  }
-
-  info(message, duration) {
-    return this.show(message, 'info', duration);
-  }
+  success(message, duration) { return this.show(message, 'success', duration); }
+  error(message, duration) { return this.show(message, 'error', duration); }
+  warning(message, duration) { return this.show(message, 'warning', duration); }
+  info(message, duration) { return this.show(message, 'info', duration); }
 
   /**
-   * Mostrar un diálogo de confirmación
-   * @param {string} message - Mensaje a mostrar
-   * @param {string} confirmText - Texto del botón de confirmación
-   * @param {string} cancelText - Texto del botón de cancelación
-   * @returns {Promise} - Promesa que se resuelve con true (confirmación) o false (cancelación)
+   * Diálogo de confirmación modal.
+   * @param {string} message
+   * @param {string} [confirmText]
+   * @param {string} [cancelText]
+   * @param {{ danger?: boolean, title?: string }} [options] - por defecto, danger si el texto empieza por "Eliminar"
+   * @returns {Promise<boolean>}
    */
-  confirm(message, confirmText = 'Confirmar', cancelText = 'Cancelar') {
+  confirm(message, confirmText = 'Confirmar', cancelText = 'Cancelar', options = {}) {
+    const danger = options.danger ?? /^eliminar/i.test(confirmText);
+    const previousFocus = document.activeElement;
+
     return new Promise(resolve => {
-      // Crear el fondo oscuro
       const overlay = document.createElement('div');
-      overlay.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center';
-      
-      // Crear el diálogo
-      const dialog = document.createElement('div');
-      dialog.className = 'bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 transform scale-95 transition-transform duration-300';
-      
-      dialog.innerHTML = `
-        <div class="mb-4 confirm-message"></div>
-        <div class="flex justify-end gap-2">
-          <button type="button" class="btn-secondary cancel-btn"></button>
-          <button type="button" class="btn-primary confirm-btn"></button>
+      overlay.className = 'modal-backdrop';
+      overlay.innerHTML = `
+        <div class="modal-panel modal-sm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+          <div class="modal-body">
+            <div class="confirm-layout">
+              <span class="confirm-icon ${danger ? 'is-danger' : ''}">${icon(danger ? 'alert' : 'info', { size: 22 })}</span>
+              <div>
+                <h2 class="modal-title" id="confirm-title"></h2>
+                <p class="confirm-message" id="confirm-message"></p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary cancel-btn"></button>
+            <button type="button" class="btn ${danger ? 'btn-danger' : 'btn-primary'} confirm-btn"></button>
+          </div>
         </div>
       `;
-      dialog.querySelector('.confirm-message').textContent = String(message ?? '');
-      dialog.querySelector('.cancel-btn').textContent = cancelText;
-      dialog.querySelector('.confirm-btn').textContent = confirmText;
-      
-      // Añadir al DOM
-      overlay.appendChild(dialog);
+      overlay.querySelector('.modal-title').textContent = options.title || (danger ? 'Confirmar eliminación' : 'Confirmar');
+      overlay.querySelector('.confirm-message').textContent = String(message ?? '');
+      const cancelBtn = overlay.querySelector('.cancel-btn');
+      const confirmBtn = overlay.querySelector('.confirm-btn');
+      cancelBtn.textContent = cancelText;
+      confirmBtn.textContent = confirmText;
+
       document.body.appendChild(overlay);
-      
-      // Animar entrada
-      setTimeout(() => {
-        dialog.classList.remove('scale-95');
-      }, 10);
-      
-      // Configurar eventos
-      const confirmBtn = dialog.querySelector('.confirm-btn');
-      const cancelBtn = dialog.querySelector('.cancel-btn');
-      
-      const cleanup = () => {
-        // Animar salida
-        dialog.classList.add('scale-95');
-        overlay.classList.add('opacity-0');
-        
-        // Eliminar después de la animación
-        setTimeout(() => {
-          overlay.remove();
-        }, 300);
+      requestAnimationFrame(() => overlay.classList.add('is-visible'));
+      // En acciones destructivas el foco inicial va a "Cancelar"
+      (danger ? cancelBtn : confirmBtn).focus();
+
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        document.removeEventListener('keydown', onKeydown, true);
+        overlay.classList.remove('is-visible');
+        setTimeout(() => overlay.remove(), EXIT_MS);
+        if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+        resolve(value);
       };
-      
-      confirmBtn.addEventListener('click', () => {
-        cleanup();
-        resolve(true);
-      });
-      
-      cancelBtn.addEventListener('click', () => {
-        cleanup();
-        resolve(false);
-      });
-      
-      // También permitir cerrar haciendo clic fuera del diálogo
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-          cleanup();
-          resolve(false);
+
+      const onKeydown = (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          finish(false);
+        } else if (event.key === 'Tab') {
+          // Mantener el foco dentro del diálogo
+          event.preventDefault();
+          (document.activeElement === cancelBtn ? confirmBtn : cancelBtn).focus();
         }
+      };
+      document.addEventListener('keydown', onKeydown, true);
+
+      confirmBtn.addEventListener('click', () => finish(true));
+      cancelBtn.addEventListener('click', () => finish(false));
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) finish(false);
       });
     });
   }
 }
 
-// Exportar una instancia única para usar en toda la aplicación
+// Instancia única para toda la aplicación
 export const notifications = new NotificationSystem();

@@ -1,4 +1,6 @@
 import { escapeHtml, attrUrl } from '../../utils/html.js';
+import { icon } from '../../utils/icons.js';
+import { scrollIntoViewSafe } from '../../utils/format.js';
 
 /**
  * Convierte la ruta de imagen guardada en una URL para la miniatura
@@ -30,10 +32,13 @@ export function renderArticles(articles, options = {}) {
       const searchTerm = this.currentSearch ? ` con el término "${this.currentSearch}"` : '';
       const categoryText = category ? ` en la categoría "${category}"` : '';
 
+      const filtered = Boolean(this.currentSearch || category);
       articlesGrid.innerHTML = `
-        <div class="empty-state">
-          <p>${escapeHtml(`No se encontraron artículos${categoryText}${searchTerm}.`)}</p>
-          ${this.currentSearch || category ? '<button type="button" class="secondary-btn clear-search-results">Mostrar todos los artículos</button>' : ''}
+        <div class="empty-state grid-span-all">
+          <span class="empty-state-icon">${icon(filtered ? 'search' : 'articles', { size: 28 })}</span>
+          <p class="empty-state-title">${filtered ? 'Sin resultados' : 'Todavía no hay artículos'}</p>
+          <p class="empty-state-text">${escapeHtml(filtered ? `No se encontraron artículos${categoryText}${searchTerm}.` : 'Crea el primero con el botón «Nuevo artículo».')}</p>
+          ${filtered ? '<button type="button" class="btn btn-secondary clear-search-results">Mostrar todos los artículos</button>' : ''}
         </div>
       `;
 
@@ -47,35 +52,38 @@ export function renderArticles(articles, options = {}) {
       .map(article => {
         const rawDate = article.pub_date || article.pubDate;
         const date = rawDate ? new Date(rawDate) : null;
-        const formattedDate = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : 'Fecha desconocida';
+        const formattedDate = date && !Number.isNaN(date.getTime())
+          ? date.toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })
+          : 'Sin fecha';
         const image = thumbnailUrl(article.featured_image);
         const title = escapeHtml(article.title || 'Sin título');
         const slug = escapeHtml(article.slug);
 
         return `
-          <div class="article-card" data-slug="${slug}">
+          <article class="article-card" data-slug="${slug}">
             <div class="article-image">
-              ${image ? `<img src="${image}" alt="${title}" loading="lazy">` : '<div class="no-image">Sin imagen</div>'}
+              ${image ? `<img src="${image}" alt="" loading="lazy">` : `<div class="no-image">${icon('image', { size: 28 })}<span>Sin imagen</span></div>`}
             </div>
             <div class="article-content">
-              <h4 class="article-title">${title}</h4>
-              <p class="article-description">${escapeHtml(article.description || 'Sin descripción')}</p>
               <div class="article-meta">
+                ${article.category ? `<span class="badge badge-blue">${escapeHtml(article.category)}</span>` : '<span class="badge badge-neutral">Sin categoría</span>'}
                 <span class="article-date">${escapeHtml(formattedDate)}</span>
-                ${article.category ? `<span class="article-category">${escapeHtml(article.category)}</span>` : ''}
               </div>
+              <h4 class="article-title">${title}</h4>
+              <p class="article-description">${article.description ? escapeHtml(article.description) : '<span class="text-muted">Sin descripción</span>'}</p>
             </div>
             <div class="article-actions">
-              <button type="button" class="edit-btn" data-slug="${slug}">
-                <span class="icon">✏️</span>
-                <span>Editar</span>
+              <button type="button" class="btn btn-ghost btn-sm edit-btn" data-slug="${slug}" aria-label="Editar «${title}»">
+                ${icon('edit', { size: 16 })}<span>Editar</span>
               </button>
-              <button type="button" class="delete-btn" data-slug="${slug}">
-                <span class="icon">🚮</span>
-                <span>Eliminar</span>
+              <a class="btn btn-ghost btn-sm" href="/news/${encodeURIComponent(article.slug)}" target="_blank" rel="noopener" aria-label="Ver «${title}» en el sitio (pestaña nueva)">
+                ${icon('external', { size: 16 })}<span>Ver</span>
+              </a>
+              <button type="button" class="btn btn-ghost btn-sm text-danger delete-btn" data-slug="${slug}" aria-label="Eliminar «${title}»">
+                ${icon('trash', { size: 16 })}<span>Eliminar</span>
               </button>
             </div>
-          </div>
+          </article>
         `;
       })
       .join('');
@@ -107,8 +115,11 @@ export function setupArticleCardEvents() {
         return;
       }
 
+      // Los enlaces (p. ej. "Ver" en el sitio) navegan solos
+      if (event.target.closest('a')) return;
+
       const card = event.target.closest('.article-card');
-      if (!card) return;
+      if (!card || card.classList.contains('skeleton-card')) return;
       const slug = card.dataset.slug;
       if (!slug) return;
 
@@ -179,32 +190,16 @@ export function renderPagination(currentPage, totalPages) {
   }
 
   paginationContainer.innerHTML = `
-    <div class="pagination-controls">
+    <nav class="pagination-controls" aria-label="Paginación">
       <button type="button" class="pagination-btn prev" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>Anterior</button>
       ${pages.map(page => page === '...'
-        ? '<span class="pagination-ellipsis">...</span>'
-        : `<button type="button" class="pagination-btn page-number ${page === currentPage ? 'active' : ''}" data-page="${page}">${page}</button>`
+        ? '<span class="pagination-ellipsis" aria-hidden="true">…</span>'
+        : `<button type="button" class="pagination-btn page-number ${page === currentPage ? 'active' : ''}" data-page="${page}" ${page === currentPage ? 'aria-current="page"' : ''}>${page}</button>`
       ).join('')}
       <button type="button" class="pagination-btn next" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>Siguiente</button>
-    </div>
+    </nav>
     <div class="pagination-info">Página ${currentPage} de ${totalPages}</div>
   `;
-
-  if (!document.getElementById('pagination-styles')) {
-    const style = document.createElement('style');
-    style.id = 'pagination-styles';
-    style.textContent = `
-      .pagination { display: flex; flex-direction: column; align-items: center; margin-top: 20px; padding: 10px; }
-      .pagination-controls { display: flex; align-items: center; gap: 5px; }
-      .pagination-btn { padding: 8px 12px; border: 1px solid #e2e8f0; background-color: white; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
-      .pagination-btn:hover:not([disabled]) { background-color: #f7fafc; border-color: #cbd5e0; }
-      .pagination-btn.active { background-color: #4299e1; color: white; border-color: #4299e1; }
-      .pagination-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
-      .pagination-ellipsis { padding: 8px 12px; color: #718096; }
-      .pagination-info { margin-top: 10px; font-size: 0.875rem; color: #718096; }
-    `;
-    document.head.appendChild(style);
-  }
 }
 
 /**
@@ -241,9 +236,7 @@ export function showArticleEditor() {
   if (articleEditor) {
     articleEditor.classList.add('active');
     articleEditor.style.display = 'block';
-    articleEditor.style.width = '100%';
-    articleEditor.style.marginTop = '0';
-    articleEditor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    scrollIntoViewSafe(articleEditor);
   }
 }
 

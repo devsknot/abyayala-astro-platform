@@ -15,7 +15,8 @@ export class ApiError extends Error {
 
 let sessionWarningShown = false;
 
-function notifySessionExpired() {
+/** Muestra (una sola vez) el aviso persistente de sesión expirada. */
+export function notifySessionExpired() {
   if (sessionWarningShown) return;
   sessionWarningShown = true;
   notifications.error('Tu sesión expiró, recarga la página', 0);
@@ -94,9 +95,10 @@ function defaultErrorMessage(status) {
 
 /**
  * Consulta la sesión actual de Cloudflare Access.
- * @returns {Promise<{ email: string, name: string } | null>} usuario o null si no hay sesión
+ * @returns {Promise<{ user: { email: string, name: string }, session: { expiresAt: string | null } } | null>}
+ *   null si no hay sesión (401)
  */
-export async function getCurrentUser() {
+export async function getSession() {
   const response = await fetch('/api/auth/me', {
     credentials: 'same-origin',
     cache: 'no-store',
@@ -105,5 +107,19 @@ export async function getCurrentUser() {
   if (response.status === 401) return null;
   if (!response.ok) throw new ApiError(defaultErrorMessage(response.status), response.status, null);
   const data = await response.json();
-  return data && data.authenticated ? data.user || { email: '', name: '' } : null;
+  if (!data || !data.authenticated) return null;
+  const expiresAt = data.session && typeof data.session.expiresAt === 'string' ? data.session.expiresAt : null;
+  return {
+    user: data.user || { email: '', name: '' },
+    session: { expiresAt }
+  };
+}
+
+/**
+ * Consulta la sesión actual de Cloudflare Access.
+ * @returns {Promise<{ email: string, name: string } | null>} usuario o null si no hay sesión
+ */
+export async function getCurrentUser() {
+  const result = await getSession();
+  return result ? result.user : null;
 }
