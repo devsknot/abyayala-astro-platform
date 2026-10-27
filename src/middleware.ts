@@ -144,7 +144,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     response.ok &&
     !import.meta.env.DEV &&
     typeof caches !== 'undefined' &&
-    (pathname.startsWith('/api/content/') || pathname.startsWith('/api/media/'))
+    (pathname.startsWith('/api/content/') || pathname.startsWith('/api/media/') || pathname === '/api/admin/maintenance')
   ) {
     const edge = (caches as unknown as { default: Cache }).default;
     const purge = Promise.all(affectedUrls(url.origin, pathname).map((u) => edge.delete(u))).catch((err) =>

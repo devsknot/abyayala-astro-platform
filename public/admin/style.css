@@ -850,26 +850,6 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 }
 .loading-message { font-weight: 600; color: var(--text); }
 
-/* Tooltip simple para las barras (texto desde data-tip, nunca HTML) */
-[data-tip] { position: relative; }
-[data-tip]:hover::after,
-[data-tip]:focus-visible::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 6px);
-  transform: translateX(-50%);
-  padding: 4px 8px;
-  border-radius: var(--radius-xs);
-  background: var(--text);
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 500;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 5;
-}
-
 /* 9. Dashboard ------------------------------------------------------------- */
 .kpi-grid {
   display: grid;
@@ -937,8 +917,6 @@ button.kpi:hover { box-shadow: var(--shadow-md); border-color: var(--border-stro
   color: inherit;
   text-align: left;
 }
-.health-item.is-actionable { cursor: pointer; }
-.health-item.is-actionable:hover { background: var(--bg-subtle); }
 .health-status {
   display: inline-flex;
   align-items: center;
@@ -952,6 +930,8 @@ button.kpi:hover { box-shadow: var(--shadow-md); border-color: var(--border-stro
 .health-ok { background: var(--green-50); color: var(--green-600); }
 .health-warning { background: var(--ochre-50); color: var(--ochre-700); }
 .health-critical { background: var(--red-50); color: var(--red-500); }
+.health-info { background: var(--blue-50); color: var(--blue-600); }
+.health-fix { margin-top: 8px; }
 .health-text { flex: 1; min-width: 0; }
 .health-label { display: block; font-size: 0.9rem; font-weight: 600; color: var(--text); }
 .health-help { display: block; font-size: 0.8rem; color: var(--text-3); line-height: 1.4; }
@@ -959,39 +939,67 @@ button.kpi:hover { box-shadow: var(--shadow-md); border-color: var(--border-stro
 .health-count-ok { color: var(--green-600); }
 .health-count-warning { color: var(--ochre-700); }
 .health-count-critical { color: var(--red-700); }
+.health-count-info { color: var(--text-2); }
 
-/* Barras verticales: artículos por año */
+/* Diálogo de reparación */
+.fix-intro { margin: 0 0 14px; font-size: 0.9rem; color: var(--text-2); line-height: 1.5; }
+.fix-summary { list-style: none; margin: 0 0 16px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.fix-summary li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; font-size: 0.875rem; color: var(--text-2); }
+.fix-summary li + li { border-top: 1px solid var(--border); }
+.fix-summary strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.fix-empty { margin: 0; font-weight: 600; color: var(--text); }
+.fix-note { margin: 0; font-size: 0.8rem; color: var(--text-3); }
+.fix-author { margin-bottom: 14px; }
+
+/* Barras verticales: artículos por año (todos los años del rango, sin scroll) */
 .vbar-chart {
-  display: flex;
-  align-items: stretch;
-  gap: 2px;
-  height: 230px;
-  padding-top: 8px;
-  overflow-x: auto;
+  display: grid;
+  grid-template-columns: repeat(var(--bars, 12), minmax(0, 1fr));
+  gap: clamp(2px, 1vw, 10px);
+  height: 220px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   border-bottom: 1px solid var(--border);
 }
-.vbar {
-  flex: 1 0 26px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 26px;
-  border-radius: var(--radius-xs);
-  outline: none;
+.vbar { display: flex; flex-direction: column; min-width: 0; }
+.vbar-track { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.vbar-value {
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.vbar:hover .vbar-fill, .vbar:focus-visible .vbar-fill { background: var(--blue-700); }
-.vbar-value { font-size: 0.75rem; font-weight: 600; color: var(--text-2); height: 18px; font-variant-numeric: tabular-nums; }
-.vbar-value.is-hidden { visibility: hidden; }
-.vbar-track { flex: 1; width: 100%; max-width: 36px; display: flex; align-items: flex-end; padding: 0 1px; }
 .vbar-fill {
   display: block;
   width: 100%;
-  min-height: 0;
+  max-width: 40px;
   border-radius: 4px 4px 0 0;
   background: var(--blue-600);
-  transition: background-color 0.15s var(--ease);
+  opacity: 0.85;
+  transition: opacity 0.15s var(--ease);
 }
-.vbar-label { margin-top: 6px; font-size: 0.7rem; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vbar.is-max .vbar-fill { opacity: 1; background: var(--blue-700); }
+.vbar.is-max .vbar-value { color: var(--text); }
+.vbar:hover .vbar-fill { opacity: 1; }
+.vbar-label {
+  padding: 6px 0 2px;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.vbar.is-empty .vbar-label { opacity: 0.6; }
+/* En pantallas estrechas: años abreviados ('09, '15…) */
+@media (max-width: 720px) {
+  .vbar-century { display: none; }
+  .vbar-label::before { content: '\2019'; }
+  .vbar-value { font-size: 0.62rem; }
+}
 
 /* Barras horizontales: artículos por categoría */
 .hbar-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }

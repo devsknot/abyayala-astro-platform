@@ -1,19 +1,22 @@
 // Dashboard del panel: consume GET /api/admin/stats.
 // Gráficos en HTML/CSS puro (sin librerías externas) con alternativa en tabla para lectores de pantalla.
 import { apiRequest } from '../utils/api.js';
+import { notifications } from './notification.js';
 import { escapeHtml } from '../utils/html.js';
 import { icon } from '../utils/icons.js';
 import { formatBytes, formatNumber, formatRelative, formatDateTime, toDate } from '../utils/format.js';
 
 const STATS_URL = '/api/admin/stats';
 
-// Indicadores de salud: texto corto + explicación + gravedad cuando hay casos
+// Indicadores de salud: texto corto + explicación + gravedad cuando hay casos.
+// `fix` es la reparación de POST /api/admin/maintenance que resuelve el indicador.
 const HEALTH_ITEMS = [
   {
     key: 'legacyBrokenImage',
     label: 'Imágenes heredadas rotas',
     help: 'La imagen destacada apunta a media/uploads/…, una ruta importada de Blogger que ya no existe.',
-    severity: 'critical'
+    severity: 'critical',
+    fix: 'images'
   },
   {
     key: 'uncategorized',
@@ -25,27 +28,52 @@ const HEALTH_ITEMS = [
     key: 'withoutAuthor',
     label: 'Sin autor válido',
     help: 'No tienen autor asignado o el autor ya no existe.',
-    severity: 'warning'
-  },
-  {
-    key: 'withoutImage',
-    label: 'Sin imagen destacada',
-    help: 'Se muestran sin portada en listados y al compartir en redes.',
-    severity: 'warning'
+    severity: 'warning',
+    fix: 'authors'
   },
   {
     key: 'withoutDescription',
     label: 'Sin descripción',
     help: 'Falta el resumen que usan los listados, los buscadores y las redes sociales.',
-    severity: 'warning'
+    severity: 'warning',
+    fix: 'descriptions'
   },
   {
     key: 'base64Images',
     label: 'Imágenes incrustadas (base64)',
     help: 'Imágenes pegadas dentro del HTML: hacen el artículo pesado. Conviene subirlas a la biblioteca.',
-    severity: 'warning'
+    severity: 'warning',
+    fix: 'base64'
+  },
+  {
+    key: 'withoutImage',
+    label: 'Sin imagen destacada',
+    help: 'Usan la portada genérica del sitio. Si el artículo tiene imágenes, se puede tomar la primera.',
+    severity: 'info',
+    fix: 'images'
   }
 ];
+
+const MAINTENANCE_URL = '/api/admin/maintenance';
+
+const FIX_COPY = {
+  images: {
+    title: 'Reparar imágenes destacadas',
+    intro: 'Para cada artículo con la imagen rota o vacía se busca el archivo en la biblioteca de medios y, si no está, se usa la primera imagen del propio artículo.'
+  },
+  descriptions: {
+    title: 'Generar descripciones',
+    intro: 'Se crea un resumen de hasta 160 caracteres con el inicio del texto de cada artículo sin descripción. Después puedes editarlo a mano.'
+  },
+  authors: {
+    title: 'Asignar autor',
+    intro: 'Los artículos sin autor válido (casi todos los importados de Blogger) quedarán firmados por el autor que elijas.'
+  },
+  base64: {
+    title: 'Mover imágenes incrustadas a la biblioteca',
+    intro: 'Las imágenes pegadas dentro del texto se suben a la biblioteca de medios y el artículo pasa a enlazarlas. El contenido visible no cambia.'
+  }
+};
 
 const ACTION_VERBS = {
   create: 'creó',
@@ -54,7 +82,8 @@ const ACTION_VERBS = {
   delete: 'eliminó',
   media_upload: 'subió',
   media_delete: 'eliminó',
-  bulk_import: 'hizo una importación masiva'
+  bulk_import: 'hizo una importación masiva',
+  maintenance: 'reparó'
 };
 
 const ENTITY_LABELS = {
@@ -104,7 +133,8 @@ const ACTIVITY_ICONS = {
   delete: 'trash',
   media_upload: 'upload',
   media_delete: 'trash',
-  bulk_import: 'import'
+  bulk_import: 'import',
+  maintenance: 'wrench'
 };
 
 function firstName(user) {
@@ -218,6 +248,9 @@ export class Dashboard {
       case 'open-view':
         if (target.dataset.view) this.navigate(target.dataset.view);
         break;
+      case 'fix':
+        if (target.dataset.fix) this.openFix(target.dataset.fix, target);
+        break;
       default:
         break;
     }
@@ -316,23 +349,27 @@ export class Dashboard {
 
   renderHealth(health) {
     const items = HEALTH_ITEMS.map(item => ({ ...item, count: num(health[item.key]) }));
-    const issues = items.filter(item => item.count > 0).length;
+    const issues = items.filter(item => item.count > 0 && item.severity !== 'info').length;
 
     const rows = items.map(item => {
       const ok = item.count === 0;
       const tone = ok ? 'ok' : item.severity;
-      const statusLabel = ok ? 'Correcto' : (item.severity === 'critical' ? 'Requiere atención' : 'Revisar');
-      const inner = `
-        <span class="health-status health-${tone}">${icon(ok ? 'check' : 'alert', { size: 16 })}<span class="sr-only">${statusLabel}:</span></span>
-        <span class="health-text">
-          <span class="health-label">${escapeHtml(item.label)}</span>
-          <span class="health-help">${escapeHtml(item.help)}</span>
-        </span>
-        <span class="health-count health-count-${tone}">${escapeHtml(formatNumber(item.count))}</span>
+      const statusLabel = ok ? 'Correcto' : ({ critical: 'Requiere atención', warning: 'Revisar', info: 'Informativo' }[item.severity]);
+      const statusIcon = ok ? 'check' : (item.severity === 'info' ? 'info' : 'alert');
+      const action = !ok && item.fix
+        ? `<button type="button" class="btn btn-secondary btn-sm health-fix" data-action="fix" data-fix="${item.fix}">${icon('wrench', { size: 14 })}<span>Reparar</span><span class="sr-only">: ${escapeHtml(item.label)}</span></button>`
+        : '';
+      return `
+        <li class="health-item">
+          <span class="health-status health-${tone}">${icon(statusIcon, { size: 16 })}<span class="sr-only">${statusLabel}:</span></span>
+          <span class="health-text">
+            <span class="health-label">${escapeHtml(item.label)}</span>
+            <span class="health-help">${escapeHtml(item.help)}</span>
+            ${action}
+          </span>
+          <span class="health-count health-count-${tone}">${escapeHtml(formatNumber(item.count))}</span>
+        </li>
       `;
-      return ok
-        ? `<li class="health-item">${inner}</li>`
-        : `<li><button type="button" class="health-item is-actionable" data-action="open-view" data-view="articles" title="Abrir la lista de artículos">${inner}</button></li>`;
     }).join('');
 
     return `
@@ -347,30 +384,38 @@ export class Dashboard {
   }
 
   renderYears(byYear) {
-    const rows = byYear
-      .map(row => ({ year: String(row.year ?? ''), count: num(row.count) }))
-      .filter(row => row.year);
-    const total = rows.reduce((sum, row) => sum + row.count, 0);
+    const counts = new Map();
+    for (const row of byYear) {
+      const year = Number(row.year);
+      if (Number.isInteger(year)) counts.set(year, (counts.get(year) || 0) + num(row.count));
+    }
 
-    if (rows.length === 0) {
+    if (counts.size === 0) {
       return this.emptyCard('span-2', 'years-title', 'Artículos por año', 'activity', 'Todavía no hay artículos con fecha de publicación.');
     }
 
+    // Todos los años del rango, también los que no tienen artículos: los huecos son información
+    const first = Math.min(...counts.keys());
+    const last = Math.max(...counts.keys());
+    const rows = [];
+    for (let year = first; year <= last; year++) rows.push({ year, count: counts.get(year) || 0 });
+
+    const total = rows.reduce((sum, row) => sum + row.count, 0);
     const max = Math.max(...rows.map(row => row.count), 1);
-    const maxRow = rows.reduce((best, row) => (row.count > best.count ? row : best), rows[0]);
-    const lastRow = rows[rows.length - 1];
+    const best = rows.reduce((top, row) => (row.count > top.count ? row : top), rows[0]);
 
     const columns = rows.map(row => {
-      const height = row.count === 0 ? 0 : Math.max(2, Math.round((row.count / max) * 100));
+      const height = row.count === 0 ? 0 : Math.max(1.5, (row.count / max) * 100);
       const label = `${row.year}: ${plural(row.count, 'artículo', 'artículos')}`;
-      // Etiqueta directa solo en el máximo y el último año (el resto, en el tooltip)
-      const showValue = row === maxRow || row === lastRow;
       return `
-        <div class="vbar" tabindex="0" role="img" aria-label="${escapeHtml(label)}" data-tip="${escapeHtml(label)}">
-          <span class="vbar-value ${showValue ? '' : 'is-hidden'}">${escapeHtml(formatNumber(row.count))}</span>
-          <span class="vbar-track"><span class="vbar-fill" style="height:${height}%"></span></span>
-          <span class="vbar-label">${escapeHtml(row.year)}</span>
-        </div>
+        <li class="vbar${row.count === 0 ? ' is-empty' : ''}${row === best ? ' is-max' : ''}" title="${escapeHtml(label)}">
+          <span class="sr-only">${escapeHtml(label)}</span>
+          <span class="vbar-track" aria-hidden="true">
+            <span class="vbar-value">${row.count ? escapeHtml(formatNumber(row.count)) : ''}</span>
+            <span class="vbar-fill" style="height:${height.toFixed(1)}%"></span>
+          </span>
+          <span class="vbar-label" aria-hidden="true"><span class="vbar-century">${String(row.year).slice(0, 2)}</span>${String(row.year).slice(2)}</span>
+        </li>
       `;
     }).join('');
 
@@ -378,13 +423,114 @@ export class Dashboard {
       <section class="card span-2" aria-labelledby="years-title">
         <div class="card-header">
           <h3 class="card-title" id="years-title">${icon('activity', { size: 18 })}<span>Artículos por año</span></h3>
-          <span class="card-meta">${escapeHtml(plural(total, 'artículo', 'artículos'))} con fecha</span>
+          <span class="card-meta">${escapeHtml(plural(total, 'artículo', 'artículos'))} · más publicaciones en ${best.year}</span>
         </div>
         <div class="card-body">
-          <div class="vbar-chart" role="group" aria-label="Artículos publicados por año">${columns}</div>
+          <ol class="vbar-chart" aria-label="Artículos publicados por año, de ${first} a ${last}" style="--bars:${rows.length}">${columns}</ol>
         </div>
       </section>
     `;
+  }
+
+  // === Reparaciones ===
+
+  async openFix(fix, trigger) {
+    const copy = FIX_COPY[fix];
+    if (!copy || this.fixing) return;
+    this.fixing = true;
+    trigger.disabled = true;
+    try {
+      const preview = await apiRequest(MAINTENANCE_URL, { method: 'POST', body: { action: fix } });
+      if (this.destroyed) return;
+      const choice = await this.fixDialog(fix, copy, preview);
+      if (!choice) return;
+      const result = await apiRequest(MAINTENANCE_URL, { method: 'POST', body: { action: fix, apply: true, ...choice } });
+      notifications.show(
+        result.affected
+          ? `${copy.title}: ${plural(result.affected, 'artículo actualizado', 'artículos actualizados')}.`
+          : 'No había nada que cambiar.',
+        'success'
+      );
+      if (!this.destroyed) this.load();
+    } catch (error) {
+      console.error('Error en la reparación:', error);
+      notifications.show(error.message || 'No se pudo completar la reparación', 'error');
+    } finally {
+      this.fixing = false;
+      if (trigger.isConnected) trigger.disabled = false;
+    }
+  }
+
+  /** Muestra la vista previa y resuelve con las opciones elegidas, o null si se cancela. */
+  fixDialog(fix, copy, preview) {
+    const previousFocus = document.activeElement;
+    const summary = (preview.summary || []).filter(item => num(item.count) > 0);
+    const authors = Array.isArray(preview.authors) ? preview.authors : [];
+    const suggested = authors.find(a => /abya\s*yala|colectivo/i.test(a.name)) || authors[0];
+    const nothing = num(preview.affected) === 0;
+    const needsAuthor = fix === 'authors';
+    const blocked = nothing || (needsAuthor && authors.length === 0);
+
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-backdrop';
+      overlay.innerHTML = `
+        <div class="modal-panel modal-sm" role="dialog" aria-modal="true" aria-labelledby="fix-title">
+          <div class="modal-header">
+            <h2 class="modal-title" id="fix-title">${escapeHtml(copy.title)}</h2>
+            <button type="button" class="btn-icon" data-close aria-label="Cerrar">${icon('close')}</button>
+          </div>
+          <div class="modal-body">
+            <p class="fix-intro">${escapeHtml(copy.intro)}</p>
+            ${nothing
+              ? '<p class="fix-empty">No hay artículos que reparar.</p>'
+              : `<ul class="fix-summary">${summary.map(item => `<li><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(formatNumber(num(item.count)))}</strong></li>`).join('')}</ul>`}
+            ${needsAuthor && !nothing
+              ? (authors.length
+                ? `<div class="form-group fix-author">
+                    <label class="form-label" for="fix-author">Autor</label>
+                    <select id="fix-author" class="form-select">
+                      ${authors.map(a => `<option value="${a.id}" ${a === suggested ? 'selected' : ''}>${escapeHtml(a.name)} (${escapeHtml(plural(a.articles, 'artículo', 'artículos'))})</option>`).join('')}
+                    </select>
+                  </div>`
+                : '<p class="fix-empty">Primero crea un autor en la sección Autores.</p>')
+              : ''}
+            ${nothing ? '' : '<p class="fix-note">Los cambios se aplican sobre la base de datos publicada y quedan en la actividad reciente.</p>'}
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close>${blocked ? 'Cerrar' : 'Cancelar'}</button>
+            ${blocked ? '' : `<button type="button" class="btn btn-primary" data-confirm>${icon('wrench', { size: 16 })}<span>Reparar ${escapeHtml(plural(num(preview.affected), 'artículo', 'artículos'))}</span></button>`}
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('is-visible'));
+
+      const confirmBtn = overlay.querySelector('[data-confirm]');
+      (confirmBtn || overlay.querySelector('[data-close]')).focus();
+
+      const finish = (value) => {
+        document.removeEventListener('keydown', onKeydown, true);
+        overlay.classList.remove('is-visible');
+        setTimeout(() => overlay.remove(), 200);
+        if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+        resolve(value);
+      };
+      const onKeydown = (event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          finish(null);
+        }
+      };
+      document.addEventListener('keydown', onKeydown, true);
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay || event.target.closest('[data-close]')) finish(null);
+        else if (event.target.closest('[data-confirm]')) {
+          const select = overlay.querySelector('#fix-author');
+          finish(select ? { authorId: Number(select.value) } : {});
+        }
+      });
+    });
   }
 
   renderCategories(byCategory) {
@@ -468,13 +614,13 @@ export class Dashboard {
       const type = String(first.type || '');
       const verb = ACTION_VERBS[type] || type || 'modificó';
       const count = group.length;
-      const tone = /delete/.test(type) ? 'danger' : (type === 'create' || type === 'media_upload' || type === 'bulk_import' ? 'success' : 'info');
+      const tone = /delete/.test(type) ? 'danger' : (type === 'create' || type === 'media_upload' || type === 'bulk_import' || type === 'maintenance' ? 'success' : 'info');
       const when = first.relative_time || formatRelative(first.created_at);
 
       let what = '';
       if (type !== 'bulk_import') {
         if (count === 1) {
-          const entity = ENTITY_LABELS[first.entity_type] || '';
+          const entity = type === 'maintenance' ? '' : (ENTITY_LABELS[first.entity_type] || '');
           const title = entityTitle(first);
           what = `${entity ? ` ${escapeHtml(entity)}` : ''}${title ? ` <span class="feed-entity">«${escapeHtml(title)}»</span>` : ''}`;
         } else {
