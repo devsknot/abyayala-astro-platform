@@ -1,10 +1,10 @@
 ---
-import type { CollectionEntry } from 'astro:content';
 import BaseLayout from './BaseLayout.astro';
 import CategoryTag from '../components/CategoryTag.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import NewsletterSignup from '../components/NewsletterSignup.astro';
-import { CATEGORIES } from '../consts';
+import { getSiteCategories } from '../lib/site';
+const CATEGORIES = await getSiteCategories(Astro.locals);
 
 interface Props {
   title: string;

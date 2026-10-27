@@ -1,7 +1,15 @@
-/admin/*
-  Cache-Control: no-cache, no-store, must-revalidate
+# Cabeceras para los archivos estáticos servidos por Cloudflare Pages.
+# Las respuestas del Worker (páginas SSR y /api) reciben sus cabeceras en src/middleware.ts.
 
 /*
-  X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/admin/*
+  Cache-Control: no-cache, no-store, must-revalidate
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.tiny.cloud; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.tiny.cloud; font-src 'self' data: https://cdn.tiny.cloud; img-src 'self' data: blob: https:; connect-src 'self' https://cdn.tiny.cloud https://sp.tinymce.com; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+/_assets/*
+  Cache-Control: public, max-age=31536000, immutable

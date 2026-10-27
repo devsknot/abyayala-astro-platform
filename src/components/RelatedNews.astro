@@ -1,5 +1,6 @@
 ---
 import NewsCard from './NewsCard.astro';
+import { articleImageUrl } from '../lib/url';
 
 interface NewsItem {
     title: string;
@@ -46,7 +47,7 @@ if (finalRelatedNews.length < count) {
                 <NewsCard 
                     title={news.title}
                     description={news.description}
-                    image={news.featured_image || news.image || "/blog-placeholder-1.jpg"}
+                    image={articleImageUrl(news.featured_image || news.image, '/blog-placeholder-1.jpg')}
                     slug={news.slug}
                     category={news.category}
                     date={news.pubDate}

@@ -1,6 +1,7 @@
 ---
 import { formatDate } from '../utils/formatDate';
 import CategoryTag from './CategoryTag.astro';
+import { articleImageUrl } from '../lib/url';
 
 interface Props {
   title: string;
@@ -31,25 +32,8 @@ const {
 // Usar date si pubDate no está disponible
 const dateToUse = pubDate || date;
 
-// Normalizar la ruta de imagen (consolidar diferentes formatos posibles)
-let normalizedImage = image || '';
-
-// Verificar si la imagen es válida
-console.log(`NewsCard - Imagen recibida: ${normalizedImage}`);
-
-// Si no hay imagen o si es una URL que sabemos que da error 404 (media/uploads/...)
-if (!normalizedImage || normalizedImage === '' || normalizedImage.startsWith('media/uploads/')) {
-  // Usar imagen de respaldo
-  normalizedImage = '/img/placeholder-image.png';
-  console.log('NewsCard - Usando imagen de respaldo por ruta inválida');
-}
-
-// Limpiar URLs codificadas (+ o %25 se convierten en caracteres incorrectos en las rutas)
-if (normalizedImage.includes('+') || normalizedImage.includes('%25')) {
-  // Usar imagen de respaldo para URLs codificadas problemáticas
-  normalizedImage = '/img/placeholder-image.png';
-  console.log('NewsCard - Usando imagen de respaldo por caracteres especiales');
-}
+// Imagen segura (http/https o ruta local); las rutas heredadas rotas usan el placeholder.
+const normalizedImage = articleImageUrl(image, '/img/placeholder-image.png');
 
 // Función para manejar la fecha de forma segura
 const formatDateSafely = (date: Date | string | undefined) => {

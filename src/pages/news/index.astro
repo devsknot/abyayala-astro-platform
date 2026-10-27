@@ -3,7 +3,10 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import { SITE_TITLE } from '../../consts';
 import DatePicker from '../../components/DatePicker.astro';
 import NewsCard from '../../components/NewsCard.astro';
-import { getAllArticles, getAllCategories, searchArticles } from '../../utils/contentApi.js';
+import { getDb } from '../../db';
+import { listArticles, searchArticles } from '../../lib/repo/articles';
+import { listCategories } from '../../lib/repo/categories';
+import { articleImageUrl } from '../../lib/url';
 
 // Configuración para SSR
 export const prerender = false;
@@ -14,7 +17,7 @@ const ITEMS_PER_PAGE = 10;
 // Obtener el número de página actual de los parámetros de URL
 const url = new URL(Astro.request.url);
 const currentPage = url.searchParams.get('page') || '1';
-const pageNumber = parseInt(currentPage) || 1;
+const pageNumber = Math.max(1, parseInt(currentPage) || 1);
 
 // Verificar si hay parámetros de búsqueda en la URL
 const searchQuery = url.searchParams.get('query') || '';
@@ -48,26 +51,24 @@ interface ArticleResponse {
 }
 
 // Obtener todas las categorías para el filtro
-const categories = await getAllCategories(Astro.url.origin);
+const db = getDb(Astro.locals);
+const categories = await listCategories(db);
 
 // Determinar si se debe usar búsqueda o obtener todos los artículos
 let response;
 
 if (searchQuery || searchCategory || searchDateFrom || searchDateTo) {
   // Hay parámetros de búsqueda, usar el endpoint de búsqueda
-  const searchParams = {
-    query: searchQuery,
+  response = await searchArticles(db, {
+    query: searchQuery.slice(0, 200),
     category: searchCategory,
     dateFrom: searchDateFrom,
-    dateTo: searchDateTo
-  };
-  
-  console.log(`[NEWS-PAGE] Realizando búsqueda con parámetros:`, searchParams);
-  response = await searchArticles(searchParams, Astro.url.origin, pageNumber, ITEMS_PER_PAGE) as ArticleResponse;
+    dateTo: searchDateTo,
+    page: pageNumber,
+    pageSize: ITEMS_PER_PAGE,
+  }) as unknown as ArticleResponse;
 } else {
-  // No hay parámetros de búsqueda, usar el endpoint normal
-  console.log(`[NEWS-PAGE] Obteniendo todos los artículos (sin búsqueda)`);
-  response = await getAllArticles(Astro.url.origin, pageNumber, ITEMS_PER_PAGE) as ArticleResponse;
+  response = await listArticles(db, { page: pageNumber, pageSize: ITEMS_PER_PAGE }) as unknown as ArticleResponse;
 }
 
 // Desestructurar la respuesta para obtener artículos y datos de paginación
@@ -98,15 +99,8 @@ const pagination = response.pagination || {
 };
 
 // Función para normalizar imágenes
-const normalizeImage = (imagePath: string | undefined): string => {
-  // Si no hay imagen o la ruta está causando 404
-  if (!imagePath || imagePath.startsWith('media/uploads/') || 
-      imagePath.includes('+') || imagePath.includes('%25')) {
-    // Usar la imagen del Colectivo (logo sin fondo)
-    return '/images/CAAY Logo sin fondo.png';
-  }
-  return imagePath;
-};
+const normalizeImage = (imagePath: string | undefined): string =>
+  articleImageUrl(imagePath, '/images/CAAY Logo sin fondo.png');
 
 // Configurar variables de paginación desde la respuesta de la API
 const { page, totalPages, hasNextPage, hasPrevPage } = pagination;
@@ -259,7 +253,6 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}${urlPara
           </a>
         </div>
       )}
-    </div>
     </div>
   </main>
 </BaseLayout>
@@ -758,8 +751,8 @@ const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}${urlPara
     function applyFilters() {
       const searchTerm = searchInput.value.toLowerCase().trim();
       const selectedCategory = categoryFilter.value;
-      const dateFrom = dateFromPicker.getSelectedDate();
-      const dateTo = dateToPicker.getSelectedDate();
+      const dateFrom = dateFromPicker.getSelectedDate() ?? null;
+      const dateTo = dateToPicker.getSelectedDate() ?? null;
       
       // Actualizar filtros activos
       updateActiveFilters(searchTerm, selectedCategory, dateFrom, dateTo);

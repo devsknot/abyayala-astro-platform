@@ -2,130 +2,39 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import NewsCard from '../../components/NewsCard.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
-import { getArticlesByCategory, getAllCategories } from '../../utils/contentApi.js';
+import { getDb } from '../../db';
+import { listArticles } from '../../lib/repo/articles';
+import { listCategories } from '../../lib/repo/categories';
+import { articleImageUrl } from '../../lib/url';
 
-// Configuración para SSR
 export const prerender = false;
 
-console.log(`[CATEGORY-PAGE] Iniciando renderizado de página de categoría`);
-
-// Obtener el parámetro de categoría de la URL
-const { category: categorySlug } = Astro.params;
-console.log(`[CATEGORY-PAGE] Parámetro de categoría recibido: "${categorySlug}"`);
-
-// Obtener información de la categoría
-console.log(`[CATEGORY-PAGE] Obteniendo todas las categorías...`);
-const categories = await getAllCategories(Astro.url.origin);
-console.log(`[CATEGORY-PAGE] Categorías obtenidas: ${categories.length}`);
-
-// Verificar que categories sea un array y tenga elementos
-const categoriesArray = Array.isArray(categories) ? categories : [];
-
-// Buscar la categoría específica (primero por slug, luego por id para compatibilidad)
-console.log(`[CATEGORY-PAGE] Buscando categoría con slug: "${categorySlug}"`);
-const category = categoriesArray.find(cat => 
-  // Buscar primero por slug (nuevo formato)
-  cat.slug === categorySlug ||
-  // O por id (formato antiguo para compatibilidad)
-  cat.id === categorySlug
-);
-
-if (category) {
-  console.log(`[CATEGORY-PAGE] Categoría encontrada: ${JSON.stringify({
-    slug: category.slug,
-    id: category.id || 'N/A',
-    name: category.name
-  })}`);
-} else {
-  console.log(`[CATEGORY-PAGE] Categoría no encontrada, redirigiendo a la página principal`);
-}
-
-// Si la categoría no existe, redirigir a la página principal
-if (!category) {
-  return Astro.redirect('/');
-}
-
-// La obtención de artículos por categoría con paginación se realiza más abajo
-// Ahora usamos la función getArticlesByCategory que soporta paginación
-
-// Función para normalizar imágenes
-const normalizeImage = (imagePath: string | undefined): string => {
-  // Si no hay imagen o la ruta está causando 404
-  if (!imagePath || imagePath.startsWith('media/uploads/') || 
-      imagePath.includes('+') || imagePath.includes('%25')) {
-    // Usar la imagen del Colectivo (logo sin fondo)
-    return '/images/CAAY Logo sin fondo.png';
-  }
-  return imagePath;
-};
-
-// Configuración de paginación
 const ITEMS_PER_PAGE = 10;
 
-// Obtener el número de página actual de los parámetros de URL
-const url = new URL(Astro.request.url);
-const currentPage = url.searchParams.get('page') || '1';
-const pageNumber = parseInt(currentPage) || 1;
-
-// Definir tipos para la respuesta de getArticlesByCategory
-interface Article {
-  slug: string;
-  title: string;
-  description: string;
-  content: string;
-  pubDate?: string;
-  pub_date?: string;
-  date?: string;
-  category?: string;
-  featured_image?: string;
-  image?: string;
-  author?: string;
+const { category: categorySlug } = Astro.params;
+const db = getDb(Astro.locals);
+const categories = await listCategories(db);
+const category = categories.find((cat) => cat.id === categorySlug);
+if (!category) {
+  return Astro.rewrite('/404');
 }
 
-interface PaginationResponse {
-  page: number;
-  pageSize: number;
-  totalItems: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
+const pageNumber = Math.max(1, parseInt(Astro.url.searchParams.get('page') || '1') || 1);
 
-interface ArticlesResponse {
-  articles: Article[];
-  pagination: PaginationResponse;
-}
-
-// Obtener artículos de la API filtrados por categoría, con paginación
-// Usar slug como identificador principal, con fallback a id para compatibilidad
-const categoryIdentifier = category.slug || category.id;
-console.log(`[CATEGORY-PAGE] Obteniendo artículos para la categoría: "${categoryIdentifier}", página ${pageNumber}`);
-const response = await getArticlesByCategory(categoryIdentifier, Astro.url.origin, pageNumber, ITEMS_PER_PAGE) as ArticlesResponse;
-
-// Extraer artículos y datos de paginación de la respuesta
-const articles = response.articles || [];
-const pagination = response.pagination || {
-  page: 1,
+// El filtrado y la paginación los hace D1 (antes solo se miraban los 10 artículos más recientes).
+const { articles, pagination } = await listArticles(db, {
+  category: category.id,
+  page: pageNumber,
   pageSize: ITEMS_PER_PAGE,
-  totalItems: 0,
-  totalPages: 0,
-  hasNextPage: false,
-  hasPrevPage: false
-};
+});
 const { page, totalPages, hasNextPage, hasPrevPage } = pagination;
 
-console.log(`[CATEGORY-PAGE] Artículos obtenidos: ${articles.length}, página ${page} de ${totalPages}`);
-console.log(`[CATEGORY-PAGE] Mostrando ${articles.length} artículos (página ${page} de ${totalPages})`);
+const normalizeImage = (imagePath: string | undefined): string =>
+  articleImageUrl(imagePath, '/images/CAAY Logo sin fondo.png');
 
-// Preparar URLs para navegación
-const previousPage = pagination.hasPrevPage ? `?page=${pagination.page - 1}` : null;
-const nextPage = pagination.hasNextPage ? `?page=${pagination.page + 1}` : null;
-
-// Mensaje para mostrar si no hay artículos
 const noArticlesMessage = `No hay artículos disponibles en la categoría ${category.name}. Por favor, vuelva a intentarlo más tarde.`;
-
 ---
-<BaseLayout title={`${category.name} - Abya Yala`} description={category.description}>
+<BaseLayout title={`${category.name} - Abya Yala`} description={category.description ?? undefined}>
   <div class="category-header">
     <div class="container">
       <h1>{category.name}</h1>
@@ -170,7 +79,7 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
       {articles.length > 0 ? (
         <>
           <div class="news-grid" id="news-grid">
-            {articles.map((article: Article) => {
+            {articles.map((article) => {
               // Estandarización de campos
               const title = article.title || 'Sin título';
               
@@ -181,13 +90,13 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
               }
               
               // Manejar diferentes formatos de fecha
-              const pubDate = article.pubDate || article.pub_date || article.date || new Date();
+              const pubDate = article.pubDate || new Date().toISOString();
               
               // Manejar diferentes formatos de categoría
               const category = article.category || categorySlug;
               
               // Manejar diferentes formatos de imagen
-              const image = normalizeImage(article.featured_image || article.image || '');
+              const image = normalizeImage(article.featured_image);
               
               return (
                 <div class="news-item" 
@@ -250,24 +159,8 @@ const noArticlesMessage = `No hay artículos disponibles en la categoría ${cate
               </span>
             )}
           </div>
-            <h4>Todas las categorías disponibles:</h4>
-            <ul>
-              {categories.map(cat => (
-                <li>
-                  <strong>{cat.name}</strong> (Slug: {cat.slug || 'N/A'})
-                  {(cat.slug === categorySlug || cat.id === categorySlug) && <span class="highlight"> ← COINCIDENCIA</span>}
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
       )}
-      
-      <div class="pagination">
-        <button class="pagination-btn" disabled>Anterior</button>
-        <span class="pagination-info">Página 1 de 1</span>
-        <button class="pagination-btn" disabled>Siguiente</button>
-      </div>
     </div>
   </section>
 </BaseLayout>

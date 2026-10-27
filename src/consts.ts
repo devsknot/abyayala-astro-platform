@@ -3,43 +3,6 @@
 
 export const SITE_TITLE = 'Abya Yala';
 export const SITE_DESCRIPTION = 'Plataforma de noticias del colectivo agrario Abya Yala';
-export const SITE_URL = 'https://abyayala.org';
+export const SITE_URL = 'https://colectivoabyayala.org';
 
-// Categorías de noticias disponibles
-export const CATEGORIES = [
-  {
-    id: 'agricultura',
-    name: 'Agricultura',
-    description: 'Noticias sobre prácticas agrícolas, cultivos y temporadas'
-  },
-  {
-    id: 'comunidad',
-    name: 'Comunidad',
-    description: 'Historias de miembros, cooperación y testimonios'
-  },
-  {
-    id: 'sostenibilidad',
-    name: 'Sostenibilidad',
-    description: 'Prácticas ecológicas, conservación y biodiversidad'
-  },
-  {
-    id: 'politica-agraria',
-    name: 'Política Agraria',
-    description: 'Legislación, derechos y movimientos sociales'
-  },
-  {
-    id: 'tecnologia-rural',
-    name: 'Tecnología Rural',
-    description: 'Innovaciones, herramientas y digitalización'
-  },
-  {
-    id: 'cultura',
-    name: 'Cultura',
-    description: 'Tradiciones, gastronomía y artesanía'
-  },
-  {
-    id: 'eventos',
-    name: 'Eventos',
-    description: 'Ferias, encuentros y capacitaciones'
-  }
-];
+// Las categorías se gestionan desde el panel y se leen de D1 (src/lib/site.ts).

@@ -1,137 +1,43 @@
 ---
-// Importaciones necesarias (deben estar a nivel superior)
 import NewsLayout from '../../layouts/NewsLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
 import ShareButtons from '../../components/ShareButtons.astro';
 import RelatedNews from '../../components/RelatedNews.astro';
 import CategoryTag from '../../components/CategoryTag.astro';
 import { SITE_URL } from '../../consts';
-import { getAllArticles, getArticleBySlug } from '../../utils/contentApi.js';
+import { getDb } from '../../db';
+import { getArticleBySlug, getRelatedArticles } from '../../lib/repo/articles';
+import { getAuthorRow } from '../../lib/repo/authors';
+import { articleImageUrl } from '../../lib/url';
 
-// Configuración para SSR
 export const prerender = false;
 
-// Logs para depuración
-console.log('DEPURACIÓN: Iniciando renderizado de página de artículo');
-
-// Definir interfaces para los tipos de datos
-interface Article {
-  slug: string;
-  title: string;
-  description: string;
-  pubDate: string;
-  featured_image?: string;
-  category: string;
-  author?: string;
-  content: string;
-}
-
-// Obtener el slug del artículo de los parámetros de la URL
 const { slug } = Astro.params;
-console.log('DEPURACIÓN Slug:', slug);
+if (!slug) return Astro.redirect('/news');
 
-// Verificar que el slug existe
-if (!slug) {
-  console.log('DEPURACIÓN: No se encontró slug, redirigiendo a la página principal');
-  return Astro.redirect('/');
+const db = getDb(Astro.locals);
+const article = await getArticleBySlug(db, slug);
+if (!article) {
+  return Astro.rewrite('/404');
 }
 
-// Crear un artículo de ejemplo como fallback
-const fallbackArticle: Article = {
-  slug: slug || 'articulo-ejemplo',
-  title: `Artículo de ejemplo: ${slug}`,
-  description: 'Este artículo es un ejemplo generado automáticamente.',
-  content: '<p>Este es un contenido de ejemplo. El sistema ha generado esta respuesta para evitar errores.</p>',
-  pubDate: new Date().toISOString(),
-  category: 'general',
-  featured_image: '/blog-placeholder-1.jpg',
-  author: 'Autor Desconocido'
-};
+const [relatedArticles, authorRow] = await Promise.all([
+  getRelatedArticles(db, article.category, article.slug, 3),
+  article.author_info ? getAuthorRow(db, article.author_info.slug) : Promise.resolve(null),
+]);
 
-// Definir interfaz para respuestas de API
-interface ApiResponse {
-  [key: string]: any;
-}
+const parsedDate = new Date(article.pubDate);
+const pubDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 
-interface ArticlesResponse {
-  articles?: Article[];
-  [key: string]: any;
-}
-
-// Intentar obtener el artículo
-console.log('DEPURACIÓN: Intentando obtener artículo');
-let article: Article = fallbackArticle;
-let error = null;
-
-try {
-  // Intentar obtener el artículo real (con manejo de errores)
-  console.log(`Intentando obtener artículo para slug: ${slug}`);
-  const response: ApiResponse = await getArticleBySlug(slug, Astro.url.origin) as ApiResponse;
-  console.log('Respuesta de API recibida:', response ? 'OK' : 'No hay respuesta');
-  
-  if (response && typeof response === 'object' && 'title' in response) {
-    article = response as Article;
-    console.log('Artículo encontrado:', article.title);
-  } else {
-    console.log('No se encontró el artículo, usando fallback');
-    article = fallbackArticle;
-  }
-} catch (err) {
-  console.error('Error al obtener artículo:', err);
-  error = err;
-  article = fallbackArticle;
-  console.log('Usando artículo de fallback debido a error');
-}
-
-// Intentar cargar artículos relacionados con manejo de errores
-let relatedArticles: Article[] = [];
-try {
-  console.log('Intentando obtener artículos relacionados...');
-  const allArticlesResponse: ArticlesResponse = await getAllArticles(Astro.url.origin) as ArticlesResponse;
-  
-  if (allArticlesResponse && typeof allArticlesResponse === 'object' && 'articles' in allArticlesResponse && Array.isArray(allArticlesResponse.articles)) {
-    console.log(`Se encontraron ${allArticlesResponse.articles.length} artículos en total`);
-    // Solo obtener hasta 3 artículos relacionados de la misma categoría
-    relatedArticles = allArticlesResponse.articles
-      .filter((a: Article) => a.category === article.category && a.slug !== article.slug)
-      .slice(0, 3);
-    console.log(`Se encontraron ${relatedArticles.length} artículos relacionados`);
-  } else {
-    console.log('Formato de respuesta inesperado para artículos relacionados');
-  }
-} catch (relatedError) {
-  console.error('Error al obtener artículos relacionados:', relatedError);
-}
-
-// Formatear la fecha de publicación
-let pubDate: Date;
-try {
-  pubDate = new Date(article.pubDate);
-} catch (dateError) {
-  console.error('Error al formatear fecha:', dateError);
-  pubDate = new Date();
-}
-
-// URL completa para compartir
 const currentUrl = `${SITE_URL}/news/${slug}/`;
 
-// Usar el contenido del artículo
+// `content` ya viene saneado por el repositorio (lista blanca de HTML).
 const contentHtml = article.content || '<p>No hay contenido disponible</p>';
+const heroImage = articleImageUrl(article.featured_image, '/blog-placeholder-1.jpg');
 
-// Obtener información del autor si está disponible
-let authorSlug = '';
-let authorBio = '';
-let authorAvatar = '';
-
-if (article.author_info) {
-  authorSlug = article.author_info.slug || '';
-  authorBio = article.author_info.bio || '';
-  authorAvatar = article.author_info.avatar || '';
-}
-
-console.log('DEPURACIÓN: Renderizado completado');
-
-
+const authorSlug = article.author_info?.slug || '';
+const authorBio = authorRow?.bio || '';
+const authorAvatar = article.author_info?.avatar || '';
 ---
 
 {/* SECCIÓN DE RENDERIZADO CON MANEJO DE ERRORES Y LOGS */}
@@ -139,7 +45,7 @@ console.log('DEPURACIÓN: Renderizado completado');
   title={article?.title || 'Artículo no disponible'}
   description={article?.description || 'Sin descripción'}
   pubDate={pubDate}
-  heroImage={article?.featured_image || "/blog-placeholder-1.jpg"}
+  heroImage={heroImage}
   category={article?.category || 'general'}
   author={article?.author || "Autor Desconocido"}
   authorSlug={authorSlug}

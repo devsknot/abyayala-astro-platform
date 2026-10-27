@@ -2,37 +2,20 @@
 // src/pages/authors/[slug].astro
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
+import { getDb } from '../../db';
+import { listArticlesByAuthor } from '../../lib/repo/articles';
+import { getAuthorRow, toAuthorDTO } from '../../lib/repo/authors';
 
-// This function runs at build time to generate a page for each author.
-export async function getStaticPaths() {
-  const response = await fetch(`${Astro.url.origin}/api/content/authors`);
-  if (!response.ok) {
-    console.error('Failed to fetch authors for static paths');
-    return [];
-  }
-  const data = await response.json();
-  const authors = data.authors || [];
-
-  return authors.map(author => ({
-    params: { slug: author.slug },
-  }));
-}
+export const prerender = false;
 
 const { slug } = Astro.params;
-
-// Fetch full author details, including articles
-const response = await fetch(`${Astro.url.origin}/api/content/authors/${slug}`);
-let author = null;
-if (response.ok) {
-  const data = await response.json();
-  author = data.author;
-} else {
-  console.error(`Failed to fetch author details for slug: ${slug}`);
+const db = getDb(Astro.locals);
+const row = slug ? await getAuthorRow(db, slug) : null;
+if (!row) {
+  return Astro.rewrite('/404');
 }
-
-if (!author) {
-  return Astro.redirect('/404');
-}
+// Página pública: sin email.
+const author = { ...toAuthorDTO(row), articles: await listArticlesByAuthor(db, row.id) };
 
 const pageTitle = author.name;
 const pageDescription = author.bio ? author.bio.substring(0, 160) : `Artículos y biografía de ${author.name}.`;
@@ -53,15 +36,14 @@ const pageDescription = author.bio ? author.bio.substring(0, 160) : `Artículos 
                 alt={`Avatar de ${author.name}`}
               />
               <h1 class="text-3xl font-bold text-gray-900">{author.name}</h1>
-              <p class="text-md text-gray-600 mt-1">{author.email}</p>
               
               <!-- Social Media Links -->
               {author.social_media && (
                 <div class="flex justify-center space-x-4 mt-4">
-                  {author.social_media.twitter && <a href={author.social_media.twitter} target="_blank" class="text-gray-400 hover:text-blue-500"><i class="fab fa-twitter"></i></a>}
-                  {author.social_media.facebook && <a href={author.social_media.facebook} target="_blank" class="text-gray-400 hover:text-blue-700"><i class="fab fa-facebook"></i></a>}
-                  {author.social_media.instagram && <a href={author.social_media.instagram} target="_blank" class="text-gray-400 hover:text-pink-600"><i class="fab fa-instagram"></i></a>}
-                  {author.social_media.website && <a href={author.social_media.website} target="_blank" class="text-gray-400 hover:text-gray-800"><i class="fas fa-globe"></i></a>}
+                  {author.social_media.twitter && <a href={author.social_media.twitter} target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-blue-500"><i class="fab fa-twitter"></i></a>}
+                  {author.social_media.facebook && <a href={author.social_media.facebook} target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-blue-700"><i class="fab fa-facebook"></i></a>}
+                  {author.social_media.instagram && <a href={author.social_media.instagram} target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-pink-600"><i class="fab fa-instagram"></i></a>}
+                  {author.social_media.website && <a href={author.social_media.website} target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-gray-800"><i class="fas fa-globe"></i></a>}
                 </div>
               )}
             </div>
@@ -84,7 +66,7 @@ const pageDescription = author.bio ? author.bio.substring(0, 160) : `Artículos 
                 <a href={`/news/${article.slug}`} class="block bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300">
                   <h3 class="text-xl font-bold text-gray-900">{article.title}</h3>
                   <p class="text-sm text-gray-500 mt-2">
-                    <FormattedDate date={new Date(article.pub_date)} />
+                    <FormattedDate date={new Date(article.pubDate)} />
                   </p>
                   <p class="mt-4 text-gray-600 line-clamp-3">{article.description}</p>
                 </a>

@@ -143,52 +143,11 @@ const {
 </style>
 
 <script>
-  // Funcionalidad de búsqueda en tiempo real
-  document.addEventListener('DOMContentLoaded', () => {
-    const searchForm = document.getElementById('search-form');
-    const searchInput = document.getElementById('search-input');
-    const searchResults = document.getElementById('search-results');
-    
-    if (searchForm && searchInput && searchResults) {
-      // Manejar envío del formulario
-      searchForm.addEventListener('submit', (e) => {
-        if (searchInput.value.trim() === '') {
-          e.preventDefault();
-        }
-      });
-      
-      // Búsqueda en tiempo real (para implementación futura)
-      let debounceTimer;
-      searchInput.addEventListener('input', () => {
-        clearTimeout(debounceTimer);
-        const query = searchInput.value.trim();
-        
-        if (query.length < 3) {
-          searchResults.classList.remove('active');
-          searchResults.innerHTML = '';
-          return;
-        }
-        
-        debounceTimer = setTimeout(() => {
-          // Aquí se implementaría la búsqueda en tiempo real
-          // Por ahora, solo mostramos un mensaje de ejemplo
-          searchResults.classList.add('active');
-          searchResults.innerHTML = `
-            <p>Buscando: "${query}"...</p>
-            <p>Los resultados aparecerán aquí.</p>
-          `;
-          
-          // En una implementación real, aquí se haría una llamada a la API
-          // o se buscaría en un índice local
-        }, 300);
-      });
-      
-      // Cerrar resultados al hacer clic fuera
-      document.addEventListener('click', (e) => {
-        if (!searchContainer.contains(e.target)) {
-          searchResults.classList.remove('active');
-        }
-      });
-    }
+  // Evita enviar búsquedas vacías; la búsqueda la resuelve /search en el servidor.
+  document.querySelectorAll<HTMLFormElement>('form.search-form').forEach((form) => {
+    form.addEventListener('submit', (e) => {
+      const input = form.querySelector<HTMLInputElement>('input[name="q"]');
+      if (!input || input.value.trim() === '') e.preventDefault();
+    });
   });
 </script>

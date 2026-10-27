@@ -1,5 +1,7 @@
 ---
-import { SITE_TITLE, CATEGORIES } from '../consts';
+import { SITE_TITLE } from '../consts';
+import { getSiteCategories } from '../lib/site';
+const CATEGORIES = await getSiteCategories(Astro.locals);
 const today = new Date();
 ---
 

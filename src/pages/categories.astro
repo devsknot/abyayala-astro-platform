@@ -2,13 +2,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { SITE_TITLE } from '../consts';
 import CategoryTag from '../components/CategoryTag.astro';
-import { getAllCategories } from '../utils/contentApi.js';
+import { getDb } from '../db';
+import { listCategories } from '../lib/repo/categories';
 
 // Configuración para SSR
 export const prerender = false;
 
-// Obtener todas las categorías desde la API
-const categories = await getAllCategories(Astro.url.origin);
+const categories = await listCategories(getDb(Astro.locals));
 
 const pageTitle = `Categorías | ${SITE_TITLE}`;
 const pageDescription = 'Explora todas las categorías de noticias de la plataforma Abya Yala. Encuentra información sobre agricultura, sostenibilidad, comunidad y más.';

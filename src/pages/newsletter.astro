@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { SITE_TITLE, CATEGORIES } from '../consts';
+import { SITE_TITLE } from '../consts';
+import { getSiteCategories } from '../lib/site';
+const CATEGORIES = await getSiteCategories(Astro.locals);
 
 const pageTitle = `Suscríbete a nuestro boletín | ${SITE_TITLE}`;
 const pageDescription = 'Suscríbete al boletín informativo del colectivo agrario Abya Yala y mantente al día con las últimas noticias, eventos y actualizaciones.';

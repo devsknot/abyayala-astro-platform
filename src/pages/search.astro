@@ -1,43 +1,43 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { SITE_TITLE, CATEGORIES } from '../consts';
+import { SITE_TITLE } from '../consts';
 import FormattedDate from '../components/FormattedDate.astro';
 import CategoryTag from '../components/CategoryTag.astro';
 import SearchBar from '../components/SearchBar.astro';
+import { getDb } from '../db';
+import { searchArticles } from '../lib/repo/articles';
+import { getSiteCategories } from '../lib/site';
+import { articleImageUrl } from '../lib/url';
 
-// Obtener el parámetro de búsqueda
-const query = Astro.url.searchParams.get('q') || '';
+export const prerender = false;
 
-// Obtener todas las noticias
-const allNews = await Astro.glob('../content/blog/*.md');
+const CATEGORIES = await getSiteCategories(Astro.locals);
+const query = (Astro.url.searchParams.get('q') || '').trim().slice(0, 200);
 
-// Filtrar noticias según el término de búsqueda (si existe)
-const searchResults = query 
-  ? allNews.filter(news => {
-      const title = news.frontmatter.title.toLowerCase();
-      const description = news.frontmatter.description?.toLowerCase() || '';
-      const category = news.frontmatter.category?.toLowerCase() || '';
-      const content = news.rawContent?.toLowerCase() || '';
-      const searchTerm = query.toLowerCase();
-      
-      return title.includes(searchTerm) || 
-             description.includes(searchTerm) || 
-             category.includes(searchTerm) || 
-             content.includes(searchTerm);
-    })
-  : [];
+// Búsqueda en D1 (título, descripción y contenido). Se muestran hasta 50 resultados.
+const { articles, pagination } = query
+  ? await searchArticles(getDb(Astro.locals), { query, page: 1, pageSize: 50 })
+  : { articles: [], pagination: { totalItems: 0 } };
+const totalResults = pagination.totalItems;
 
-// Ordenar por fecha de publicación (más reciente primero)
-const sortedResults = searchResults.sort((a, b) => 
-  new Date(b.frontmatter.pubDate).valueOf() - new Date(a.frontmatter.pubDate).valueOf()
-);
+// Se conserva la forma `frontmatter` que espera la plantilla.
+const sortedResults = articles.map((a) => ({
+  frontmatter: {
+    slug: a.slug,
+    title: a.title,
+    description: a.description,
+    category: a.category,
+    pubDate: new Date(a.pubDate),
+    image: articleImageUrl(a.featured_image),
+  },
+}));
 
-const pageTitle = query 
-  ? `Resultados para "${query}" | ${SITE_TITLE}` 
+const pageTitle = query
+  ? `Resultados para "${query}" | ${SITE_TITLE}`
   : `Búsqueda | ${SITE_TITLE}`;
 
-const pageDescription = query 
-  ? `Resultados de búsqueda para "${query}" en el colectivo agrario Abya Yala.` 
+const pageDescription = query
+  ? `Resultados de búsqueda para "${query}" en el colectivo agrario Abya Yala.`
   : `Busca noticias, artículos y contenido en el colectivo agrario Abya Yala.`;
 ---
 
@@ -55,7 +55,7 @@ const pageDescription = query
         <div class="search-results">
           <div class="results-header">
             <h2>Resultados para "{query}"</h2>
-            <p class="results-count">{sortedResults.length} resultado{sortedResults.length !== 1 ? 's' : ''} encontrado{sortedResults.length !== 1 ? 's' : ''}</p>
+            <p class="results-count">{totalResults} resultado{totalResults !== 1 ? "s" : ""} encontrado{totalResults !== 1 ? "s" : ""}</p>
           </div>
           
           {sortedResults.length > 0 ? (

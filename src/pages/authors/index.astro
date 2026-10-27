@@ -1,17 +1,12 @@
---- 
+---
 // src/pages/authors/index.astro
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getDb } from '../../db';
+import { listAuthors } from '../../lib/repo/authors';
 
-// Fetch all authors from the API
-// We use the full URL here because this code runs on the server during the build.
-const response = await fetch(`${Astro.url.origin}/api/content/authors`);
-let authors = [];
-if (response.ok) {
-  const data = await response.json();
-  authors = data.authors || [];
-} else {
-  console.error('Failed to fetch authors:', await response.text());
-}
+export const prerender = false;
+
+const authors = await listAuthors(getDb(Astro.locals));
 
 const pageTitle = "Nuestros Autores";
 const pageDescription = "Conoce al increíble equipo de escritores, investigadores y activistas que dan vida a Abya Yala.";

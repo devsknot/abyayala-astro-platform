@@ -3,7 +3,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import NewsCard from '../components/NewsCard.astro';
 import CategoryTag from '../components/CategoryTag.astro';
 import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
-import { getAllArticles, getAllCategories } from '../utils/contentApi.js';
+import { getDb } from '../db';
+import { listArticles } from '../lib/repo/articles';
+import { listCategories } from '../lib/repo/categories';
+import { articleImageUrl } from '../lib/url';
 
 // Configuración para SSR
 export const prerender = false;
@@ -38,17 +41,14 @@ interface ApiResponse {
   success?: boolean;
 }
 
-// Obtener artículos de la API
-const articlesResponse = await getAllArticles(Astro.url.origin) as ApiResponse;
-
-// Obtener categorías de la API
-const categories = await getAllCategories(Astro.url.origin);
+const db = getDb(Astro.locals);
+const [articlesResponse, categories] = await Promise.all([
+  listArticles(db, { page: 1, pageSize: 10 }) as Promise<ApiResponse>,
+  listCategories(db),
+]);
 
 // Extraer el array de artículos de la respuesta
 const articlesArray = articlesResponse && articlesResponse.articles ? articlesResponse.articles : [];
-
-// Verificar en consola
-console.log(`Artículos obtenidos: ${articlesArray.length}`);
 
 // Ordenar por fecha de publicación (más reciente primero)
 const sortedArticles = articlesArray.length > 0 
@@ -60,15 +60,8 @@ const sortedArticles = articlesArray.length > 0
   : [];
 
 // Función para normalizar imágenes
-const normalizeImage = (imagePath: string | undefined): string => {
-  // Si no hay imagen o la ruta está causando 404
-  if (!imagePath || imagePath.startsWith('media/uploads/') || 
-      imagePath.includes('+') || imagePath.includes('%25')) {
-    // Usar la imagen del Colectivo (logo sin fondo)
-    return '/images/CAAY Logo sin fondo.png';
-  }
-  return imagePath;
-};
+const normalizeImage = (imagePath: string | undefined): string =>
+  articleImageUrl(imagePath, '/images/CAAY Logo sin fondo.png');
 
 // Obtener artículos destacados (los 4 más recientes)
 const featuredNews = sortedArticles.slice(0, 4).map((article: Article) => {
