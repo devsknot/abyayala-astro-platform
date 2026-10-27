@@ -48,9 +48,8 @@ const HEALTH_ITEMS = [
   {
     key: 'withoutImage',
     label: 'Sin imagen destacada',
-    help: 'Usan la portada genérica del sitio. Si el artículo tiene imágenes, se puede tomar la primera.',
-    severity: 'info',
-    fix: 'images'
+    help: 'No tienen ninguna imagen en el contenido y usan la portada genérica. Se les puede poner una desde el editor.',
+    severity: 'info'
   }
 ];
 

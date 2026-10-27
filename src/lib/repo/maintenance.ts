@@ -151,16 +151,20 @@ export function excerpt(html: string | null, length = DESCRIPTION_LENGTH): strin
 
 async function repairDescriptions(db: Database, apply: boolean): Promise<MaintenanceResult> {
   const rows = await db
-    .select({ id: articles.id, content: articles.content })
+    .select({ id: articles.id, title: articles.title, content: articles.content })
     .from(articles)
     .where(sql`coalesce(trim(${articles.description}), '') = ''`);
 
   const updates: Update[] = [];
-  let empty = 0;
+  let fromTitle = 0;
   for (const row of rows) {
-    const description = excerpt(row.content);
+    // Afiches o videos sin texto: el título es lo único que describe el artículo.
+    let description = excerpt(row.content);
+    if (!description) {
+      description = excerpt(row.title);
+      if (description) fromTitle++;
+    }
     if (description) updates.push({ id: row.id, set: { description } });
-    else empty++;
   }
 
   if (apply) await applyUpdates(db, updates);
@@ -169,8 +173,8 @@ async function repairDescriptions(db: Database, apply: boolean): Promise<Mainten
     applied: apply,
     affected: updates.length,
     summary: [
-      { label: 'Descripciones generadas a partir del texto', count: updates.length },
-      { label: 'Artículos sin texto para generar descripción', count: empty },
+      { label: 'Generadas con el inicio del texto', count: updates.length - fromTitle },
+      { label: 'Sin texto en el artículo: se usa el título', count: fromTitle },
     ],
   };
 }
@@ -204,6 +208,9 @@ async function repairAuthors(db: Database, apply: boolean, authorId: number | nu
 }
 
 const BASE64_IMG = /data:image\/[a-z0-9.+-]+;base64,([a-z0-9+/=\s]+)/gi;
+// Cualquier otra imagen incrustada (SVG en texto, datos truncados…): el sanitizador ya no la
+// muestra en el sitio, así que solo ocupa espacio.
+const OTHER_DATA_IMG = /data:image\/[^"')\s>]*/gi;
 
 function decodeBase64(value: string): Uint8Array | null {
   try {
@@ -241,8 +248,13 @@ async function repairBase64(
     for (const match of matches) {
       const data = decodeBase64(match[1]);
       const kind = data && detectImageType(data);
+      const start = match.index ?? 0;
       if (!data || !kind) {
         invalid++;
+        if (apply) {
+          content = content.slice(0, start) + content.slice(start + match[0].length);
+          changed = true;
+        }
         continue;
       }
       images++;
@@ -252,9 +264,17 @@ async function repairBase64(
         httpMetadata: { contentType: kind.type, cacheControl: 'public, max-age=31536000, immutable' },
         customMetadata: { originalName: `${row.slug}.${kind.ext}`, uploadedBy },
       });
-      const start = match.index ?? 0;
       content = `${content.slice(0, start)}/api/media/${key}${content.slice(start + match[0].length)}`;
       changed = true;
+    }
+    // En la vista previa las base64 siguen en el texto; al aplicar ya se reemplazaron.
+    const others = (content.match(OTHER_DATA_IMG)?.length ?? 0) - (apply ? 0 : matches.length);
+    if (others > 0) {
+      invalid += others;
+      if (apply) {
+        content = content.replace(OTHER_DATA_IMG, '');
+        changed = true;
+      }
     }
     if (changed) updates.push({ id: row.id, set: { content } });
   }
@@ -266,7 +286,7 @@ async function repairBase64(
     affected: apply ? updates.length : rows.length,
     summary: [
       { label: 'Imágenes que se suben a la biblioteca de medios', count: images },
-      { label: 'Datos de imagen no reconocidos (se dejan igual)', count: invalid },
+      { label: 'Imágenes dañadas o no visibles en el sitio: se eliminan', count: invalid },
     ],
   };
 }
