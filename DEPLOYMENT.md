@@ -24,21 +24,20 @@ Esta guía te ayudará a desplegar la plataforma Abya Yala en Cloudflare Pages, 
      - `NODE_VERSION`: `18.0.0` (o la versión que estés utilizando)
      - `ENVIRONMENT`: `production`
 
-### 2. Configurar Cloudflare Access
+### 2. Autenticación del panel (Cloudflare Access)
 
-Para proteger el panel de administración:
-
-1. Navega a **Access** > **Applications** > **Add an application**
-2. Selecciona **Self-hosted**
-3. Configura las siguientes opciones:
-   - **Application name**: `Abya Yala CMS`
-   - **Session duration**: `24 hours`
-   - **Application domain**: `tu-dominio.com/admin*` (ajusta según tu dominio)
-4. En **Policies**, crea una nueva política:
-   - **Policy name**: `Admin Access`
-   - **Action**: `Allow`
-   - **Configure rules**: Configura quién puede acceder (por email, grupo, etc.)
-5. Guarda la configuración
+- La aplicación de Access **"Abya Yala CMS"** protege `colectivoabyayala.org/admin`
+  (team domain `devknot.cloudflareaccess.com`).
+- La API **verifica el JWT de Access en el servidor** (`src/middleware.ts` + `src/lib/auth.ts`):
+  firma (claves de `/cdn-cgi/access/certs`), emisor y audiencia (`CF_ACCESS_AUD`).
+  El token llega en la cookie `CF_Authorization` o en la cabecera `Cf-Access-Jwt-Assertion`.
+  Si `CF_ACCESS_TEAM_DOMAIN` o `CF_ACCESS_AUD` no están configuradas, la API rechaza toda escritura.
+- Requieren sesión: todo `POST`/`PUT`/`DELETE` bajo `/api/*`, `GET /api/content/activities`
+  y `GET /api/media/list`. `GET /api/auth/me` devuelve el usuario actual.
+- Las escrituras desde otro origen se rechazan (comprobación de `Origin`).
+- Recomendado: añadir también `www.colectivoabyayala.org/admin` y
+  `abyayala-astro-platform.pages.dev/admin` a la aplicación de Access, o redirigir `www` al dominio principal.
+  Aunque el HTML del panel se vea en esos dominios, la API no acepta escrituras sin un JWT válido.
 
 ### 3. Configurar Cloudflare R2 (para almacenamiento de medios)
 
@@ -79,174 +78,44 @@ Los archivos almacenados en R2 son accesibles a través de la API:
 
 El CMS incluye un modo fallback para desarrollo que simula la interacción con R2 cuando no se tiene acceso al bucket real.
 
-## Configuración de Cloudflare D1 (Base de datos)
+## Base de datos D1 y migraciones (Drizzle ORM)
 
-Para almacenar el contenido del CMS, utilizamos Cloudflare D1, una base de datos SQL que se integra con Cloudflare Pages Functions:
+El esquema vive en `src/db/schema.ts` (Drizzle ORM) y es la **única fuente de verdad**.
+Cada cambio de esquema genera una migración SQL versionada en `migrations/`, y wrangler
+registra en la tabla `d1_migrations` de la base cuáles se aplicaron. Así queda trazado
+qué cambió, cuándo y en qué orden.
 
-1. **Crear una base de datos D1**:
-   ```bash
-   # Instalar o actualizar Wrangler si es necesario
-   npm install -g wrangler@latest
-   
-   # Iniciar sesión en Cloudflare
-   wrangler login
-   
-   # Crear la base de datos
-   wrangler d1 create abyayala-cms
-   ```
+| Migración | Contenido |
+|---|---|
+| `0000_baseline.sql` | Esquema existente en producción antes de adoptar el ORM. Usa `IF NOT EXISTS`: en producción no modifica nada, solo queda registrada. |
+| `0001_articles_listing_indexes.sql` | Índices `(category, pub_date)` y `(pub_date)` para listados y páginas de categoría. |
 
-2. **Configurar el binding en wrangler.toml**:
-   ```toml
-   [[d1_databases]]
-   binding = "DB"
-   database_name = "abyayala-cms"
-   database_id = "ID-de-tu-base-de-datos"
-   ```
+### Flujo para cambiar el esquema
 
-3. **Crear el esquema de la base de datos**:
-   Crea un archivo `schema.sql` con el siguiente contenido:
-   ```sql
-   CREATE TABLE articles (
-     id INTEGER PRIMARY KEY AUTOINCREMENT,
-     slug TEXT UNIQUE NOT NULL,
-     title TEXT NOT NULL,
-     description TEXT,
-     content TEXT,
-     pub_date TEXT,
-     category TEXT,
-     featured_image TEXT,
-     created_at TEXT DEFAULT (datetime('now')),
-     updated_at TEXT DEFAULT (datetime('now')),
-     author_id INTEGER REFERENCES authors(id)
-   );
+```bash
+# 1. Editar src/db/schema.ts
+# 2. Generar la migración (crea migrations/NNNN_nombre.sql + snapshot en migrations/meta)
+npx drizzle-kit generate --name descripcion_del_cambio
+# 3. Revisar el SQL generado y commitearlo junto con el cambio de código
+# 4. Aplicarla en producción ANTES (o junto con) el despliegue del código que la usa
+npm run db:migrate:remote
+# Ver estado
+npm run db:migrations:list
+```
 
-   CREATE TABLE authors (
-     id INTEGER PRIMARY KEY AUTOINCREMENT,
-     slug TEXT UNIQUE NOT NULL,
-     name TEXT NOT NULL,
-     bio TEXT,
-     email TEXT,
-     avatar TEXT,
-     social_media TEXT,
-     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-   );
+Reglas:
+- Nunca editar una migración ya aplicada; crear una nueva.
+- Nunca ejecutar `ALTER`/`CREATE` a mano en la consola de D1: el cambio quedaría fuera del historial.
+- `npm run db:migrate:remote` necesita credenciales con permiso de escritura en D1
+  (`wrangler login` o un `CLOUDFLARE_API_TOKEN` con *D1 Edit*).
 
-   CREATE INDEX idx_authors_slug ON authors(slug);
+### Base local (opcional)
 
-   CREATE TABLE categories (
-     id TEXT PRIMARY KEY,
-     name TEXT NOT NULL,
-     description TEXT
-   );
-
-   CREATE TABLE media (
-     id TEXT PRIMARY KEY,
-     name TEXT NOT NULL,
-     path TEXT NOT NULL,
-     type TEXT NOT NULL,
-     size INTEGER NOT NULL,
-     uploaded TEXT NOT NULL
-   );
-
-   -- Insertar categorías predefinidas
-   INSERT INTO categories (id, name, description) VALUES
-     ('agricultura', 'Agricultura', 'Noticias sobre prácticas agrícolas, cultivos y temporadas'),
-     ('comunidad', 'Comunidad', 'Historias de miembros, cooperación y testimonios'),
-     ('sostenibilidad', 'Sostenibilidad', 'Prácticas ecológicas, conservación y biodiversidad'),
-     ('politica-agraria', 'Política Agraria', 'Legislación, derechos y movimientos sociales'),
-     ('tecnologia-rural', 'Tecnología Rural', 'Innovaciones, herramientas y digitalización'),
-     ('cultura', 'Cultura', 'Tradiciones, gastronomía y artesanía'),
-     ('eventos', 'Eventos', 'Ferias, encuentros y capacitaciones');
-
-   -- Insertar autores predefinidos
-   INSERT INTO authors (slug, name, bio) VALUES
-     ('colectivo-abyayala', 'Colectivo Agrario Abya Yala', 'Colectivo de agricultores y activistas dedicados a la promoción de la agricultura sostenible y la soberanía alimentaria.'),
-     ('equipo-editorial', 'Equipo Editorial', 'Equipo de redacción y edición de la plataforma de noticias del Colectivo Agrario Abya Yala.'),
-     ('corresponsales-comunitarios', 'Corresponsales Comunitarios', 'Red de corresponsales locales que reportan desde sus comunidades sobre temas agrarios y ambientales.');
-   ```
-
-4. **Aplicar el esquema a la base de datos**:
-   ```bash
-   wrangler d1 execute abyayala-cms --file=schema.sql
-   ```
-
-5. **Ejecutar migraciones de base de datos**:
-   El proyecto incluye un sistema de migraciones para mantener el esquema de la base de datos actualizado. Estas migraciones deben ejecutarse después de cada despliegue o cuando se realicen cambios en el esquema.
-
-   Para ejecutar todas las migraciones disponibles:
-   ```bash
-   # Desde la raíz del proyecto
-   bash ./scripts/migrations/run-migration.sh
-   ```
-
-   También puedes ejecutar migraciones individuales:
-   ```bash
-   # Ejecutar una migración específica
-   npx wrangler d1 execute DB --remote --file=./scripts/migrations/nombre-migracion.sql
-   ```
-
-   **Migraciones disponibles**:
-   - `add-author-column.sql`: Añade la columna `author` (TEXT) a la tabla `articles`
-   - `add-tags-column.sql`: Añade la columna `tags` (TEXT) a la tabla `articles`
-   - `create-authors-table.sql`: Crea la tabla `authors` y añade la columna `author_id` (INTEGER) a `articles`
-   - `remove-author-column.sql`: Elimina la columna `author` redundante de la tabla `articles`, dejando solo `author_id`
-
-   **Estado actual de la base de datos**:
-   La base de datos en producción actualmente tiene las siguientes tablas:
-   - `articles`: Artículos del blog con campos para título, contenido, categoría, autor_id, etc.
-   - `authors`: Información de autores con campos para nombre, biografía, avatar, etc.
-   - `categories`: Categorías predefinidas para clasificar los artículos
-   - `media`: Información sobre archivos multimedia subidos al sistema
-   - `activities`: Registro de actividades del sistema (creación, edición, eliminación de contenido)
-
-   **Estructura actual de la tabla `articles`**:
-   ```sql
-   CREATE TABLE articles (
-     id INTEGER PRIMARY KEY AUTOINCREMENT,
-     slug TEXT UNIQUE NOT NULL,
-     title TEXT NOT NULL,
-     description TEXT,
-     content TEXT,
-     pub_date TEXT,
-     category TEXT,
-     featured_image TEXT,
-     created_at TEXT DEFAULT (datetime('now')),
-     updated_at TEXT DEFAULT (datetime('now')),
-     author_id INTEGER REFERENCES authors(id)
-   );
-   ```
-
-   **Estructura actual de la tabla `authors`**:
-   ```sql
-   CREATE TABLE authors (
-     id INTEGER PRIMARY KEY AUTOINCREMENT,
-     slug TEXT UNIQUE NOT NULL,
-     name TEXT NOT NULL,
-     bio TEXT,
-     email TEXT,
-     avatar TEXT,
-     social_media TEXT,
-     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-   );
-   ```
-
-   **Nota**: Es recomendable ejecutar las migraciones como parte del proceso de despliegue para garantizar que la base de datos esté siempre actualizada.
-
-### 5. Automatizar migraciones en el despliegue
-
-Para automatizar la ejecución de migraciones durante el despliegue, puedes configurar un script de post-despliegue en Cloudflare Pages:
-
-1. En el dashboard de Cloudflare Pages, ve a tu proyecto
-2. Navega a **Settings** > **Functions**
-3. En la sección **Post-deployment script**, añade:
-   ```bash
-   bash ./scripts/migrations/run-migration.sh
-   ```
-4. Guarda los cambios
-
-Esto ejecutará automáticamente todas las migraciones después de cada despliegue exitoso, asegurando que la base de datos esté siempre sincronizada con el código más reciente.
+```bash
+npm run db:migrate:local
+npm run db:seed:local   # categorías y autores base (scripts/seed-local.sql)
+npm run dev
+```
 
 ## Sistema de Seguimiento de Actividades
 
