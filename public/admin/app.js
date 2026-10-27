@@ -506,32 +506,6 @@ async function loadSettings(container) {
           </div>
         </div>
       </section>
-
-      <section class="card" aria-labelledby="access-title">
-        <div class="card-header">
-          <h3 class="card-title" id="access-title">${icon('shield', { size: 18 })}<span>Cómo funciona el acceso</span></h3>
-        </div>
-        <div class="card-body prose-sm">
-          <p>El acceso al panel lo gestiona <strong>Cloudflare Access</strong>: al entrar te identificas con tu correo y Cloudflare emite una sesión con fecha de vencimiento. El panel no guarda contraseñas.</p>
-          <p>Cuando la sesión está por vencer verás un aviso. Guarda tu trabajo y recarga la página para volver a identificarte.</p>
-          <p>Para dar acceso a otra persona, añade su correo a la política de la aplicación en <strong>Cloudflare Zero Trust</strong>.</p>
-        </div>
-      </section>
-
-      <section class="card settings-wide" aria-labelledby="about-title">
-        <div class="card-header">
-          <h3 class="card-title" id="about-title">${icon('database', { size: 18 })}<span>Acerca del sistema</span></h3>
-        </div>
-        <div class="card-body">
-          <ul class="stack-list">
-            <li><span class="badge badge-blue">Astro</span><span>Sitio y API, desplegados en Cloudflare Pages.</span></li>
-            <li><span class="badge badge-blue">Cloudflare D1</span><span>Base de datos de artículos, autores, categorías y actividad.</span></li>
-            <li><span class="badge badge-blue">Cloudflare R2</span><span>Almacenamiento de imágenes y archivos multimedia.</span></li>
-            <li><span class="badge badge-blue">Drizzle ORM</span><span>Esquema de la base de datos y migraciones.</span></li>
-            <li><span class="badge badge-blue">TinyMCE</span><span>Editor de contenido de los artículos.</span></li>
-          </ul>
-        </div>
-      </section>
     </div>
   `;
   updateSessionDisplays();

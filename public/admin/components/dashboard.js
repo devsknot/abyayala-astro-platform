@@ -3,7 +3,7 @@
 import { apiRequest } from '../utils/api.js';
 import { escapeHtml } from '../utils/html.js';
 import { icon } from '../utils/icons.js';
-import { formatBytes, formatNumber, formatRelative, formatDateTime } from '../utils/format.js';
+import { formatBytes, formatNumber, formatRelative, formatDateTime, toDate } from '../utils/format.js';
 
 const STATS_URL = '/api/admin/stats';
 
@@ -63,6 +63,39 @@ const ENTITY_LABELS = {
   category: 'la categoría',
   media: 'el archivo'
 };
+
+const ENTITY_PLURALS = {
+  article: ['artículo', 'artículos'],
+  author: ['autor', 'autores'],
+  category: ['categoría', 'categorías'],
+  media: ['archivo', 'archivos']
+};
+
+const MAX_FEED_ITEMS = 8;
+// Acciones iguales del mismo usuario separadas por menos de esto se muestran como una sola
+const GROUP_WINDOW_MS = 30 * 60 * 1000;
+
+/** Nombre legible: los archivos subidos llevan un prefijo «timestamp-aleatorio-». */
+function entityTitle(activity) {
+  const title = String(activity.entity_title || '');
+  return activity.entity_type === 'media' ? title.replace(/^d{10,}-[a-z0-9]{4,8}-/i, '') : title;
+}
+
+/** Agrupa acciones consecutivas del mismo usuario, tipo y entidad (p. ej. borrar 10 archivos seguidos). */
+function groupActivities(activities) {
+  const groups = [];
+  for (const activity of activities) {
+    const last = groups[groups.length - 1];
+    const prev = last && last[last.length - 1];
+    const close = prev && Math.abs((toDate(prev.created_at) || 0) - (toDate(activity.created_at) || 0)) < GROUP_WINDOW_MS;
+    if (prev && close && prev.type === activity.type && prev.entity_type === activity.entity_type && prev.user_name === activity.user_name && activity.type !== 'bulk_import') {
+      last.push(activity);
+    } else {
+      groups.push([activity]);
+    }
+  }
+  return groups;
+}
 
 const ACTIVITY_ICONS = {
   create: 'plus',
@@ -430,19 +463,37 @@ export class Dashboard {
       return this.emptyCard('span-half', 'activity-title', 'Actividad reciente', 'activity', 'Todavía no hay actividad registrada.');
     }
 
-    const items = activities.map(activity => {
-      const type = String(activity.type || '');
+    const items = groupActivities(activities).slice(0, MAX_FEED_ITEMS).map(group => {
+      const first = group[0];
+      const type = String(first.type || '');
       const verb = ACTION_VERBS[type] || type || 'modificó';
-      const entity = type === 'bulk_import' ? '' : (ENTITY_LABELS[activity.entity_type] || '');
-      const title = type === 'bulk_import' ? '' : (activity.entity_title || '');
-      const when = activity.relative_time || formatRelative(activity.created_at);
+      const count = group.length;
       const tone = /delete/.test(type) ? 'danger' : (type === 'create' || type === 'media_upload' || type === 'bulk_import' ? 'success' : 'info');
+      const when = first.relative_time || formatRelative(first.created_at);
+
+      let what = '';
+      if (type !== 'bulk_import') {
+        if (count === 1) {
+          const entity = ENTITY_LABELS[first.entity_type] || '';
+          const title = entityTitle(first);
+          what = `${entity ? ` ${escapeHtml(entity)}` : ''}${title ? ` <span class="feed-entity">«${escapeHtml(title)}»</span>` : ''}`;
+        } else {
+          const [singular, pluralForm] = ENTITY_PLURALS[first.entity_type] || ['elemento', 'elementos'];
+          what = ` <span class="feed-entity">${escapeHtml(plural(count, singular, pluralForm))}</span>`;
+        }
+      }
+
+      const names = count > 1
+        ? `<details class="feed-more"><summary>Ver cuáles</summary><ul>${group.map(a => `<li>${escapeHtml(entityTitle(a) || 'Sin nombre')}</li>`).join('')}</ul></details>`
+        : '';
+
       return `
         <li class="feed-item">
           <span class="feed-icon feed-${tone}">${icon(ACTIVITY_ICONS[type] || 'activity', { size: 16 })}</span>
           <div class="feed-text">
-            <p><strong>${escapeHtml(activity.user_name || 'Alguien')}</strong> ${escapeHtml(verb)}${entity ? ` ${escapeHtml(entity)}` : ''}${title ? ` <span class="feed-entity">«${escapeHtml(title)}»</span>` : ''}</p>
-            <time class="feed-time" datetime="${escapeHtml(activity.created_at || '')}" title="${escapeHtml(formatDateTime(activity.created_at))}">${escapeHtml(when)}</time>
+            <p><strong>${escapeHtml(first.user_name || 'Alguien')}</strong> ${escapeHtml(verb)}${what}</p>
+            <time class="feed-time" datetime="${escapeHtml(first.created_at || '')}">${escapeHtml(when)} · ${escapeHtml(formatDateTime(first.created_at))}</time>
+            ${names}
           </div>
         </li>
       `;

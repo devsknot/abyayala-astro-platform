@@ -57,7 +57,7 @@ export async function getContentStats(db: Database) {
       sql`SELECT slug, title, round(length(coalesce(content, '')) / 1024.0, 1) AS kb
           FROM articles ORDER BY length(coalesce(content, '')) DESC LIMIT 5`,
     ),
-    listActivities(db, { limit: 10, offset: 0 }),
+    listActivities(db, { limit: 60, offset: 0 }),
   ]);
 
   const c = counts[0] ?? {};
